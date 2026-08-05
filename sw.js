@@ -161,6 +161,23 @@ self.addEventListener("fetch", event => {
     event.respondWith(networkFirst(req));
     return;
   }
+
+  // Code is network-first; assets are cache-first.
+  //
+  // Cache-first for JS/CSS is correct for a stable app and wrong for this one.
+  // It pins a returning visitor to whatever build their cache holds until the
+  // worker version changes AND they reload — which presented as the app being
+  // "still on the preview build" several deploys after that build was gone,
+  // with no way for the user to tell. Code changes on every push; icons and
+  // the manifest do not.
+  //
+  // Offline still works: network-first falls back to the cache, so the shell
+  // loads with no connection. The cost is one conditional request per asset
+  // when online, which for ~30 small files is not worth the confusion.
+  if (/\.(js|mjs|css|html)$/.test(url.pathname)) {
+    event.respondWith(networkFirst(req));
+    return;
+  }
   event.respondWith(cacheFirst(req));
 });
 
