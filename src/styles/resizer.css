@@ -1,0 +1,41 @@
+/* Drag handles between panels.
+   Thin visually, but with a generous hit area — a 1px target is a fight. */
+
+.resizer {
+  position:relative;
+  flex:none;
+  background:transparent;
+  z-index:5;
+}
+.resizer::after {
+  content:"";
+  position:absolute;
+  background:transparent;
+  transition:background .12s;
+}
+.resizer:hover::after,
+.resizer.dragging::after,
+.resizer:focus-visible::after { background:var(--focus); }
+
+/* vertical splitter — between editor and sidebar */
+.resizer-v {
+  width:1px;
+  background:var(--bd);
+  cursor:col-resize;
+}
+.resizer-v::after { inset:0 -3px; }        /* 7px of grab, 1px of paint */
+
+/* horizontal splitter — between the sidebar's panes */
+.resizer-h {
+  height:1px;
+  background:var(--bd);
+  cursor:row-resize;
+}
+.resizer-h::after { inset:-3px 0; }
+
+.resizer:focus-visible { outline:none; }
+
+/* Stacked layout has nothing to drag between. */
+@media (max-width:900px) {
+  .resizer { display:none; }
+}

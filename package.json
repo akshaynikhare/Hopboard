@@ -3,9 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Live clipboard sharing. Static frontend, no build step — this file exists only so Node treats src/*.js as ES modules when running tests.",
+  "description": "Live clipboard sharing. Static frontend, no build step — this file exists so Node treats src/*.js as ES modules when running tests. Nothing here is needed to deploy.",
   "scripts": {
-    "test": "node tests/e2e.mjs",
+    "test": "node tests/static-check.mjs && node tests/e2e.mjs && node tests/boot.mjs",
+    "test:static": "node tests/static-check.mjs",
+    "test:e2e": "node tests/e2e.mjs",
+    "test:boot": "node tests/boot.mjs",
     "serve": "python -m http.server 8080"
-  }
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0"
+  },
+  "comment": "jsdom is only needed by tests/boot.mjs, which skips cleanly when it is absent. The app itself has zero dependencies and ships as-is."
 }

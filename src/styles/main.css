@@ -9,8 +9,8 @@
 @import url("./tokens.css");
 @import url("./base.css");
 @import url("./layout.css");
-@import url("./titlebar.css");
-@import url("./activitybar.css");
+@import url("./appbar.css");
+@import url("./resizer.css");
 @import url("./editor.css");
 @import url("./sidebar.css");
 @import url("./files.css");

@@ -16,62 +16,45 @@
 <body>
 <div class="vs">
 
-  <!-- ============ title bar ============ -->
-  <div class="titlebar">
-    <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="#007acc" stroke-width="2" stroke-linecap="round">
+  <!-- ============ app header ============
+       One bar: identity, context, and the editor's actions. Replaces the
+       decorative menu strip, the single-document tab and the separate
+       breadcrumb — none of which did anything a one-document app needs. -->
+  <header class="appbar">
+    <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
       <rect x="8" y="3" width="8" height="4" rx="1"/>
       <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
       <path d="M9 13l2 2 4-4"/>
     </svg>
-    <div class="menu"><span>File</span><span>Edit</span><span>Session</span><span>Help</span></div>
-    <div class="tcenter">clipboard.txt — Hopboard</div>
-  </div>
+    <span class="brand">Hopboard</span>
+    <span class="crumb"><span id="bcKey">—</span><span class="sep">›</span>clipboard.txt</span>
+    <span class="tabspace"></span>
+    <div class="tabacts">
+      <button class="ibtn" id="aSelect" title="Select all">
+        <svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/></svg>
+      </button>
+      <button class="ibtn" id="aCopy" title="Copy all text to clipboard">
+        <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
+      </button>
+      <button class="ibtn" id="aPaste" title="Paste from clipboard">
+        <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="9" y="2" width="6" height="4" rx="1"/></svg>
+      </button>
+      <button class="ibtn" id="aSend" title="Send to your other devices">
+        <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+      </button>
+      <!-- Labelled, not a bare "×": an unlabelled cross on a text panel reads
+           as "close the tab", and this erases what you have typed. -->
+      <button class="ibtn danger" id="tabX" title="Erase the text in this editor">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/></svg>
+        <span class="lbl">Clear</span>
+      </button>
+    </div>
+  </header>
 
   <div class="body">
 
-    <!-- ============ activity bar ============ -->
-    <nav class="activity" aria-label="Primary">
-      <button class="abtn on" id="abEditor" title="Clipboard" aria-label="Clipboard">
-        <svg viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/></svg>
-      </button>
-      <button class="abtn" id="abFiles" title="Files and images" aria-label="Files and images">
-        <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
-      </button>
-      <button class="abtn" id="abPeers" title="Devices" aria-label="Devices">
-        <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0"/><path d="M16 6a3 3 0 010 6M18 20a6 6 0 00-3-5"/></svg>
-      </button>
-      <div class="aspacer"></div>
-      <button class="abtn" id="abSettings" title="Settings" aria-label="Settings">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1A1.6 1.6 0 008 19.4a1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H2a2 2 0 110-4h.1A1.6 1.6 0 004.6 8a1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V2a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9a1.6 1.6 0 001.5 1H22a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/></svg>
-      </button>
-    </nav>
-
     <!-- ============ PANEL 1 — editor ============ -->
     <main class="main">
-      <div class="tabs">
-        <div class="tab"><span class="fi">TXT</span> clipboard.txt
-          <span class="x" id="tabX" title="Clear" role="button" tabindex="0">×</span>
-        </div>
-        <div class="tabspace"></div>
-        <div class="tabacts">
-          <button class="ibtn" id="aSelect" title="Select all">
-            <svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/></svg>
-          </button>
-          <button class="ibtn" id="aCopy" title="Copy to clipboard">
-            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
-          </button>
-          <button class="ibtn" id="aPaste" title="Paste from clipboard">
-            <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="9" y="2" width="6" height="4" rx="1"/></svg>
-          </button>
-          <button class="ibtn" id="aSend" title="Send to devices">
-            <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <div class="breadcrumb">
-        <span id="bcKey">—</span><span class="sep">›</span><span>clipboard.txt</span>
-      </div>
 
       <!-- Components mount their own banners here (permission prompts, pending
            clips, split-brain warnings). Keeps index.html free of per-feature
@@ -84,6 +67,10 @@
           placeholder="Paste here (Ctrl/Cmd+V), or copy something and switch back to this window."></textarea>
       </div>
     </main>
+
+    <!-- Drag to widen or narrow the sidebar. -->
+    <div class="resizer resizer-v" id="resizeSide" role="separator"
+         aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>
 
     <!-- ============ sidebar ============ -->
     <aside class="side" id="side">
@@ -110,6 +97,10 @@
           <input type="file" id="picker" multiple hidden>
         </div>
       </section>
+
+      <!-- Drag to rebalance the panes above and below. -->
+      <div class="resizer resizer-h" id="resizePanes" role="separator"
+           aria-orientation="horizontal" aria-label="Resize panels" tabindex="0"></div>
 
       <!-- Feature modules mount additional panes here (history, transfers). -->
       <div id="mount-panes"></div>

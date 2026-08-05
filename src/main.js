@@ -32,7 +32,7 @@ import * as editor from "./ui/editor.js";
 import * as filesPanel from "./ui/filesPanel.js";
 import * as sessionPanel from "./ui/sessionPanel.js";
 import * as statusbar from "./ui/statusbar.js";
-import * as activitybar from "./ui/activitybar.js";
+import * as resizer from "./ui/resizer.js";
 
 /* ------------------------------------------------------------------
    session key
@@ -242,9 +242,10 @@ async function wireFiles() {
    whole module graph down with it.
 ------------------------------------------------------------------- */
 async function loadOptional() {
+  // install.js is initialised directly in boot(); listing it here too would
+  // register the service worker twice.
   const features = [
     ["./ui/historyPanel.js", "history"],
-    ["./ui/install.js",      "install"],
     ["./ui/qr.js",           "qr"],
   ];
   for (const [path, label] of features) {
@@ -260,31 +261,52 @@ async function loadOptional() {
 /* ------------------------------------------------------------------
    boot
 ------------------------------------------------------------------- */
+/**
+ * Run a module's init() without letting it take the app down with it.
+ *
+ * This is not defensive padding. An unguarded `install.init()` threw here and
+ * the exception escaped boot() itself, so openSession() never ran and the app
+ * silently never connected — a broken service-worker helper presenting as
+ * "the clipboard doesn't sync". Syncing is the product; nothing decorative
+ * around it gets to prevent it.
+ */
+function safeInit(label, fn) {
+  try { fn(); }
+  catch (err) { console.warn(`[hopboard] "${label}" failed to init:`, err.message); }
+}
+
 async function boot() {
+  // Core UI first: these own the surfaces that report connection state, so a
+  // failure here is worth knowing about loudly rather than swallowing.
   toast.init();
-  install.init();          // after toast, so the update prompt has a subscriber
   banners.init();
   statusbar.init();
-  activitybar.init();
   editor.init();
-  filesPanel.init();
-  sessionPanel.init();
 
   wire();
-  await wireFiles();
-  await loadOptional();
-  panes.init();          // after optional panes have mounted; delegated, so order is not load-bearing
+  await wireFiles().catch(err =>
+    console.warn("[hopboard] files layer unavailable:", err.message));
 
-  capture.start();
-
+  // ---- connect NOW ----------------------------------------------------
+  // Deliberately not awaited: the session is the product, and it must not
+  // queue behind panel rendering, a service-worker registration, or a QR
+  // encoder. Errors are reported through the status bar.
   const { key, intent } = resolveKey();
-  try {
-    await openSession(key, intent);
-  } catch (err) {
+  openSession(key, intent).catch(err => {
     console.error("[hopboard] session failed to open", err);
     state.setConnection("offline", "could not start session");
     emit(EV.TOAST, "Could not start the session — check the console");
-  }
+  });
+
+  // ---- everything below is decoration ---------------------------------
+  safeInit("clipboard capture", () => capture.start());
+  safeInit("files panel", filesPanel.init);
+  safeInit("session panel", sessionPanel.init);
+  safeInit("resizers", resizer.init);
+  safeInit("install prompt", install.init);
+
+  await loadOptional();
+  safeInit("panes", panes.init);
 
   console.info(
     `[hopboard] booted · key=${key} intent=${intent} device=${device.name()}`
