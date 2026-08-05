@@ -7,6 +7,7 @@
  */
 
 import { emit, EV } from "./bus.js";
+import { DEFAULT_SYNC_MODE } from "./config.js";
 
 const state = {
   key: null,
@@ -21,10 +22,12 @@ const state = {
   lastSent: "",              // dedupe guard (FR-2.7)
   suppressUntil: 0,          // loop-suppression deadline (FR-2.6)
   settings: {
+    syncMode: DEFAULT_SYNC_MODE,   // live | manual — see config.js
     autowrite: true,
     autoread: true,
     autoaccept: false,
     thumbs: true,
+    images: true,
     poll: "1s",
     direction: "Both",
   },

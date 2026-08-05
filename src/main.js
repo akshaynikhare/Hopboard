@@ -33,6 +33,7 @@ import * as filesPanel from "./ui/filesPanel.js";
 import * as sessionPanel from "./ui/sessionPanel.js";
 import * as statusbar from "./ui/statusbar.js";
 import * as resizer from "./ui/resizer.js";
+import * as syncMode from "./ui/syncMode.js";
 
 /* ------------------------------------------------------------------
    session key
@@ -191,6 +192,25 @@ function wire() {
     await openSession(key, "create");
   });
 
+  // A copied or pasted image becomes a normal file: its thumbnail is shared
+  // immediately so peers see the preview, and the full image only moves when
+  // someone asks for it (docs/P2P-FILES.md). clipboard/ announces, files/
+  // stores, and neither knows about the other.
+  on(EV.IMAGE_CAPTURED, async ({ blob, name, how }) => {
+    try {
+      const registry = await import("./files/registry.js");
+      const file = new File([blob], name, { type: blob.type });
+      const { added, rejected } = await registry.add([file], {
+        makeThumbs: state.get().settings.thumbs,
+      });
+      if (added) emit(EV.TOAST, `${how} · ${name}`);
+      rejected.forEach(r => emit(EV.TOAST, `${r.name}: ${r.reason}`));
+    } catch (err) {
+      console.warn("[hopboard] could not add clipboard image", err);
+      emit(EV.TOAST, "Could not read that image");
+    }
+  });
+
   // Restoring an old clip from history should behave exactly like a local
   // capture: it goes to the editor and out to peers.
   on("history:restore", ({ text }) => {
@@ -303,6 +323,7 @@ async function boot() {
   safeInit("files panel", filesPanel.init);
   safeInit("session panel", sessionPanel.init);
   safeInit("resizers", resizer.init);
+  safeInit("sync mode", syncMode.init);
   safeInit("install prompt", install.init);
 
   await loadOptional();

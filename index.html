@@ -29,6 +29,10 @@
     <span class="brand">Hopboard</span>
     <span class="crumb"><span id="bcKey">—</span><span class="sep">›</span>clipboard.txt</span>
     <span class="tabspace"></span>
+    <!-- Live / Manual. The single most consequential setting, so it lives
+         here rather than in the settings pane. -->
+    <div id="mount-mode"></div>
+    <span class="tabspace"></span>
     <div class="tabacts">
       <button class="ibtn" id="aSelect" title="Select all">
         <svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/></svg>
@@ -182,6 +186,7 @@
     </div>
     <div class="sitem plain" id="sbConn"><span class="dot"></span><span id="sbConnText">Not connected</span></div>
     <div class="sitem plain" id="sbPeers">1 device</div>
+    <div class="sitem plain" id="sbMode">Live sync</div>
     <div class="sitem plain optional" id="sbP2P">P2P idle</div>
     <div class="sspacer"></div>
     <div class="sitem plain" id="sbTier">checking…</div>

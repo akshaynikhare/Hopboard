@@ -23,13 +23,18 @@
   color:var(--text);
 }
 
+/* Every pane takes an equal share of the sidebar until the user drags a
+   splitter. `flex:1 1 0` rather than `flex:1` matters: with `flex-basis:auto`
+   the panes would be sized by their content, so Files (with a drop zone) would
+   start large and History (empty) would collapse to nothing. */
 .pane {
   display:flex;
   flex-direction:column;
   min-height:0;
+  flex:1 1 0;
   border-top:1px solid var(--bd);
 }
-.pane.grow { flex:1; }
+.pane.grow { flex:1 1 0; }
 .pane.collapsed { flex:none; }
 .pane.collapsed .paneb { display:none; }
 .pane.collapsed .chev { transform:rotate(-90deg); }
