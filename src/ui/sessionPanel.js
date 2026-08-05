@@ -13,7 +13,8 @@ export function init() {
   bind("bNew",  "click", e => { e.stopPropagation(); newKey(); });
   bind("bLink", "click", e => { e.stopPropagation(); copyLink(); });
   bind("sbKey", "click", copyLink);
-  bind("bLeave", "click", () => emit(EV.TOAST, "Leave session — M1"));
+  bind("bQr",   "click", () => emit("ui:qr", { text: keys.shareLink(state.get().key) }));
+  bind("bLeave", "click", () => emit("session:leave"));
   bind("bAbout", "click", showAbout);
 
   // Collapsible panes, VS Code sidebar behaviour.
@@ -60,12 +61,13 @@ function renderKey(key) {
   ["key", "bcKey", "sbKeyText"].forEach(id => { const el = $(id); if (el) el.textContent = key; });
 }
 
+/**
+ * Rotating the key means leaving the current room entirely, so main.js has to
+ * tear down the connection and derive fresh crypto material. This panel only
+ * announces the intent — it does not own the transport.
+ */
 function newKey() {
-  const key = keys.generate();
-  keys.toUrl(key);
-  storage.saveLastKey(key);
-  state.setKey({ key });
-  emit(EV.TOAST, "New key — the old session is dropped");
+  emit("session:rejoin", { key: keys.generate() });
 }
 
 async function copyLink() {
@@ -101,10 +103,8 @@ function warnSplitBrain({ from, to }) {
 }
 
 function showAbout() {
-  alert(
-    "Hopboard — layout preview\n\n" +
-    "REAL: OS clipboard read/write, Ln/Col, 5 MB file cap, local thumbnails, settings.\n" +
-    "STUBBED: network. Relay transport = M1, WebRTC file transfer = M7.\n\n" +
-    "Files never touch the server — only their thumbnails travel automatically."
-  );
+  const s = state.get();
+  emit(EV.TOAST,
+    `Hopboard · ${s.connection} · ${s.peers} device${s.peers === 1 ? "" : "s"} · `
+    + `capture ${s.tier} · relay ${s.instance || "—"}`);
 }

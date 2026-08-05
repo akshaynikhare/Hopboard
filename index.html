@@ -70,6 +70,11 @@
         <span id="bcKey">—</span><span class="sep">›</span><span>clipboard.txt</span>
       </div>
 
+      <!-- Components mount their own banners here (permission prompts, pending
+           clips, split-brain warnings). Keeps index.html free of per-feature
+           markup so modules stay self-contained. -->
+      <div id="mount-banners"></div>
+
       <div class="edwrap">
         <div class="gutter" id="gutter" aria-hidden="true">1</div>
         <textarea id="editor" spellcheck="false" aria-label="Shared clipboard text"
@@ -103,6 +108,9 @@
         </div>
       </section>
 
+      <!-- Feature modules mount additional panes here (history, transfers). -->
+      <div id="mount-panes"></div>
+
       <!-- PANEL 3 — session -->
       <section class="pane grow" id="paneSession">
         <div class="paneh" data-toggle>
@@ -117,7 +125,10 @@
         </div>
         <div class="paneb">
           <div class="grp">Share key</div>
-          <div class="keyrow"><div class="key" id="key">—</div></div>
+          <div class="keyrow">
+            <div class="key" id="key">—</div>
+            <button class="btn ghost" id="bQr">QR</button>
+          </div>
           <div class="warn">
             Anyone with this key can read what you copy and request your files.
             The key <em>is</em> the password — it never reaches the server.
@@ -188,5 +199,8 @@
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- Dialogs and overlays mount here (QR, file-accept prompts, about). -->
+<div id="mount-modals"></div>
 </body>
 </html>

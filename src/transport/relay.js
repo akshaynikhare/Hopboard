@@ -21,7 +21,7 @@ let pingSentAt = 0;
 let onFrame = () => {};
 export const setFrameHandler = fn => { onFrame = fn; };
 
-export function connect({ roomHash, intent = "join", url = RELAY_URL }) {
+export function connect({ roomHash, intent = "join", url = RELAY_URL, name = "" }) {
   wantOpen = true;
   state.setConnection("connecting");
 
@@ -30,7 +30,7 @@ export function connect({ roomHash, intent = "join", url = RELAY_URL }) {
   sock.onopen = () => {
     backoff = NET.BACKOFF_MIN_MS;
     state.setConnection("connected");
-    send(proto.hello(intent, state.get().originId));
+    send(proto.hello(intent, state.get().originId, name));
     heartbeat = setInterval(() => {
       pingSentAt = performance.now();
       send(proto.ping());
@@ -43,17 +43,20 @@ export function connect({ roomHash, intent = "join", url = RELAY_URL }) {
     switch (msg.t) {
       case proto.T.WELCOME:
         state.setInstance(msg.instance);
-        state.setPeers(msg.peers ?? 1);
+        if (msg.you) state.get().peerId = msg.you;
+        state.setPeers(msg.peers ?? 1, msg.list ?? []);
         // `existing > 0` on a create means the generated key is taken (OI-2).
         if (intent === "create" && msg.existing > 0) {
           emit(EV.KEY_COLLISION, { existing: msg.existing });
           return;
         }
+        // A room's last clip is replayed to late joiners, so a device that
+        // arrives mid-session is immediately in sync (FR-3.3).
         if (msg.last) onFrame(msg.last);
         break;
 
       case proto.T.PEERS:
-        state.setPeers(msg.count);
+        state.setPeers(msg.count, msg.list ?? []);
         break;
 
       case proto.T.PONG:
@@ -72,15 +75,28 @@ export function connect({ roomHash, intent = "join", url = RELAY_URL }) {
     }
   };
 
-  sock.onclose = () => {
+  sock.onclose = ev => {
     clearInterval(heartbeat);
     if (!wantOpen) return state.setConnection("idle");
-    // Exponential backoff with jitter, so a relay restart does not produce a
-    // synchronised stampede from every client at once (OI-13).
+
+    // 1012 = "service restart". Every push to main redeploys the relay and
+    // closes every live socket with this code (OI-13) — observed for real
+    // during the M0 idle test. It is a planned, short outage rather than a
+    // fault, so reset the backoff and come back promptly instead of treating
+    // it like a flaky network and waiting out a doubled delay.
+    if (ev.code === 1012) backoff = NET.BACKOFF_MIN_MS;
+
+    // Jitter keeps a restart from producing a synchronised reconnect stampede
+    // from every client at the same instant.
     const wait = Math.round(backoff * (0.8 + Math.random() * 0.4));
     backoff = Math.min(backoff * 2, NET.BACKOFF_MAX_MS);
-    state.setConnection("reconnecting", `${(wait / 1000).toFixed(1)}s`);
-    setTimeout(() => { if (wantOpen) connect({ roomHash, intent: "join", url }); }, wait);
+
+    state.setConnection("reconnecting",
+      ev.code === 1012 ? "relay restarting" : `${(wait / 1000).toFixed(1)}s`);
+
+    // Always rejoin: a reconnect is never a "create", or a transient drop would
+    // look like a key collision and needlessly rotate the user's key.
+    setTimeout(() => { if (wantOpen) connect({ roomHash, intent: "join", url, name }); }, wait);
   };
 
   sock.onerror = () => state.setConnection("offline", "upgrade may be blocked");

@@ -13,6 +13,7 @@ const state = {
   roomHash: null,
   aesKey: null,
   originId: crypto.randomUUID().slice(0, 8),   // this tab, for loop suppression
+  peerId: null,              // assigned by the relay in `welcome.you`
   connection: "idle",        // idle | connecting | connected | reconnecting | offline
   instance: null,            // relay instance id — a change means split-brain (OI-3)
   peers: 1,

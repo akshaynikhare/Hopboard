@@ -1,0 +1,11 @@
+{
+  "name": "hopboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Live clipboard sharing. Static frontend, no build step — this file exists only so Node treats src/*.js as ES modules when running tests.",
+  "scripts": {
+    "test": "node tests/e2e.mjs",
+    "serve": "python -m http.server 8080"
+  }
+}

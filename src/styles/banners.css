@@ -1,0 +1,41 @@
+/* Inline banners above the editor. VS Code notification styling. */
+
+#mount-banners:not(:empty) { padding:0 12px 6px; }
+
+.banner {
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  padding:9px 11px;
+  margin-bottom:6px;
+  border-radius:3px;
+  border-left:3px solid var(--blue);
+  background:color-mix(in srgb, var(--blue) 10%, transparent);
+  font-size:12.5px;
+  line-height:1.45;
+}
+.banner-info { border-left-color:var(--blue);
+               background:color-mix(in srgb, var(--blue) 10%, transparent); }
+.banner-warn { border-left-color:var(--warn);
+               background:color-mix(in srgb, var(--warn) 10%, transparent); }
+.banner-bad  { border-left-color:var(--bad);
+               background:color-mix(in srgb, var(--bad) 10%, transparent); }
+
+.banner-txt { flex:1; min-width:0; }
+.banner-txt b { display:block; font-weight:600; color:var(--bright); margin-bottom:2px; }
+.banner-txt span { color:var(--text); opacity:.85; word-break:break-word; }
+
+.banner .btn.sm { padding:4px 10px; font-size:11.5px; flex:none; }
+
+.banner-x {
+  border:0;
+  background:none;
+  color:var(--dim);
+  font-size:16px;
+  line-height:1;
+  cursor:pointer;
+  padding:0 2px;
+  flex:none;
+  border-radius:3px;
+}
+.banner-x:hover { background:var(--hover); color:var(--text); }

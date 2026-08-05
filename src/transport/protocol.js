@@ -27,7 +27,7 @@ export const T = {
  * we must regenerate rather than silently join a stranger's clipboard.
  * A key the user typed or followed a link to is always "join".
  */
-export const hello = (intent, originId) => ({ t: T.HELLO, intent, originId });
+export const hello = (intent, originId, name) => ({ t: T.HELLO, intent, originId, name });
 
 export const clip = ({ payload, iv, originId }) => ({
   t: T.CLIP, payload, iv, originId, ts: Date.now(),
