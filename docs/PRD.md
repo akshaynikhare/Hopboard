@@ -367,6 +367,24 @@ and is what this repo uses. Path rules: relative only, no `..`.
 If deployments stop triggering after a push, the first thing to check is that the
 Application Directory still points at `backend`.
 
+#### Two traps that cost three failed deployments
+
+1. **Application Directory defaults to `null` (the repo root).** It is not
+   inferred from the presence of a `pyproject.toml` in a subdirectory. Left
+   unset, the build targets the root — where this repo keeps the static site —
+   and fails at `verifying` with no obvious clue. Set it via the dashboard, or
+   `fastapi cloud apps update <id> --directory backend`.
+2. **A flat directory with more than one top-level module fails to build.**
+   `backend/` holds `main.py` plus two test scripts, and setuptools refuses to
+   guess: *"Multiple top-level modules discovered in a flat-layout"*. Fixed by
+   declaring `py-modules = ["main"]`.
+
+#### Cloudflare fronts the relay
+
+`/health` returns **403** to the default `Python-urllib/3.x` User-Agent while
+`curl` and browsers get 200. Any monitoring or uptime check must send a normal
+User-Agent or it will report a false outage.
+
 > ⚠️ **Every push to the default branch restarts the relay** — including
 > frontend-only commits. Restart drops all live WebSocket connections and clears
 > in-memory rooms. Clients reconnect automatically (FR-3.5) and the last clip is
@@ -509,7 +527,7 @@ The relay sees only `roomHash` and ciphertext. It cannot derive the key from the
 
 | ID | Requirement |
 |---|---|
-| NFR-1 | p95 end-to-end propagation < 300 ms (same region), < 800 ms cross-continent |
+| NFR-1 | p95 end-to-end propagation < 300 ms **same region**, < 800 ms cross-continent. **Measured: 278 ms India → `us-east-1` → India.** That is cross-continent traffic landing just inside the *same-region* budget, so the figure is honest but tight — if it needs improving the lever is the relay's region, not the code, since the relay itself contributes ~0 ms |
 | NFR-2 | App shell < 100 KB gzipped; first paint < 1 s on 4G |
 | NFR-3 | Reconnect within 5 s of network restoration |
 | NFR-4 | $0 recurring cost up to ~50 k messages/day |
@@ -568,7 +586,7 @@ The relay sees only `roomHash` and ciphertext. It cannot derive the key from the
 | D3 | Default key length | **6** chars for UX parity with the reference app, with a 10-char option in settings |
 | D4 | Frontend stack | **Vanilla JS, no build step** — keeps GitHub Pages deployment trivial; revisit if the UI grows |
 | D5 | Custom domain? | **Worth it here.** Beyond a shorter URL, a stable custom hostname is much easier to get onto a corporate allowlist than a platform subdomain (§5.4) |
-| D8 | Keep-alive against scale-to-zero? | Open until M0 measures actual cold-start time. If wake is under ~2 s, do nothing; if it is 10 s+, consider a low-frequency ping — weighed against Hobby-tier fair use |
+| ~~D8~~ | ~~Keep-alive against scale-to-zero?~~ | ✅ **Resolved: do nothing.** Measured cold start is 973 ms including TLS — well under the ~2 s threshold where a keep-alive would earn its fair-use cost. Show "Connecting…" and move on |
 
 ---
 
@@ -605,7 +623,7 @@ Severity: **Blocker** = stops the build · **High** = silent wrong behaviour if 
 
 | # | Severity | Issue | Proposed resolution | Owner milestone |
 |---|---|---|---|---|
-| **OI-1** | 🔴 Blocker | **WebSocket support on FastAPI Cloud is unverified** (R3). The entire architecture assumes the ingress proxy passes the HTTP Upgrade; nothing in their docs confirms it | M0 echo spike. If it fails, switch to SSE + POST — schema unchanged, transport interface isolates the swap | M0 |
+| ~~**OI-1**~~ | ✅ **CLOSED** | ~~WebSocket support on FastAPI Cloud is unverified~~ | **Resolved 2026-08-05: it works.** 20/20 gate against `wss://hopboard.fastapicloud.dev`, upgrade accepted in 973 ms. The SSE+POST fallback is no longer needed; the transport interface stays isolated anyway since it cost nothing. See [M0-RESULTS §4](M0-RESULTS.md) | M0 ✅ |
 | **OI-2** | 🟠 High | **Key collision joins a stranger's room.** The app auto-generates a key on first visit and connects. If that key matches a *live* room, two unrelated people silently share a clipboard. The protocol currently has no create-vs-join distinction | Add `intent: "create" \| "join"` to the connect frame. On `create`, if `welcome.peers > 0`, discard the key, regenerate, retry (max 5). On `join`, `peers == 0` is legitimate (first arrival). See §6 | M1 |
 | **OI-3** | 🟠 High | **Multi-replica split-brain** (R1). Room state is a process-local dict; two devices on different replicas silently never see each other | Pin max replicas to 1. Add `GET /health` returning an instance id so the client can detect a mismatch and warn loudly rather than failing quietly | M0 |
 | **OI-4** | 🟡 Medium | **Duplicate sends from multiple tabs.** Two LiveClip tabs on one machine both poll the same system clipboard and both broadcast the same clip | Leader election across tabs via the Web Locks API (fallback: `BroadcastChannel`). Only the leader tab polls and sends; followers render | M2 |

@@ -142,8 +142,14 @@ async def main():
 
     # --- G9: /health (OI-3) ----------------------------------------------
     print("\nG9  Health endpoint")
+    # Cloudflare fronts FastAPI Cloud and 403s the default "Python-urllib/3.x"
+    # User-Agent. The relay itself is fine — curl and browsers get through.
+    req = urllib.request.Request(
+        f"{HTTP}/health",
+        headers={"User-Agent": "Mozilla/5.0 (compatible; hopboard-test/1.0)"},
+    )
     try:
-        with urllib.request.urlopen(f"{HTTP}/health", timeout=10) as r:
+        with urllib.request.urlopen(req, timeout=10) as r:
             h = json.loads(r.read())
         check("/health reachable", h.get("ok") is True, json.dumps(h))
         check("instance id stable", h.get("instance") == w.get("instance"),
