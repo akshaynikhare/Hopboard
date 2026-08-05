@@ -11,7 +11,11 @@
  * mixed content. Localhost is exempt from that rule, which is why the dev
  * branch can stay ws://.
  */
-const IS_LOCAL = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+// Guarded: this module is imported by node-based tests where `location` does
+// not exist, and a bare reference would throw at import time and take the whole
+// graph down.
+const IS_LOCAL = typeof location !== "undefined" &&
+  ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 
 export const RELAY_URL = IS_LOCAL
   ? "ws://127.0.0.1:8000"

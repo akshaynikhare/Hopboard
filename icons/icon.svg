@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"
+     role="img" aria-label="Hopboard">
+  <title>Hopboard</title>
+  <!-- Colours are the tokens.css values: --editor #1e1e1e, --blue #007acc.
+       The glyph is the same clipboard mark as the titlebar logo in index.html,
+       authored in a 24x24 box and scaled 20x about the centre (12,12). -->
+  <rect width="512" height="512" fill="#1e1e1e"/>
+  <g transform="translate(16,16) scale(20)"
+     fill="none" stroke="#007acc" stroke-width="2"
+     stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="3" width="8" height="4" rx="1" fill="#1e1e1e"/>
+    <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
+    <path d="M9 13l2 2 4-4"/>
+  </g>
+</svg>

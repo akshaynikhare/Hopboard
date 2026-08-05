@@ -34,6 +34,8 @@ export const EV = {
   TEXT_CAPTURED:   "text:captured",    // {text, how} — local capture, needs sending
   TEXT_RECEIVED:   "text:received",    // {text, from} — arrived from a peer
   TIER_CHANGED:    "clipboard:tier",   // {tier, note}
+  PENDING_CLIP:    "clipboard:pending",// {pending, text} — arrived while unfocused
+  PERMISSION:      "clipboard:permission", // {state} granted|prompt|denied
 
   // transport
   CONN_STATE:      "conn:state",       // {state, detail}

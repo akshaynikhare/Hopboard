@@ -30,9 +30,13 @@ export function start() {
 
   // T2 — focus and visibility. visibilitychange is the dominant path on Android,
   // where there is no window focus in the desktop sense.
-  window.addEventListener("focus", tryRead);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") tryRead();
+  // Flush before reading: a queued incoming clip must land on the OS clipboard
+  // before we look at it, or we would read the stale value and broadcast it back.
+  window.addEventListener("focus", async () => { await flushPending(); tryRead(); });
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState !== "visible") return;
+    await flushPending();
+    tryRead();
   });
 
   detectTier();
@@ -42,12 +46,23 @@ export async function detectTier() {
   if (!os.canRead()) return state.setTier("T1", "paste only");
 
   const apply = s => {
+    emit(EV.PERMISSION, { state: s });
     if (s === "granted")      { state.setTier("T3", "auto-capture"); startPolling(); }
     else if (s === "prompt")  { state.setTier("T2", "click paste to allow"); }
     else if (s === "denied")  { state.setTier("T1", "paste only (blocked)"); }
     else                      { state.setTier("T2", "read on focus"); }
   };
   apply(await os.onPermissionChange(apply));
+}
+
+/**
+ * Trigger Chrome's clipboard-read permission prompt. There is no API to request
+ * it directly — the prompt only appears as a side effect of an actual read, so
+ * this attempts one and lets detectTier() observe the result.
+ */
+export async function requestPermission() {
+  await os.read();
+  await detectTier();
 }
 
 /** T3 — only meaningful while the window is focused. */
@@ -83,8 +98,13 @@ export function capture(text, how) {
  * Apply an incoming clip to the OS clipboard.
  *
  * Order matters: lastSent and the suppression window are set BEFORE the write,
- * so our own poller recognises the value it is about to see and does not
- * bounce it straight back to the sender.
+ * so our own poller recognises the value it is about to see and does not bounce
+ * it straight back to the sender.
+ *
+ * writeText() also requires focus, so a clip arriving while the window is in the
+ * background cannot be written immediately. It is queued rather than dropped and
+ * flushed on the next focus — same gesture the user already needs for sending,
+ * so there is one rule to learn instead of two.
  */
 export async function apply(text) {
   const s = state.get();
@@ -93,5 +113,25 @@ export async function apply(text) {
 
   s.lastSent = text;
   state.suppress(TEXT.SUPPRESS_MS);
+
+  if (!document.hasFocus()) {
+    pending = text;
+    emit(EV.PENDING_CLIP, { pending: true, text });
+    return false;
+  }
   return os.write(text);
 }
+
+let pending = null;
+
+/** Flush a clip that arrived while we were in the background. */
+export async function flushPending() {
+  if (pending === null) return;
+  const text = pending;
+  pending = null;
+  const ok = await os.write(text);
+  emit(EV.PENDING_CLIP, { pending: false });
+  if (ok) emit(EV.TOAST, "Pending clip written to your clipboard");
+}
+
+export const hasPending = () => pending !== null;
