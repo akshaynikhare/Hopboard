@@ -4,8 +4,9 @@
 |---|---|
 | Date | 2026-08-05 |
 | Milestone | M0 — de-risk the relay |
-| Verdict | **Partially cleared — local transport proven, deployed transport still unverified** |
-| Blocker remaining | OI-1 requires a FastAPI Cloud login to resolve |
+| Verdict | ✅ **CLEARED — 20/20 against the deployed relay** |
+| Relay | https://hopboard.fastapicloud.dev |
+| OI-1 | ✅ **Closed.** FastAPI Cloud passes WebSocket upgrades |
 
 M0 exists to test one assumption before anything is built on it: *can this
 architecture carry a WebSocket?* Everything below is evidence for or against that.
@@ -80,34 +81,77 @@ Two bugs in the browser harness, both in the OI-2 collision path:
 | Split-brain detection (OI-3) | ✅ Built | `/health` instance id + client banner |
 | Collision handshake (OI-2) | ✅ Built | `intent` + `existing`, verified in G1/G2 |
 | 5-minute idle survival, local | ✅ Pass | 10 heartbeats, no drop — §5 |
-| **WS upgrade on FastAPI Cloud (OI-1)** | ❌ **Not tested** | **Needs login — the actual blocker** |
-| Cold-start wake time (R2 / D8) | ❌ Not tested | Needs deploy |
-| Replicas pinned to 1 (OI-3) | ❌ Not applied | Dashboard setting, needs deploy |
-| Corporate-network path (OI-12) | ❌ Not tested | Needs deploy + on-network machine |
+| **WS upgrade on FastAPI Cloud (OI-1)** | ✅ **PASS** | **973 ms, 20/20 — §4** |
+| Cold-start wake (R2 / D8) | ✅ Measured | 973 ms first connect — see D8 below |
+| **Replicas pinned to 1 (OI-3)** | ❌ **Not applied** | **Dashboard only, still needs doing** |
+| Corporate-network path (OI-12) | ❌ Not tested | Needs an on-network machine |
 
-**Local success proves the code is correct. It says nothing about OI-1**, which was
-always a question about FastAPI Cloud's ingress proxy, not about FastAPI. Uvicorn
-speaks WebSockets locally by definition; whether the platform passes an HTTP
-Upgrade through is exactly what remains unknown.
+**OI-1 was the architecture's load-bearing assumption and it holds.** The SSE+POST
+fallback in PRD §4.3 is no longer needed. The transport interface stays behind
+`connect/send/onMessage/close` anyway — it cost nothing and keeps the option open.
+
+**D8 resolves to "do nothing".** Cold start was 973 ms including TLS handshake —
+well under the ~2 s threshold where a keep-alive would have been worth its
+fair-use cost. Show a brief "Connecting…" and move on.
 
 ---
 
-## 4. To finish the gate
+## 4. Deployed results — 20/20 passed ✅
 
-```bash
-cd backend
-fastapi login                                    # opens a browser — needs you
-fastapi deploy
-# then: dashboard -> scaling -> max replicas = 1  (OI-3, no CLI flag exists)
+`python test_relay.py wss://hopboard.fastapicloud.dev`
 
-python test_relay.py wss://<app>.fastapicloud.dev
-python test_idle.py  wss://<app>.fastapicloud.dev 5
+```
+G1  PASS  upgrade accepted — 973 ms          <-- OI-1 ANSWERED
+    PASS  welcome / instance 2cd9c0e9 / existing == 0
+G2  PASS  collision signal, peer broadcast
+    PASS  A -> B delivered — 278 ms          <-- real cross-region hop
+    PASS  seq assigned by relay
+G3  PASS  sender not echoed
+G4  PASS  B -> A delivered, seq incremented
+G5  PASS  late joiner replay, three peers
+G6  PASS  ping -> pong
+G7  PASS  32 KB cap, survives oversize, rate limit
+G9  PASS  /health reachable, instance stable across WS and HTTP
 ```
 
-The first check of `test_relay.py` prints the upgrade time, which answers both OI-1
-(does it connect at all) and R2 (how long a cold start takes). If the upgrade is
-refused, the fallback is SSE + POST — the message schema in PRD §6 is unchanged and
-the client transport is already isolated behind `connect/send/onMessage/close`.
+| Measure | Local | Deployed | Note |
+|---|---|---|---|
+| WS upgrade | 21 ms | **973 ms** | First connect includes TLS + scale-to-zero wake |
+| Warm hop A→B | 0.3 ms | **278 ms** | NFR-1 budgets 300 ms p95 — **just inside it** |
+| `/health` round trip | — | 312 ms | Warm |
+
+**Latency is the finding that matters.** 278 ms sits right on the 300 ms budget,
+and the app is in `us-east-1` while the test ran from India. Two consequences:
+
+- For same-continent users this is comfortable. For the intended
+  India-based users it is borderline, and **NFR-1 should be restated as a
+  same-region target** with a separate cross-region figure, rather than quietly
+  failing a global one.
+- If it needs improving, region choice is the lever, not code. The relay spends
+  ~0 ms on the message — this is all network.
+
+### Deployment failures, and what caused them
+
+Three failed deployments before the green one. Both causes were configuration,
+neither was the relay code:
+
+| Deployment | Status | Cause |
+|---|---|---|
+| `eebabe96` | `verifying_failed` | **Application Directory was `null`**, so FastAPI Cloud built the repository *root* — where the static site lives and no ASGI app exists. Fixed by setting it to `backend` |
+| `21f9f6d3` | `verifying_failed` | Same; started before the directory was set |
+| `5f151430` | `building_image_failed` | `Multiple top-level modules discovered in a flat-layout: ['main', 'test_relay', 'test_idle']` — setuptools would not guess which module to package. Fixed with `py-modules = ["main"]` in `backend/pyproject.toml` |
+| `success` | ✅ | Serving |
+
+The directory default is the trap worth remembering: FastAPI Cloud assumes the
+repo root, and this repo deliberately puts the static site there.
+
+### A Cloudflare quirk
+
+`/health` initially failed the gate with **403 Forbidden** — from urllib only.
+`curl` and browsers got 200 throughout. Cloudflare fronts FastAPI Cloud and
+blocks the default `Python-urllib/3.x` User-Agent. The harness now sends a
+normal UA. Worth knowing before writing any monitoring or uptime check against
+this relay.
 
 ---
 
