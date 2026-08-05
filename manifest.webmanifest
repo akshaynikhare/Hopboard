@@ -4,7 +4,7 @@
   "description": "Share clipboard text and files between your machines with a short key. No account, end-to-end encrypted, files sent peer-to-peer.",
   "lang": "en",
   "dir": "ltr",
-  "start_url": "./",
+  "start_url": "./app.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",

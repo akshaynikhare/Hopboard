@@ -67,7 +67,7 @@ ok("every CSS @import resolves", bad.length === 0, bad.join(", "));
 /* ---------- 4. every $("id") exists somewhere ----------
    Elements come from two places: index.html, and modules that build their own
    DOM (banners, history pane, QR modal, PWA prompts). Both count. */
-const html = read(join(ROOT, "index.html"));
+const html = read(join(ROOT, "app.html"));
 const known = new Set([...html.matchAll(/id="([\w-]+)"/g)].map(m => m[1]));
 for (const f of jsFiles) {
   const src = read(f);
@@ -159,7 +159,7 @@ ok("service worker excludes the relay host",
 const shellBlock = sw.match(/const SHELL = \[(.*?)\n\];/s)?.[1] ?? "";
 const listed = new Set([...shellBlock.matchAll(/"(\.\/[^"]*)"/g)].map(m => m[1]));
 
-const onDisk = new Set(["./", "./index.html", "./manifest.webmanifest"]);
+const onDisk = new Set(["./", "./index.html", "./app.html", "./manifest.webmanifest"]);
 for (const dir of ["src", "icons"]) {
   for (const f of walk(join(ROOT, dir))) {
     if (/\.(js|css)$/.test(f) || dir === "icons") {

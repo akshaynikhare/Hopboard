@@ -44,6 +44,7 @@ const ROOT = new URL("./", self.location).pathname;
 const SHELL = [
   "./",
   "./index.html",
+  "./app.html",
   "./manifest.webmanifest",
   "./src/clipboard/capture.js",
   "./src/clipboard/os.js",
@@ -66,6 +67,7 @@ const SHELL = [
   "./src/ui/dom.js",
   "./src/ui/editor.js",
   "./src/ui/filesPanel.js",
+  "./src/ui/hints.js",
   "./src/ui/historyPanel.js",
   "./src/ui/install.js",
   "./src/ui/panes.js",
@@ -81,6 +83,7 @@ const SHELL = [
   "./src/styles/components.css",
   "./src/styles/editor.css",
   "./src/styles/files.css",
+  "./src/styles/hints.css",
   "./src/styles/history.css",
   "./src/styles/install.css",
   "./src/styles/layout.css",
