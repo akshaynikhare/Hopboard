@@ -6,6 +6,9 @@
 <title>Hopboard — live clipboard sharing</title>
 <meta name="description" content="Share clipboard text and files between your machines with a short key. No account, end-to-end encrypted, files sent peer-to-peer.">
 <meta name="theme-color" content="#007acc">
+<!-- Static rather than injected by install.js: Chrome evaluates install
+     criteria earlier this way, so beforeinstallprompt fires sooner. -->
+<link rel="manifest" href="./manifest.webmanifest">
 <link rel="stylesheet" href="./src/styles/main.css">
 <!-- Markup only. Behaviour lives in src/ — see docs/ARCHITECTURE.md -->
 <script type="module" src="./src/main.js"></script>

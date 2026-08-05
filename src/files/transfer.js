@@ -43,11 +43,18 @@
  *       ICE-timeout fallback fires deterministically, with no browser and no
  *       five-second wait. Pass nothing to restore the real one.
  *
- * Frame types this module emits and consumes are in FRAMES below. rtc-offer,
- * rtc-answer, rtc-ice and file-req already exist in transport/protocol.js; the
- * five that do not (file-accept, file-deny, file-chunk, file-done, file-cancel,
- * file-error) are declared here because transport/ is not ours to edit. They
- * belong in protocol.js — see the report.
+ * Frame types this module emits and consumes are in FRAMES below, and
+ * `transfer.FRAMES` is the exact list main.js should route:
+ *
+ *     if (transfer.FRAMES.includes(msg.t)) transfer.onSignal(msg);
+ *
+ * Routing a subset silently breaks transfers — without file-accept the receiver
+ * never learns the chunk plan, and without file-done a zero-byte file hangs.
+ *
+ * rtc-offer, rtc-answer, rtc-ice, file-meta and file-req already exist in
+ * transport/protocol.js. The six that do not (file-accept, file-deny,
+ * file-chunk, file-done, file-cancel, file-error) are declared here because
+ * transport/ is not ours to edit. They belong in protocol.js — see the report.
  *
  * ============================================================================
  * WHY THERE IS NO TURN SERVER
@@ -77,6 +84,7 @@ export const FT = {
   RTC_OFFER:   T.RTC_OFFER,      // {id, to, sdp}
   RTC_ANSWER:  T.RTC_ANSWER,     // {id, to, sdp}
   RTC_ICE:     T.RTC_ICE,        // {id, to, candidate}
+  FILE_META:   T.FILE_META,      // {id, name, size, type, thumb}   broadcast, no `to`
   FILE_REQ:    T.FILE_REQ,       // {id, to}                 receiver -> holder
   FILE_ACCEPT: "file-accept",    // {id, to, name, size, type, digest, chunkBytes, total}
   FILE_DENY:   "file-deny",      // {id, to, reason}
@@ -272,6 +280,7 @@ export function onSignal(frame) {
 }
 
 const INBOUND = {
+  [FT.FILE_META]:   onFileMeta,
   [FT.FILE_REQ]:    onFileReq,
   [FT.FILE_ACCEPT]: onFileAccept,
   [FT.FILE_DENY]:   f => { closeAndFail(f.id, f.reason || "the other device declined"); },
@@ -287,6 +296,30 @@ const INBOUND = {
 /* ------------------------------------------------------------------ *
  * SEND SIDE — a peer wants a file we hold
  * ------------------------------------------------------------------ */
+
+/**
+ * A peer announced a file: a tile with a thumbnail, no bytes. Everything here
+ * is chosen by whoever holds the session key, so nothing is taken on trust —
+ * the name is escaped by the UI, the size is what a later transfer is checked
+ * against, and the thumbnail must be an image data URL and nothing else.
+ */
+function onFileMeta(frame) {
+  const size = Number(frame.size);
+  if (!frame.id || !Number.isInteger(size) || size < 0 || size > FILES.MAX_BYTES) {
+    console.warn("[transfer] ignoring a file announcement with an implausible size", frame.id);
+    return;
+  }
+  if (registry.count() >= FILES.MAX_COUNT) return;      // FR-7.7, memory only
+
+  const thumb = typeof frame.thumb === "string" && frame.thumb.startsWith("data:image/")
+    ? frame.thumb
+    : null;                                             // anything else is not a preview
+
+  registry.addRemote({
+    id: String(frame.id), name: String(frame.name ?? "file"), size,
+    type: String(frame.type ?? ""), thumb, originId: frame.originId,
+  });
+}
 
 async function onFileReq(frame) {
   const { id, originId: peer } = frame;
@@ -521,12 +554,39 @@ function onFileAccept(frame) {
   clearTimeout(t.deadline);
   t.deadline = null;
   // The relay plan. If WebRTC wins, the data channel header replaces it.
-  t.meta = {
-    id: frame.id, size: frame.size, type: frame.type || "",
-    chunkBytes: frame.chunkBytes, total: frame.total, digest: frame.digest,
-  };
+  t.meta = checkedMeta(t, frame);
   registry.setState(frame.id, registry.STATE.CONNECTING);
   armIdle(t);
+}
+
+/**
+ * Never allocate on a peer's say-so.
+ *
+ * The Reassembler preallocates `size` bytes and a `total`-long index the moment
+ * a header arrives, and a header is just a frame from whoever holds the session
+ * key. Unchecked, "size: 8e9" is a one-frame denial of service, and a size that
+ * disagrees with what was announced means we are being handed something other
+ * than the file whose thumbnail the user clicked.
+ */
+function checkedMeta(t, m) {
+  const size = Number(m.size);
+  const chunkBytes = Number(m.chunkBytes);
+  const total = Number(m.total);
+
+  if (!Number.isInteger(size) || size < 0 || size > FILES.MAX_BYTES) {
+    throw new Error(`refused: the sender declared ${size} bytes, over the ${FILES.MAX_BYTES} limit`);
+  }
+  if (!Number.isInteger(chunkBytes) || chunkBytes <= 0) throw new Error("refused: bad chunk size");
+  if (!Number.isInteger(total) || total !== chunker.chunkCount(size, chunkBytes)) {
+    throw new Error("refused: the sender's chunk plan does not add up");
+  }
+
+  const announced = registry.get(t.id);
+  if (announced && Number.isInteger(announced.size) && announced.size !== size) {
+    throw new Error("refused: this is not the file that was announced");
+  }
+
+  return { id: t.id, size, chunkBytes, total, type: m.type || "", digest: m.digest };
 }
 
 async function onRtcOffer(frame) {
@@ -618,10 +678,7 @@ function onChannelMessage(t, data) {
   if (typeof data === "string") {
     const msg = JSON.parse(data);
     if (msg.hdr) {
-      t.meta = {
-        id: t.id, size: msg.size, type: msg.type || "",
-        chunkBytes: msg.chunkBytes, total: msg.total, digest: msg.digest,
-      };
+      t.meta = checkedMeta(t, msg);              // same guard as the relay path
       t.rx = new chunker.Reassembler(t.meta);
       registry.setState(t.id, registry.STATE.RECEIVING);
       armIdle(t);

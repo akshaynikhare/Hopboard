@@ -101,7 +101,11 @@
 .badge.busy   { background:var(--warn); color:#241d00; }
 .badge.relay  { background:var(--warn); color:#241d00; }
 
-/* Outlined rather than solid: these two are states, not destinations. */
+/* Outlined rather than solid: these two are states, not destinations.
+   The 1px border eats one pixel of padding so they match the solid badges. */
+.badge.err,
+.badge.want { padding:1px 3px; }
+
 .badge.err {
   background:color-mix(in srgb, var(--bad) 22%, transparent);
   color:var(--bad);

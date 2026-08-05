@@ -19,6 +19,12 @@ import * as proto from "./transport/protocol.js";
 
 import * as capture from "./clipboard/capture.js";
 
+// Imported for its side effect as well as init(): install.js restores the room
+// key into the fragment at module-evaluation time, which must happen before
+// resolveKey() runs — an installed PWA opens with no fragment, because a
+// manifest start_url cannot carry one (OI-10).
+import * as install from "./ui/install.js";
+
 import * as toast from "./ui/toast.js";
 import * as banners from "./ui/banners.js";
 import * as editor from "./ui/editor.js";
@@ -201,6 +207,7 @@ async function loadOptional() {
 ------------------------------------------------------------------- */
 async function boot() {
   toast.init();
+  install.init();          // after toast, so the update prompt has a subscriber
   banners.init();
   statusbar.init();
   activitybar.init();

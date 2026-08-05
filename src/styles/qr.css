@@ -12,9 +12,11 @@
  * even attempt an inverted symbol. So the code stays dark-on-white in both
  * themes, and these two values must never be swapped for --editor/--text.
  *
- * They are declared as variables here — scoped to the component, not global —
- * so the fixed polarity is stated once and is greppable, rather than being a
- * loose hex literal sprinkled through the rules below.
+ * They are named variables so the fixed polarity is stated once and is
+ * greppable, rather than being loose hex literals sprinkled through the rules
+ * below. They live on :root rather than on .qrmodal because toSvg() is exported
+ * and may be rendered outside the modal; an unresolved var() would collapse
+ * both fills to the same colour and produce an unreadable symbol.
  */
 :root {
   --qr-light: #ffffff;

@@ -29,22 +29,39 @@ jobs:
 
       - name: Assemble site
         run: |
+          set -euo pipefail          # no silent partial copies
           mkdir -p _site
-          cp index.html _site/
-          cp -r src _site/
-          cp manifest.webmanifest sw.js _site/ 2>/dev/null || true
-          cp -r icons _site/ 2>/dev/null || true
-          # Docs are useful next to the app for a pre-alpha project.
-          cp -r docs _site/
-          cp README.md _site/
+          cp index.html manifest.webmanifest sw.js README.md _site/
+          cp -r src icons docs _site/
           # Pages runs Jekyll by default, which ignores files starting with _.
           touch _site/.nojekyll
 
+      # The service worker serves static assets cache-first, and a changed sw.js
+      # is also what tells the browser an update exists at all. Bumping VERSION
+      # by hand is a step someone will eventually forget, and forgetting it
+      # pins every returning user to a stale shell. Stamp it from the commit
+      # instead, so it is impossible to get wrong.
+      - name: Stamp service worker version
+        run: |
+          set -euo pipefail
+          SHA="${GITHUB_SHA:0:12}"
+          sed -i -E "s/^const VERSION = \".*\";/const VERSION = \"${SHA}\";/" _site/sw.js
+          grep -q "const VERSION = \"${SHA}\";" _site/sw.js || {
+            echo "::error::Could not stamp VERSION in sw.js — the declaration format changed."
+            exit 1
+          }
+          echo "Service worker version: ${SHA}"
+
       - name: Sanity check
         run: |
-          test -f _site/index.html
-          test -f _site/src/main.js
-          test -f _site/src/styles/main.css
+          set -euo pipefail
+          for f in index.html manifest.webmanifest sw.js \
+                   src/main.js src/styles/main.css src/ui/install.js \
+                   icons/icon-192.png icons/icon-512.png \
+                   icons/maskable-192.png icons/maskable-512.png; do
+            test -f "_site/$f" || { echo "::error::missing $f"; exit 1; }
+          done
+          python3 -c "import json;json.load(open('_site/manifest.webmanifest'))"
           echo "Files to publish: $(find _site -type f | wc -l)"
 
       # enablement:true turns Pages on via the API if it is not already.
