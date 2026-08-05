@@ -73,6 +73,7 @@ const SHELL = [
   "./src/ui/resizer.js",
   "./src/ui/sessionPanel.js",
   "./src/ui/statusbar.js",
+  "./src/ui/syncMode.js",
   "./src/ui/toast.js",
   "./src/styles/appbar.css",
   "./src/styles/banners.css",

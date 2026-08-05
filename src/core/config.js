@@ -66,3 +66,30 @@ export const NET = {
 };
 
 export const POLL_OPTIONS = { "Off": 0, "500ms": 500, "1s": 1000, "2s": 2000 };
+
+/**
+ * How much of the OS clipboard the app takes on itself.
+ *
+ *   live   — anything you copy anywhere is picked up when this window has
+ *            focus, and sent. The default, and what "shared clipboard" means.
+ *   manual — nothing leaves this machine until you paste it in here or press
+ *            Send. Receiving is unaffected.
+ *
+ * Manual exists because "live" means every password, token and private
+ * message you copy for any reason goes to every device in the session. That is
+ * the point of the product, and it is also a lot of trust to extend
+ * permanently — someone on a shared or work machine may want the sharing to be
+ * a deliberate act.
+ */
+export const SYNC_MODES = {
+  LIVE: "live",
+  MANUAL: "manual",
+};
+export const DEFAULT_SYNC_MODE = SYNC_MODES.LIVE;
+
+export const IMAGES = {
+  /** Clipboard image types we will read and share. */
+  TYPES: ["image/png", "image/jpeg", "image/webp", "image/gif"],
+  /** Named so a received screenshot does not land as "blob" on disk. */
+  NAME_PREFIX: "clipboard-image",
+};

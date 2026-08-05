@@ -10,7 +10,7 @@
  * "look at the moments we are allowed to look".
  */
 
-import { POLL_OPTIONS, TEXT } from "../core/config.js";
+import { POLL_OPTIONS, TEXT, SYNC_MODES, IMAGES } from "../core/config.js";
 import { emit, EV } from "../core/bus.js";
 import * as state from "../core/state.js";
 import * as os from "./os.js";
@@ -22,8 +22,16 @@ export function start() {
   if (started) return;
   started = true;
 
-  // T1 — paste. The floor the product stands on, not an edge case.
+  // T1 — paste. The floor the product stands on, not an edge case, and the
+  // ONLY path that still runs in manual mode: pasting here is the deliberate
+  // act that manual mode is about.
   document.addEventListener("paste", e => {
+    const image = os.imageFromPaste(e);
+    if (image) {
+      e.preventDefault();               // don't also drop a filename into the editor
+      captureImage(image, "Image pasted");
+      return;
+    }
     const text = (e.clipboardData || window.clipboardData)?.getData("text");
     if (text) capture(text, "Captured by paste");
   });
@@ -65,24 +73,72 @@ export async function requestPermission() {
   await detectTier();
 }
 
-/** T3 — only meaningful while the window is focused. */
+/** T3 — only meaningful while the window is focused, and only in live mode. */
 export function startPolling() {
   clearInterval(pollTimer);
+  if (state.get().settings.syncMode !== SYNC_MODES.LIVE) return;
   const ms = POLL_OPTIONS[state.get().settings.poll] ?? 0;
   if (!ms) return;
   pollTimer = setInterval(() => { if (document.hasFocus()) tryRead(); }, ms);
+}
+
+/** Called when the mode changes so polling starts or stops immediately. */
+export function applyMode() {
+  const live = state.get().settings.syncMode === SYNC_MODES.LIVE;
+  if (live) startPolling();
+  else stopPolling();
+  emit(EV.SYNC_MODE, { mode: state.get().settings.syncMode });
 }
 
 export function stopPolling() { clearInterval(pollTimer); }
 
 export async function tryRead() {
   const s = state.get();
+  // Manual mode: the OS clipboard is not watched at all. Nothing leaves this
+  // machine unless the user pastes it here or presses Send.
+  if (s.settings.syncMode !== SYNC_MODES.LIVE) return;
   if (!s.settings.autoread) return;
   if (s.settings.direction === "Receive only") return;
   if (state.isSuppressed()) return;          // just applied a remote clip (FR-2.6)
 
   const text = await os.read();
   if (text) capture(text, "Captured on focus");
+
+  // Images are checked on focus only, never on the poll tick: clipboard.read()
+  // is markedly more expensive than readText() and would burn battery at 1 Hz
+  // for a case that is rare per second and common per minute.
+  if (s.settings.images) await tryReadImage();
+}
+
+let lastImageKey = "";
+
+export async function tryReadImage() {
+  const blob = await os.readImage();
+  if (!blob) return;
+  // Size+type is a cheap stand-in for identity; hashing every screenshot on
+  // every focus would cost more than it saves.
+  const key = `${blob.type}:${blob.size}`;
+  if (key === lastImageKey) return;
+  lastImageKey = key;
+  captureImage(blob, "Image captured");
+}
+
+/**
+ * Images do not go through the text path. They are handed to the files layer
+ * as a normal 5 MB-capped item, so a screenshot shares its thumbnail
+ * immediately and the full image only moves when someone asks — see
+ * docs/P2P-FILES.md. capture.js stays ignorant of files/: it announces.
+ */
+function captureImage(blob, how) {
+  const s = state.get();
+  if (s.settings.direction === "Receive only") return;
+  const ext = (blob.type.split("/")[1] || "png").replace("jpeg", "jpg");
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+  emit(EV.IMAGE_CAPTURED, {
+    blob,
+    name: `${IMAGES.NAME_PREFIX}-${stamp}.${ext}`,
+    how,
+  });
 }
 
 /** Single funnel for every captured clip, whatever tier found it. */

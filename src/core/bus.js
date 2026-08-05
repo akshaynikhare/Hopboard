@@ -36,6 +36,8 @@ export const EV = {
   TIER_CHANGED:    "clipboard:tier",   // {tier, note}
   PENDING_CLIP:    "clipboard:pending",// {pending, text} — arrived while unfocused
   PERMISSION:      "clipboard:permission", // {state} granted|prompt|denied
+  IMAGE_CAPTURED:  "clipboard:image",  // {blob, name} — an image was copied or pasted
+  SYNC_MODE:       "clipboard:mode",   // {mode} live|manual
 
   // transport
   CONN_STATE:      "conn:state",       // {state, detail}
