@@ -229,7 +229,7 @@ async def _forward(room: Room, me: Peer, msg: dict) -> None:
     if target is None:
         # Also covers a missing/blank/non-string `to`; the echoed value tells a
         # client which of the two it was without adding a second error code.
-        await _send(room and me.sock, {
+        await _send(me.sock, {
             "t": "error",
             "code": "NO_SUCH_PEER",
             "to": _short(msg.get("to"), MAX_ID_CHARS),

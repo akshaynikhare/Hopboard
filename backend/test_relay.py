@@ -1,6 +1,8 @@
-"""M0 gate harness for the LiveClip relay.
+"""Protocol gate harness for the LiveClip relay.
 
-Exercises every M0 exit criterion against a running relay.
+G1-G9 exercise every M0 exit criterion. G10-G13 cover the M7 additions: peer
+identity, targeted forwarding of WebRTC signalling, and the relay-chunk file
+fallback (FR-7.6).
 Usage:  python test_relay.py [base_url]      e.g. ws://127.0.0.1:8000
 """
 
@@ -39,6 +41,26 @@ async def recv_data(sock, timeout=5.0):
 
 async def send(sock, obj):
     await sock.send(json.dumps(obj))
+
+
+async def hello(sock, origin, name, intent="join"):
+    await send(sock, {"t": "hello", "intent": intent, "originId": origin, "name": name})
+
+
+async def drain(sock, timeout=0.4):
+    """Everything the socket has to offer inside `timeout`. Empty list == silence."""
+    out = []
+    try:
+        while True:
+            out.append(json.loads(await asyncio.wait_for(sock.recv(), timeout)))
+    except asyncio.TimeoutError:
+        return out
+
+
+async def last_peers(sock, timeout=0.4):
+    """The most recent presence frame — one arrives per hello, we want the final."""
+    frames = [m for m in await drain(sock, timeout) if m.get("t") == "peers"]
+    return frames[-1] if frames else {}
 
 
 async def main():

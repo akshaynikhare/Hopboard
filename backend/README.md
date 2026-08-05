@@ -13,8 +13,14 @@ pip install -r requirements.txt
 python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-Then open [`../m0/index.html`](../m0/index.html) in a browser, set the relay URL to
-`ws://127.0.0.1:8000`, and connect. Open it in a second window with the same key.
+Then serve the app from the repo root and open it in two windows with the same
+key. On localhost the frontend points at `ws://127.0.0.1:8000` automatically
+(see `src/core/config.js`), so no configuration is needed:
+
+```bash
+cd ..
+python -m http.server 8080      # http://127.0.0.1:8080
+```
 
 ## Test
 

@@ -32,7 +32,8 @@ jobs:
           mkdir -p _site
           cp index.html _site/
           cp -r src _site/
-          cp -r m0 _site/
+          cp manifest.webmanifest sw.js _site/ 2>/dev/null || true
+          cp -r icons _site/ 2>/dev/null || true
           # Docs are useful next to the app for a pre-alpha project.
           cp -r docs _site/
           cp README.md _site/

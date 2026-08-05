@@ -53,7 +53,7 @@ src/
   ui/                   one module per panel + shared helpers
   styles/               design tokens + per-component CSS
 backend/                FastAPI relay — deployed separately
-m0/                     transport spike harness
+tests/e2e.mjs           two peers, real crypto, live relay
 docs/                   PRD, clipboard design, P2P design, M0 results
 ```
 
