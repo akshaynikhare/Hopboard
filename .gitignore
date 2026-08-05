@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# FastAPI Cloud link file (contains app/team ids for this machine)
+.fastapicloud/
+
+# Local tool state
+.claude/settings.local.json
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Env
+.env
+.env.*
+!.env.example
