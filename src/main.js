@@ -27,6 +27,7 @@ import * as install from "./ui/install.js";
 
 import * as toast from "./ui/toast.js";
 import * as banners from "./ui/banners.js";
+import * as panes from "./ui/panes.js";
 import * as editor from "./ui/editor.js";
 import * as filesPanel from "./ui/filesPanel.js";
 import * as sessionPanel from "./ui/sessionPanel.js";
@@ -87,22 +88,66 @@ async function onFrame(msg) {
       break;
     }
 
-    // Signalling and file frames are handed to the files layer, which is kept
-    // ignorant of the transport (see docs/ARCHITECTURE.md).
-    case proto.T.RTC_OFFER:
-    case proto.T.RTC_ANSWER:
-    case proto.T.RTC_ICE:
-    case proto.T.FILE_META:
-    case proto.T.FILE_REQ:
-    case "file-chunk":
-      routeToFiles(msg);
-      break;
+    default:
+      // Signalling and file frames go to the files layer, which is kept
+      // ignorant of the transport (docs/ARCHITECTURE.md §3).
+      //
+      // Driven off transfer.FRAMES rather than a hand-written case list: an
+      // earlier version enumerated six of the eleven types and silently
+      // dropped file-accept, which carries the chunk plan — every transfer
+      // would have stalled with no error anywhere.
+      if (filesFrames.has(msg.t)) routeToFiles(await decryptFrame(msg));
   }
 }
 
 let filesSignalHandler = null;
+let filesFrames = new Set();
+
 function routeToFiles(msg) {
-  if (filesSignalHandler) filesSignalHandler(msg);
+  if (msg && filesSignalHandler) filesSignalHandler(msg);
+}
+
+/* ------------------------------------------------------------------
+   signalling encryption
+
+   The relay is supposed to be a blind pipe (docs/P2P-FILES.md §4). Sending
+   signalling in the clear would have handed it every SDP, every ICE candidate
+   — including the peers' IP addresses — and, on the relay-fallback path, every
+   byte of every file. That is precisely the property the design claims to have
+   and would not have had.
+
+   Routing fields stay in the clear because the relay must read them to deliver
+   the frame; everything else is sealed with the same session key as clips.
+------------------------------------------------------------------- */
+const ROUTING_FIELDS = new Set(["t", "to", "from", "originId", "id", "seq", "total", "crc"]);
+
+async function encryptFrame(frame) {
+  const { aesKey } = state.get();
+  if (!aesKey) return frame;
+
+  const routing = {}, secret = {};
+  for (const [k, v] of Object.entries(frame)) {
+    (ROUTING_FIELDS.has(k) ? routing : secret)[k] = v;
+  }
+  if (!Object.keys(secret).length) return frame;
+
+  const { payload, iv } = await cryptoBox.encrypt(aesKey, JSON.stringify(secret));
+  return { ...routing, payload, iv };
+}
+
+async function decryptFrame(frame) {
+  const { aesKey } = state.get();
+  if (!aesKey || !frame.payload || !frame.iv) return frame;
+  try {
+    const secret = JSON.parse(await cryptoBox.decrypt(aesKey, frame.payload, frame.iv));
+    const { payload, iv, ...routing } = frame;
+    return { ...routing, ...secret };
+  } catch {
+    // A peer in this room shares the key by construction, so this should be
+    // unreachable — drop rather than hand the files layer a half-frame.
+    console.warn("[hopboard] undecryptable signalling frame", frame.t);
+    return null;
+  }
 }
 
 /* ------------------------------------------------------------------
@@ -171,10 +216,20 @@ function wire() {
 async function wireFiles() {
   try {
     const transfer = await import("./files/transfer.js");
-    if (typeof transfer.setSignalSender === "function") {
-      transfer.setSignalSender(frame => relay.send(frame));
-      filesSignalHandler = transfer.onSignal ?? null;
-    }
+    filesFrames = new Set(transfer.FRAMES ?? []);
+    filesSignalHandler = transfer.onSignal ?? null;
+
+    // The contract is synchronous — `false` means "not sent". Encryption is
+    // async, so the check that actually matters (are we connected at all?) is
+    // done up front; a failure after that point is reported by the relay's own
+    // error frame rather than this return value.
+    transfer.setSignalSender(frame => {
+      if (!relay.isOpen()) return false;
+      encryptFrame(frame)
+        .then(sealed => relay.send(sealed))
+        .catch(err => console.error("[hopboard] could not send signalling frame", err));
+      return true;
+    });
   } catch (err) {
     console.warn("[hopboard] files transfer layer unavailable", err);
   }
@@ -218,6 +273,7 @@ async function boot() {
   wire();
   await wireFiles();
   await loadOptional();
+  panes.init();          // after optional panes have mounted; delegated, so order is not load-bearing
 
   capture.start();
 

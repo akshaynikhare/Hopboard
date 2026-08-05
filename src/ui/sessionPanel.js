@@ -17,9 +17,9 @@ export function init() {
   bind("bLeave", "click", () => emit("session:leave"));
   bind("bAbout", "click", showAbout);
 
-  // Collapsible panes, VS Code sidebar behaviour.
-  $$("[data-toggle]").forEach(h =>
-    bind(h, "click", () => h.parentElement.classList.toggle("collapsed")));
+  // Collapsible panes are handled by ui/panes.js, delegated from the sidebar.
+  // They used to be bound here with a querySelectorAll snapshot, which only
+  // reached panes that already existed when this ran.
 
   restoreSettings();
 

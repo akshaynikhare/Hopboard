@@ -3,7 +3,7 @@
 .statusbar {
   height:var(--statusbar-h);
   background:var(--status);
-  color:#fff;
+  color:var(--on-fixed);
   display:flex;
   align-items:center;
   padding:0 4px;
@@ -24,7 +24,7 @@
 .sitem:hover { background:rgba(255,255,255,.14); }
 .sitem.plain { cursor:default; }
 .sitem.plain:hover { background:none; }
-.sitem.over { color:#ffd0d0; font-weight:600; }
+.sitem.over { color:var(--on-fixed-bad); font-weight:600; }
 
 .sspacer { flex:1; }
 
