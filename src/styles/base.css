@@ -1,0 +1,29 @@
+/* Reset, typography, scrollbars. */
+
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body { height:100%; }
+
+body {
+  background:var(--editor);
+  color:var(--text);
+  overflow:hidden;
+  font:13px/1.4 var(--ui-font);
+  -webkit-font-smoothing:antialiased;
+}
+
+:focus-visible { outline:1px solid var(--focus); outline-offset:-1px; }
+
+/* VS Code's overlay scrollbars */
+::-webkit-scrollbar { width:14px; height:14px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb {
+  background:rgba(121,121,121,.4);
+  border:3px solid transparent;
+  background-clip:content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background:rgba(100,100,100,.7);
+  background-clip:content-box;
+}
+
+em { font-style:normal; color:var(--bright); }

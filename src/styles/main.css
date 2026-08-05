@@ -1,0 +1,18 @@
+/**
+ * Style entry point. One <link> in index.html; everything else imports here.
+ *
+ * @import costs serial requests, which is a real but small price at this size
+ * and buys a no-build setup. If the sheet count grows past ~12, concatenate at
+ * deploy time rather than adding a bundler to development.
+ */
+
+@import url("./tokens.css");
+@import url("./base.css");
+@import url("./layout.css");
+@import url("./titlebar.css");
+@import url("./activitybar.css");
+@import url("./editor.css");
+@import url("./sidebar.css");
+@import url("./files.css");
+@import url("./statusbar.css");
+@import url("./components.css");

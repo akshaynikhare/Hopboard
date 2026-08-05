@@ -1,0 +1,80 @@
+/**
+ * Design tokens — VS Code Dark+ / Light+.
+ *
+ * Every colour in the app comes from here. If a component file contains a hex
+ * literal, it is a bug: the theme could not be changed in one place.
+ */
+
+:root {
+  /* surfaces */
+  --editor:#1e1e1e;
+  --side:#252526;
+  --title:#3c3c3c;
+  --activity:#333333;
+  --tab-off:#2d2d2d;
+  --tab-on:#1e1e1e;
+  --input:#3c3c3c;
+
+  /* lines */
+  --bd:#2b2b2b;
+  --bd2:#3c3c3c;
+
+  /* text */
+  --text:#cccccc;
+  --dim:#858585;
+  --bright:#e7e7e7;
+
+  /* accents */
+  --blue:#007acc;
+  --status:#007acc;
+  --focus:#007fd4;
+  --hover:#2a2d2e;
+  --sel:#264f78;
+
+  /* semantic */
+  --ok:#4ec9b0;
+  --warn:#cca700;
+  --bad:#f14c4c;
+  --str:#ce9178;      /* VS Code string colour — used for the share key */
+  --num:#b5cea8;
+
+  /* type */
+  --ui-font:"Segoe UI",-apple-system,system-ui,Ubuntu,"Droid Sans",sans-serif;
+  --mono:"Cascadia Code","Consolas","SF Mono",Menlo,monospace;
+  --line-height:19px;
+
+  /* metrics */
+  --titlebar-h:35px;
+  --activity-w:48px;
+  --sidebar-w:400px;
+  --statusbar-h:22px;
+  --tab-h:35px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --editor:#ffffff;
+    --side:#f3f3f3;
+    --title:#dddddd;
+    --activity:#2c2c2c;      /* stays dark in Light+, as VS Code does */
+    --tab-off:#ececec;
+    --tab-on:#ffffff;
+    --input:#ffffff;
+
+    --bd:#e7e7e7;
+    --bd2:#cecece;
+
+    --text:#333333;
+    --dim:#616161;
+    --bright:#000000;
+
+    --hover:#e8e8e8;
+    --sel:#add6ff;
+
+    --ok:#0f7b6c;
+    --warn:#8a6d00;
+    --bad:#cd3131;
+    --str:#a31515;
+    --num:#098658;
+  }
+}

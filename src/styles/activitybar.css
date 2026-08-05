@@ -1,0 +1,34 @@
+/* Left icon rail. */
+
+.activity {
+  width:var(--activity-w);
+  background:var(--activity);
+  flex:none;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding-top:4px;
+  gap:2px;
+}
+
+.abtn {
+  width:var(--activity-w);
+  height:var(--activity-w);
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  border:0;
+  border-left:2px solid transparent;
+  background:none;
+  color:rgba(255,255,255,.5);
+}
+.abtn:hover { color:#fff; }
+.abtn.on { color:#fff; border-left-color:#fff; }
+
+.abtn svg {
+  width:22px; height:22px;
+  fill:none; stroke:currentColor; stroke-width:1.4;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+
+.aspacer { flex:1; }

@@ -1,0 +1,112 @@
+/* Right sidebar: collapsible panes, VS Code Explorer behaviour. */
+
+.side {
+  width:var(--sidebar-w);
+  flex:none;
+  background:var(--side);
+  border-left:1px solid var(--bd);
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+}
+.side.hidden { display:none; }
+
+.sidehead {
+  height:var(--titlebar-h);
+  display:flex;
+  align-items:center;
+  padding:0 20px;
+  flex:none;
+  font-size:11px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  color:var(--text);
+}
+
+.pane {
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  border-top:1px solid var(--bd);
+}
+.pane.grow { flex:1; }
+.pane.collapsed { flex:none; }
+.pane.collapsed .paneb { display:none; }
+.pane.collapsed .chev { transform:rotate(-90deg); }
+
+.paneh {
+  height:22px;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  padding:0 8px;
+  flex:none;
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  color:var(--text);
+  cursor:pointer;
+  user-select:none;
+}
+.paneh:hover { background:var(--hover); }
+.paneh .spacer { flex:1; }
+.paneh .soft { font-weight:400; text-transform:none; letter-spacing:0; color:var(--dim); }
+
+.chev { transition:transform .12s; font-size:10px; opacity:.9; }
+
+.paneb { flex:1; overflow:auto; min-height:0; padding:4px 0 8px; }
+
+/* rows and groups */
+.row {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:4px 12px;
+  min-height:24px;
+}
+.row:hover { background:var(--hover); }
+.row .l { flex:1; min-width:0; }
+.row .l b { display:block; font-weight:400; color:var(--text); }
+.row .l span { font-size:11px; color:var(--dim); }
+
+.grp {
+  font-size:11px;
+  color:var(--dim);
+  padding:8px 12px 3px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+.keyrow { display:flex; align-items:center; gap:7px; padding:2px 12px 6px; flex-wrap:wrap; }
+
+.key {
+  font:700 20px/1 var(--mono);
+  letter-spacing:.14em;
+  color:var(--str);
+  background:var(--editor);
+  border:1px solid var(--bd2);
+  border-radius:3px;
+  padding:7px 11px;
+}
+
+.warn {
+  margin:0 12px 8px;
+  font-size:11.5px;
+  line-height:1.45;
+  color:var(--warn);
+  background:color-mix(in srgb, var(--warn) 9%, transparent);
+  border-left:2px solid var(--warn);
+  padding:6px 9px;
+}
+
+.alert {
+  display:none;
+  margin:0 12px 8px;
+  font-size:11.5px;
+  line-height:1.45;
+  color:var(--bad);
+  background:color-mix(in srgb, var(--bad) 10%, transparent);
+  border-left:2px solid var(--bad);
+  padding:6px 9px;
+}
+.alert.show { display:block; }
