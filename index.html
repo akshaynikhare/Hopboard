@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hopboard — shared clipboard</title>
+<meta name="description" content="Share clipboard text and files between your machines with a short key. No account, end-to-end encrypted, files sent peer-to-peer.">
+<style>
+  /* ============ VS Code Dark+ palette ============ */
+  :root {
+    --editor:#1e1e1e; --side:#252526; --title:#3c3c3c; --activity:#333333;
+    --status:#007acc; --tab-off:#2d2d2d; --tab-on:#1e1e1e;
+    --bd:#2b2b2b; --bd2:#3c3c3c; --input:#3c3c3c;
+    --text:#cccccc; --dim:#858585; --bright:#e7e7e7;
+    --blue:#007acc; --focus:#007fd4; --hover:#2a2d2e; --sel:#264f78;
+    --ok:#4ec9b0; --warn:#cca700; --bad:#f14c4c; --str:#ce9178; --num:#b5cea8;
+    --mono:"Cascadia Code","Consolas","SF Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --editor:#ffffff; --side:#f3f3f3; --title:#dddddd; --activity:#2c2c2c;
+      --tab-off:#ececec; --tab-on:#ffffff; --bd:#e7e7e7; --bd2:#cecece; --input:#ffffff;
+      --text:#333333; --dim:#616161; --bright:#000000; --hover:#e8e8e8; --sel:#add6ff;
+      --ok:#0f7b6c; --warn:#8a6d00; --bad:#cd3131; --str:#a31515; --num:#098658;
+    }
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; }
+  body {
+    background:var(--editor); color:var(--text); overflow:hidden;
+    font:13px/1.4 "Segoe UI",-apple-system,system-ui,Ubuntu,"Droid Sans",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::-webkit-scrollbar { width:14px; height:14px; }
+  ::-webkit-scrollbar-thumb { background:rgba(121,121,121,.4); border:3px solid transparent;
+                              background-clip:content-box; }
+  ::-webkit-scrollbar-thumb:hover { background:rgba(100,100,100,.7); background-clip:content-box; }
+  ::-webkit-scrollbar-track { background:transparent; }
+
+  /* ============ shell ============ */
+  .vs { display:flex; flex-direction:column; height:100vh; }
+  .body { flex:1; display:flex; min-height:0; }
+
+  /* ---- title bar ---- */
+  .titlebar {
+    height:35px; background:var(--title); display:flex; align-items:center; gap:14px;
+    padding:0 10px; flex:none; font-size:12px; -webkit-user-select:none; user-select:none;
+  }
+  .logo { width:16px; height:16px; flex:none; }
+  .menu { display:flex; gap:2px; }
+  .menu span { padding:3px 7px; border-radius:3px; cursor:default; color:var(--text); }
+  .menu span:hover { background:rgba(255,255,255,.09); }
+  .tcenter { flex:1; text-align:center; color:var(--dim); font-size:12px; }
+
+  /* ---- activity bar ---- */
+  .activity {
+    width:48px; background:var(--activity); flex:none; display:flex; flex-direction:column;
+    align-items:center; padding-top:4px; gap:2px;
+  }
+  .abtn {
+    width:48px; height:48px; display:grid; place-items:center; cursor:pointer;
+    border-left:2px solid transparent; background:none; color:rgba(255,255,255,.5);
+  }
+  .abtn:hover { color:#fff; }
+  .abtn.on { color:#fff; border-left-color:#fff; }
+  .abtn svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.4;
+              stroke-linecap:round; stroke-linejoin:round; }
+  .aspacer { flex:1; }
+
+  /* ---- editor column ---- */
+  .main { flex:1; display:flex; flex-direction:column; min-width:0; background:var(--editor); }
+  .tabs { height:35px; background:var(--tab-off); display:flex; align-items:stretch; flex:none;
+          border-bottom:1px solid var(--bd); }
+  .tab {
+    display:flex; align-items:center; gap:7px; padding:0 12px; background:var(--tab-on);
+    border-right:1px solid var(--bd); font-size:13px; color:var(--bright); position:relative;
+  }
+  .tab::before { content:""; position:absolute; top:0; left:0; right:0; height:1px; background:var(--blue); }
+  .tab .fi { color:var(--blue); font-size:11px; font-weight:700; }
+  .tab .x { color:var(--dim); font-size:15px; line-height:1; padding:1px 3px; border-radius:3px; cursor:pointer; }
+  .tab .x:hover { background:var(--hover); color:var(--text); }
+  .tabspace { flex:1; }
+  .tabacts { display:flex; align-items:center; gap:2px; padding-right:8px; }
+
+  .breadcrumb { height:22px; display:flex; align-items:center; gap:6px; padding:0 16px;
+                font-size:12px; color:var(--dim); flex:none; }
+  .breadcrumb .sep { opacity:.6; }
+
+  .edwrap { flex:1; display:flex; min-height:0; overflow:hidden; }
+  .gutter {
+    flex:none; width:56px; padding:6px 14px 6px 0; text-align:right; overflow:hidden;
+    color:var(--dim); background:var(--editor);
+    font:13px/19px var(--mono); user-select:none;
+  }
+  .gutter div.cur { color:var(--bright); }
+  #editor {
+    flex:1; min-width:0; padding:6px 16px 6px 0; border:0; outline:none; resize:none;
+    background:transparent; color:var(--text); white-space:pre-wrap; overflow-wrap:break-word;
+    font:13px/19px var(--mono); tab-size:4;
+  }
+  #editor::selection { background:var(--sel); }
+  #editor::placeholder { color:var(--dim); opacity:.7; }
+
+  /* ---- right sidebar ---- */
+  .side { width:400px; flex:none; background:var(--side); border-left:1px solid var(--bd);
+          display:flex; flex-direction:column; min-height:0; }
+  .side.hidden { display:none; }
+  .sidehead { height:35px; display:flex; align-items:center; padding:0 20px; flex:none;
+              font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text); }
+  .pane { display:flex; flex-direction:column; min-height:0; border-top:1px solid var(--bd); }
+  .pane.grow { flex:1; }
+  .paneh {
+    height:22px; display:flex; align-items:center; gap:5px; padding:0 8px; flex:none;
+    font-size:11px; font-weight:700; letter-spacing:.02em; text-transform:uppercase;
+    color:var(--text); cursor:pointer; user-select:none;
+  }
+  .paneh:hover { background:var(--hover); }
+  .chev { transition:transform .12s; font-size:10px; opacity:.9; }
+  .pane.collapsed .chev { transform:rotate(-90deg); }
+  .pane.collapsed .paneb { display:none; }
+  .pane.collapsed { flex:none; }
+  .paneh .spacer { flex:1; }
+  .paneb { flex:1; overflow:auto; min-height:0; padding:4px 0 8px; }
+
+  .ibtn { width:22px; height:22px; display:grid; place-items:center; border:0; background:none;
+          color:var(--text); cursor:pointer; border-radius:4px; flex:none; }
+  .ibtn:hover { background:rgba(255,255,255,.12); }
+  .ibtn svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.5;
+              stroke-linecap:round; stroke-linejoin:round; }
+
+  /* ---- files ---- */
+  .drop { margin:6px 10px; border:1px dashed var(--bd2); border-radius:3px; padding:12px 10px;
+          text-align:center; color:var(--dim); font-size:12px; cursor:pointer; }
+  .drop:hover, .drop.over { border-color:var(--focus); color:var(--text); background:rgba(0,122,204,.08); }
+  .drop b { display:block; color:var(--text); font-weight:400; margin-bottom:2px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(92px,1fr)); gap:6px; padding:2px 10px 6px; }
+  .tile { background:var(--editor); border:1px solid var(--bd2); border-radius:3px;
+          overflow:hidden; position:relative; cursor:pointer; }
+  .tile:hover { border-color:var(--focus); }
+  .tile .thumb { height:60px; display:grid; place-items:center; background:var(--tab-off);
+                 font-size:19px; color:var(--dim); overflow:hidden; }
+  .tile .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .tile .meta { padding:4px 5px 5px; }
+  .tile .nm { font-size:10.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text); }
+  .tile .sz { font-size:9.5px; color:var(--dim); font-family:var(--mono); }
+  .badge { position:absolute; top:3px; right:3px; font-size:8px; font-weight:700; letter-spacing:.03em;
+           padding:2px 4px; border-radius:2px; }
+  .badge.local  { background:var(--blue); color:#fff; }
+  .badge.remote { background:var(--ok); color:#04231a; }
+  .badge.busy   { background:var(--warn); color:#241d00; }
+  .bar { position:absolute; left:0; bottom:0; height:2px; background:var(--blue); width:0; transition:width .2s; }
+  .none { color:var(--dim); font-size:12px; padding:8px 12px; line-height:1.5; }
+
+  /* ---- session rows ---- */
+  .row { display:flex; align-items:center; gap:9px; padding:4px 12px; min-height:24px; }
+  .row:hover { background:var(--hover); }
+  .row .l { flex:1; min-width:0; }
+  .row .l b { display:block; font-weight:400; color:var(--text); }
+  .row .l span { font-size:11px; color:var(--dim); }
+  .grp { font-size:11px; color:var(--dim); padding:8px 12px 3px; text-transform:uppercase; letter-spacing:.04em; }
+  .key { font:700 20px/1 var(--mono); letter-spacing:.14em; color:var(--str);
+         background:var(--editor); border:1px solid var(--bd2); border-radius:3px; padding:7px 11px; }
+  .keyrow { display:flex; align-items:center; gap:7px; padding:2px 12px 6px; flex-wrap:wrap; }
+  .warn { margin:0 12px 8px; font-size:11.5px; color:var(--warn); line-height:1.45;
+          background:rgba(204,167,0,.08); border-left:2px solid var(--warn); padding:6px 9px; }
+  .dot { width:7px; height:7px; border-radius:99px; background:var(--dim); flex:none; }
+  .dot.on{background:var(--ok)} .dot.wait{background:var(--warn)} .dot.off{background:var(--bad)}
+  .pill { font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:2px; letter-spacing:.03em; }
+  .pill.p2p   { background:rgba(78,201,176,.18); color:var(--ok); }
+  .pill.relay { background:rgba(204,167,0,.18); color:var(--warn); }
+
+  .btn { font:inherit; font-size:12px; cursor:pointer; border-radius:2px; border:1px solid transparent;
+         background:var(--blue); color:#fff; padding:5px 11px; }
+  .btn:hover { filter:brightness(1.12); }
+  .btn.ghost { background:var(--input); color:var(--text); border-color:var(--bd2); }
+  .btn.ghost:hover { background:var(--hover); }
+  select { background:var(--input); color:var(--text); border:1px solid var(--bd2);
+           border-radius:2px; padding:3px 5px; font:inherit; font-size:12px; }
+  .sw { width:32px; height:18px; border-radius:99px; background:var(--bd2); position:relative;
+        border:0; flex:none; cursor:pointer; transition:background .14s; }
+  .sw::after { content:""; position:absolute; top:2px; left:2px; width:14px; height:14px;
+               border-radius:99px; background:#fff; transition:transform .14s; }
+  .sw[aria-checked="true"] { background:var(--blue); }
+  .sw[aria-checked="true"]::after { transform:translateX(14px); }
+
+  /* ---- status bar ---- */
+  .statusbar {
+    height:22px; background:var(--status); color:#fff; display:flex; align-items:center;
+    gap:0; padding:0 4px; flex:none; font-size:12px; user-select:none;
+  }
+  .sitem { padding:0 8px; height:22px; display:flex; align-items:center; gap:5px; cursor:pointer; white-space:nowrap; }
+  .sitem:hover { background:rgba(255,255,255,.14); }
+  .sitem.plain { cursor:default; }
+  .sitem.plain:hover { background:none; }
+  .sspacer { flex:1; }
+  .statusbar svg { width:13px; height:13px; fill:none; stroke:currentColor; stroke-width:1.6;
+                   stroke-linecap:round; stroke-linejoin:round; }
+
+  .toast {
+    position:fixed; bottom:34px; right:14px; background:var(--side); color:var(--text);
+    border:1px solid var(--bd2); border-radius:3px; padding:9px 13px; font-size:12.5px;
+    opacity:0; transform:translateY(8px); transition:.18s; pointer-events:none; z-index:50;
+    box-shadow:0 3px 12px rgba(0,0,0,.45); max-width:340px;
+  }
+  .toast.show { opacity:1; transform:translateY(0); }
+
+  @media (max-width:900px) {
+    .activity { display:none; }
+    .body { flex-direction:column; }
+    .side { width:auto; border-left:0; border-top:1px solid var(--bd); max-height:52vh; }
+    .main { min-height:44vh; }
+  }
+</style>
+</head>
+<body>
+<div class="vs">
+
+  <!-- ================= title bar ================= -->
+  <div class="titlebar">
+    <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="#007acc" stroke-width="2" stroke-linecap="round">
+      <rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/><path d="M9 13l2 2 4-4"/>
+    </svg>
+    <div class="menu"><span>File</span><span>Edit</span><span>Session</span><span>Help</span></div>
+    <div class="tcenter">clipboard.txt — Hopboard</div>
+  </div>
+
+  <div class="body">
+
+    <!-- ================= activity bar ================= -->
+    <div class="activity">
+      <button class="abtn on" id="abEditor" title="Clipboard">
+        <svg viewBox="0 0 24 24"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/></svg>
+      </button>
+      <button class="abtn" id="abFiles" title="Files &amp; Images">
+        <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      </button>
+      <button class="abtn" id="abPeers" title="Devices">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0112 0"/><path d="M16 6a3 3 0 010 6M18 20a6 6 0 00-3-5"/></svg>
+      </button>
+      <div class="aspacer"></div>
+      <button class="abtn" id="abSettings" title="Settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-1.8-.3 1.6 1.6 0 00-1 1.5V21a2 2 0 11-4 0v-.1A1.6 1.6 0 008 19.4a1.6 1.6 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00.3-1.8 1.6 1.6 0 00-1.5-1H2a2 2 0 110-4h.1A1.6 1.6 0 004.6 8a1.6 1.6 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 001.8.3H9a1.6 1.6 0 001-1.5V2a2 2 0 114 0v.1a1.6 1.6 0 001 1.5 1.6 1.6 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 00-.3 1.8V9a1.6 1.6 0 001.5 1H22a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/></svg>
+      </button>
+    </div>
+
+    <!-- ================= editor ================= -->
+    <div class="main">
+      <div class="tabs">
+        <div class="tab"><span class="fi">TXT</span> clipboard.txt <span class="x" id="tabX">×</span></div>
+        <div class="tabspace"></div>
+        <div class="tabacts">
+          <button class="ibtn" id="aSelect" title="Select all (Ctrl+A)">
+            <svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/></svg>
+          </button>
+          <button class="ibtn" id="aCopy" title="Copy to clipboard">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
+          </button>
+          <button class="ibtn" id="aPaste" title="Paste from clipboard">
+            <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="9" y="2" width="6" height="4" rx="1"/></svg>
+          </button>
+          <button class="ibtn" id="aSend" title="Send to devices">
+            <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="breadcrumb">
+        <span id="bcKey">D75LV</span><span class="sep">›</span><span>clipboard.txt</span>
+      </div>
+      <div class="edwrap">
+        <div class="gutter" id="gutter">1</div>
+        <textarea id="editor" spellcheck="false"
+          placeholder="Paste here (Ctrl/Cmd+V), or copy something and switch back to this window."></textarea>
+      </div>
+    </div>
+
+    <!-- ================= sidebar ================= -->
+    <div class="side" id="side">
+      <div class="sidehead">Explorer</div>
+
+      <!-- files -->
+      <div class="pane grow" id="paneFiles">
+        <div class="paneh" data-toggle>
+          <span class="chev">⌄</span> Files &amp; Images
+          <span class="spacer"></span>
+          <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--dim)" id="fileN">0</span>
+          <button class="ibtn" id="bAdd" title="Add files">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
+        <div class="paneb">
+          <div class="drop" id="drop"><b>Drop files or click to add</b>Max 5 MB each · sent peer-to-peer</div>
+          <div class="grid" id="grid"></div>
+          <div class="none" id="noFiles">Thumbnails appear here. The file itself only transfers when someone asks for it.</div>
+          <input type="file" id="picker" multiple hidden>
+        </div>
+      </div>
+
+      <!-- session -->
+      <div class="pane grow" id="paneSession">
+        <div class="paneh" data-toggle>
+          <span class="chev">⌄</span> Session
+          <span class="spacer"></span>
+          <button class="ibtn" id="bNew" title="New key">
+            <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/></svg>
+          </button>
+          <button class="ibtn" id="bLink" title="Copy share link">
+            <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/></svg>
+          </button>
+        </div>
+        <div class="paneb">
+          <div class="grp">Share key</div>
+          <div class="keyrow"><div class="key" id="key">D75LV</div></div>
+          <div class="warn">Anyone with this key can read what you copy and request your files. The key <em>is</em> the password — it never reaches the server.</div>
+
+          <div class="grp">Devices — <span id="peerN">1</span></div>
+          <div id="peers"></div>
+
+          <div class="grp">Clipboard</div>
+          <div class="row"><div class="l"><b>Auto-write incoming</b><span>Put received text on this machine's clipboard</span></div>
+            <button class="sw" role="switch" aria-checked="true" data-k="autowrite"></button></div>
+          <div class="row"><div class="l"><b>Auto-read on focus</b><span>Pick up copies when you switch back here</span></div>
+            <button class="sw" role="switch" aria-checked="true" data-k="autoread"></button></div>
+          <div class="row"><div class="l"><b>Poll while focused</b><span>Catch copies without switching away</span></div>
+            <select id="poll"><option>Off</option><option selected>1s</option><option>500ms</option><option>2s</option></select></div>
+
+          <div class="grp">Transfer</div>
+          <div class="row"><div class="l"><b>Auto-accept files</b><span>Receive without a prompt</span></div>
+            <button class="sw" role="switch" aria-checked="false" data-k="autoaccept"></button></div>
+          <div class="row"><div class="l"><b>Send thumbnails</b><span>Previews travel automatically — see OI-15</span></div>
+            <button class="sw" role="switch" aria-checked="true" data-k="thumbs"></button></div>
+          <div class="row"><div class="l"><b>Direction</b><span>Whether this device sends, receives, or both</span></div>
+            <select id="direction"><option>Both</option><option>Send only</option><option>Receive only</option></select></div>
+
+          <div class="grp">&nbsp;</div>
+          <div class="keyrow">
+            <button class="btn ghost" id="bLeave">Leave session</button>
+            <button class="btn ghost" id="bAbout">About</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= status bar ================= -->
+  <div class="statusbar">
+    <div class="sitem" id="sbKey" title="Share key — click to copy the link">
+      <svg viewBox="0 0 24 24"><circle cx="7" cy="17" r="3"/><path d="M9.5 15L20 4.5M17 7l2 2M14 10l2 2"/></svg>
+      <span id="sbKeyText">D75LV</span>
+    </div>
+    <div class="sitem plain" id="sbConn"><span class="dot wait"></span><span id="sbConnText">Preview — no transport</span></div>
+    <div class="sitem plain" id="sbPeers">3 devices</div>
+    <div class="sitem plain" id="sbP2P">P2P idle</div>
+    <div class="sspacer"></div>
+    <div class="sitem plain" id="sbTier">checking…</div>
+    <div class="sitem plain" id="sbLnCol">Ln 1, Col 1</div>
+    <div class="sitem plain" id="sbChars">0 / 50,000</div>
+    <div class="sitem plain">UTF-8</div>
+    <div class="sitem plain">Plain Text</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ------------------------------------------------------------------
+   Hopboard — layout preview, VS Code Dark+ styling.
+   Real: OS clipboard read/write, gutter, Ln/Col, 5 MB cap, local thumbnails.
+   Stubbed: network. Relay transport = M1, WebRTC file transfer = M7.
+   See docs/CLIPBOARD-FLOW.md and docs/P2P-FILES.md.
+------------------------------------------------------------------- */
+const $ = id => document.getElementById(id);
+const ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
+const MAX_TEXT = 50000, MAX_FILE = 5 * 1024 * 1024, THUMB_PX = 160;
+
+let lastSeen = "", pollTimer = null;
+const files = [];
+
+const newKey = () => Array.from(crypto.getRandomValues(new Uint8Array(6)))
+  .map(b => ALPHABET[b % ALPHABET.length]).join("");
+const fmtSize = b => b < 1024 ? b + " B"
+  : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1) + " MB";
+
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 2400);
+}
+
+/* ================= editor ================= */
+function syncGutter() {
+  const ta = $("editor"), g = $("gutter");
+  const n = Math.max(ta.value.split("\n").length, 1);
+  if (g.childElementCount !== n) {
+    g.innerHTML = Array.from({ length: n }, (_, i) => `<div>${i + 1}</div>`).join("");
+  }
+  const cur = ta.value.slice(0, ta.selectionStart).split("\n").length;
+  [...g.children].forEach((d, i) => d.classList.toggle("cur", i === cur - 1));
+  g.scrollTop = ta.scrollTop;
+}
+function updateStatus() {
+  const ta = $("editor"), n = ta.value.length;
+  $("sbChars").textContent = `${n.toLocaleString()} / ${MAX_TEXT.toLocaleString()}`;
+  $("sbChars").style.color = n > MAX_TEXT ? "#ffd0d0" : "";
+  const upto = ta.value.slice(0, ta.selectionStart).split("\n");
+  $("sbLnCol").textContent = `Ln ${upto.length}, Col ${upto[upto.length - 1].length + 1}`;
+}
+const refresh = () => { syncGutter(); updateStatus(); };
+["input", "click", "keyup", "select"].forEach(e => $("editor").addEventListener(e, refresh));
+$("editor").addEventListener("scroll", () => { $("gutter").scrollTop = $("editor").scrollTop; });
+
+$("aSelect").onclick = () => { $("editor").focus(); $("editor").select(); refresh(); };
+$("aCopy").onclick   = async () => { if (await writeToOS($("editor").value)) toast("Copied to clipboard"); };
+$("aPaste").onclick  = async () => {
+  const t = await readFromOS();
+  if (t) { $("editor").value = t; refresh(); ingest(t, "Pasted from clipboard"); }
+  else toast("Clipboard unreadable — use Ctrl/Cmd+V");
+};
+$("aSend").onclick = () => {
+  const t = $("editor").value.trim();
+  if (!t) return toast("Nothing to send");
+  if (t.length > MAX_TEXT) return toast("Over the 50,000 character limit");
+  lastSeen = t; toast("Sent · M1 puts this on the wire");
+};
+$("tabX").onclick = () => { $("editor").value = ""; refresh(); toast("Cleared"); };
+
+/* ================= OS clipboard (real) ================= */
+async function writeToOS(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch { toast("Window must be focused to write the clipboard"); return false; }
+}
+async function readFromOS() {
+  try { return await navigator.clipboard.readText(); } catch { return null; }
+}
+async function detectTier() {
+  if (!navigator.clipboard?.readText) return setTier("T1 · paste only");
+  try {
+    const st = await navigator.permissions.query({ name: "clipboard-read" });
+    apply(st.state); st.onchange = () => apply(st.state);
+  } catch { setTier("T2 · read on focus"); }
+  function apply(s) {
+    if (s === "granted") { setTier("T3 · auto-capture"); startPolling(); }
+    else if (s === "prompt") setTier("T2 · click paste to allow");
+    else setTier("T1 · paste only (blocked)");
+  }
+}
+const setTier = t => $("sbTier").textContent = t;
+
+document.addEventListener("paste", e => {
+  if (e.target === $("editor")) return;
+  const t = (e.clipboardData || window.clipboardData).getData("text");
+  if (t) { $("editor").value = t; refresh(); ingest(t, "Captured by paste"); }
+});
+window.addEventListener("focus", tryRead);
+document.addEventListener("visibilitychange", () => document.visibilityState === "visible" && tryRead());
+
+function startPolling() {
+  clearInterval(pollTimer);
+  const ms = { "Off":0, "500ms":500, "1s":1000, "2s":2000 }[$("poll").value];
+  if (ms) pollTimer = setInterval(() => document.hasFocus() && tryRead(), ms);
+}
+async function tryRead() {
+  const sw = document.querySelector('.sw[data-k="autoread"]');
+  if (sw && sw.getAttribute("aria-checked") !== "true") return;
+  const t = await readFromOS();
+  if (t && t !== lastSeen) { $("editor").value = t; refresh(); ingest(t, "Captured on focus"); }
+}
+function ingest(text, how) {
+  if (!text || text === lastSeen) return;
+  lastSeen = text; toast(how);
+}
+
+/* ================= files (P2P) ================= */
+const drop = $("drop");
+drop.onclick = () => $("picker").click();
+$("bAdd").onclick = e => { e.stopPropagation(); $("picker").click(); };
+$("picker").onchange = e => addFiles(e.target.files);
+["dragenter","dragover"].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave","drop"].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => addFiles(e.dataTransfer.files));
+
+async function addFiles(list) {
+  for (const f of list) {
+    if (f.size > MAX_FILE) { toast(`${f.name} is ${fmtSize(f.size)} — over the 5 MB limit`); continue; }
+    files.push({
+      id: crypto.randomUUID().slice(0, 8), name: f.name, size: f.size, type: f.type,
+      blob: f, thumb: await makeThumb(f), origin: "local", progress: 0,
+    });
+    renderFiles();
+    // M7: broadcast {id, name, size, type, thumb} over the relay. The blob never goes.
+  }
+}
+async function makeThumb(file) {
+  if (!file.type.startsWith("image/")) return null;
+  try {
+    const bmp = await createImageBitmap(file);
+    const s = Math.min(THUMB_PX / bmp.width, THUMB_PX / bmp.height, 1);
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    bmp.close();
+    return c.toDataURL("image/jpeg", .7);
+  } catch { return null; }
+}
+const ICONS = { pdf:"📄", zip:"🗜", rar:"🗜", doc:"📝", docx:"📝", xls:"📊", xlsx:"📊",
+                mp4:"🎬", mov:"🎬", mp3:"🎵", wav:"🎵", json:"⚙", txt:"📄", csv:"📊", log:"📄" };
+const esc = s => s.replace(/[<&]/g, c => c === "<" ? "&lt;" : "&amp;");
+
+function renderFiles() {
+  $("fileN").textContent = files.length;
+  $("noFiles").style.display = files.length ? "none" : "block";
+  $("grid").innerHTML = files.map(f => {
+    const ext = f.name.split(".").pop().toLowerCase();
+    const thumb = f.thumb ? `<img src="${f.thumb}" alt="">` : `<span>${ICONS[ext] || "📁"}</span>`;
+    const badge = f.origin === "local" ? `<span class="badge local">HERE</span>`
+      : f.progress > 0 && f.progress < 100 ? `<span class="badge busy">${f.progress}%</span>`
+      : `<span class="badge remote">P2P</span>`;
+    return `<div class="tile" data-id="${f.id}" title="${esc(f.name)} · ${fmtSize(f.size)}">
+      <div class="thumb">${thumb}</div>${badge}
+      <div class="meta"><div class="nm">${esc(f.name)}</div><div class="sz">${fmtSize(f.size)}</div></div>
+      <div class="bar" style="width:${f.progress}%"></div></div>`;
+  }).join("");
+}
+$("grid").onclick = e => {
+  const tile = e.target.closest(".tile"); if (!tile) return;
+  const f = files.find(x => x.id === tile.dataset.id); if (!f) return;
+  if (f.origin === "local") {
+    const url = URL.createObjectURL(f.blob);
+    const a = document.createElement("a"); a.href = url; a.download = f.name; a.click();
+    URL.revokeObjectURL(url);
+  } else { toast(`Requesting ${f.name} over P2P — M7`); simulateTransfer(f); }
+};
+function simulateTransfer(f) {
+  $("sbP2P").textContent = "P2P transferring";
+  const t = setInterval(() => {
+    f.progress = Math.min(100, f.progress + 12); renderFiles();
+    if (f.progress >= 100) { clearInterval(t); $("sbP2P").textContent = "P2P connected"; toast(`${f.name} received`); }
+  }, 130);
+}
+
+/* ================= session ================= */
+function renderPeers() {
+  const list = [
+    { n:"This device (you)", m:"" },
+    { n:"Chrome · Windows",  m:"p2p" },
+    { n:"Chrome · Android",  m:"relay" },
+  ];
+  $("peerN").textContent = list.length;
+  $("sbPeers").textContent = `${list.length} devices`;
+  $("peers").innerHTML = list.map(p => `<div class="row">
+    <span class="dot on"></span><div class="l">${p.n}</div>
+    ${p.m === "p2p" ? '<span class="pill p2p">P2P</span>'
+      : p.m === "relay" ? '<span class="pill relay">RELAY</span>' : ""}</div>`).join("");
+}
+function setKey(k) {
+  $("key").textContent = k; $("bcKey").textContent = k; $("sbKeyText").textContent = k;
+  location.hash = k;
+}
+$("bNew").onclick = e => { e.stopPropagation(); setKey(newKey()); toast("New key — old session dropped"); };
+const copyLink = async () => {
+  const url = location.origin + location.pathname + "#" + $("key").textContent;
+  if (await writeToOS(url)) toast("Link copied — it contains the key");
+};
+$("bLink").onclick = e => { e.stopPropagation(); copyLink(); };
+$("sbKey").onclick = copyLink;
+$("bLeave").onclick = () => toast("Leave session — M1");
+$("bAbout").onclick = () => alert(
+  "Hopboard — layout preview\n\n" +
+  "REAL: OS clipboard read/write, Ln/Col, 5 MB file cap, thumbnails generated locally.\n" +
+  "STUBBED: network. Relay transport = M1, WebRTC file transfer = M7.\n\n" +
+  "Files never touch the server — only their thumbnails travel automatically."
+);
+$("poll").onchange = startPolling;
+document.querySelectorAll(".sw").forEach(sw => sw.onclick = () =>
+  sw.setAttribute("aria-checked", sw.getAttribute("aria-checked") === "true" ? "false" : "true"));
+
+/* collapsible sidebar panes, VS Code style */
+document.querySelectorAll("[data-toggle]").forEach(h =>
+  h.onclick = () => h.parentElement.classList.toggle("collapsed"));
+
+/* activity bar */
+const abs = { abEditor:null, abFiles:"paneFiles", abPeers:"paneSession", abSettings:"paneSession" };
+Object.keys(abs).forEach(id => $(id).onclick = () => {
+  document.querySelectorAll(".abtn").forEach(b => b.classList.remove("on"));
+  $(id).classList.add("on");
+  if (id === "abEditor") { $("side").classList.toggle("hidden"); return; }
+  $("side").classList.remove("hidden");
+  const pane = $(abs[id]);
+  pane.classList.remove("collapsed");
+  pane.scrollIntoView({ behavior:"smooth", block:"nearest" });
+});
+
+/* ================= boot ================= */
+setKey(location.hash.slice(1).toUpperCase() || newKey());
+refresh(); renderPeers(); renderFiles(); detectTier();
+</script>
+</body>
+</html>

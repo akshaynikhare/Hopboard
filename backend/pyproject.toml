@@ -1,0 +1,12 @@
+[project]
+name = "liveclip-relay"
+version = "0.1.0"
+description = "LiveClip relay - in-memory WebSocket fan-out for clipboard sync"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi[standard]>=0.115.0",
+]
+
+# NOTE: this app keeps all room state in process memory by design (no DB).
+# It MUST run on a single replica or peers land on different instances and
+# silently fail to sync. See docs/PRD.md OI-3.

@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LiveClip — M0 transport spike</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --line: #262b36; --text: #e6e9ef;
+    --dim: #8b93a7; --ok: #3ddc97; --warn: #ffb454; --bad: #ff6b6b; --accent: #6aa6ff;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f6f7f9; --panel:#fff; --line:#e2e5ea; --text:#12151b;
+            --dim:#5f6877; --accent:#2563eb; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:24px; background:var(--bg); color:var(--text);
+         font:15px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { font-size:19px; margin:0 0 2px; font-weight:650; }
+  .sub { color:var(--dim); font-size:13px; margin-bottom:20px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:10px;
+           padding:16px; margin-bottom:14px; }
+  label { display:block; font-size:12px; color:var(--dim); margin-bottom:5px;
+          text-transform:uppercase; letter-spacing:.04em; }
+  input, textarea {
+    width:100%; background:var(--bg); color:var(--text); border:1px solid var(--line);
+    border-radius:7px; padding:10px 12px; font:inherit; }
+  input:focus, textarea:focus { outline:2px solid var(--accent); outline-offset:-1px; }
+  textarea { min-height:80px; resize:vertical; font-family:ui-monospace, Menlo, Consolas, monospace; font-size:13px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  .row > div { flex:1; min-width:150px; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:7px;
+           padding:10px 16px; font:inherit; font-weight:600; cursor:pointer; white-space:nowrap; }
+  button.ghost { background:transparent; color:var(--text); border:1px solid var(--line); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .key { font:600 26px/1 ui-monospace, Menlo, Consolas, monospace; letter-spacing:.14em; }
+  .pill { display:inline-flex; align-items:center; gap:7px; font-size:13px;
+          padding:5px 11px; border-radius:99px; background:var(--bg); border:1px solid var(--line); }
+  .dot { width:8px; height:8px; border-radius:99px; background:var(--dim); }
+  .dot.on { background:var(--ok); } .dot.off { background:var(--bad); } .dot.wait { background:var(--warn); }
+  .meta { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  #log { font:12px/1.65 ui-monospace, Menlo, Consolas, monospace; background:var(--bg);
+         border:1px solid var(--line); border-radius:7px; padding:11px; height:230px;
+         overflow-y:auto; overflow-x:auto; white-space:pre; }
+  .t-rx { color:var(--ok); } .t-tx { color:var(--accent); }
+  .t-err { color:var(--bad); } .t-sys { color:var(--dim); }
+  .banner { display:none; padding:11px 13px; border-radius:8px; font-size:13px; margin-bottom:14px;
+            background:rgba(255,107,107,.12); border:1px solid var(--bad); color:var(--bad); }
+  .banner.show { display:block; }
+  .hint { font-size:12px; color:var(--dim); margin-top:9px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>LiveClip — M0 transport spike</h1>
+  <div class="sub">Proves the relay carries messages both ways. No clipboard, no encryption yet — that is M2 and M5.</div>
+
+  <div class="banner" id="splitBanner"></div>
+
+  <div class="panel">
+    <div class="row">
+      <div style="flex:2">
+        <label for="relay">Relay URL</label>
+        <input id="relay" placeholder="ws://127.0.0.1:8000" spellcheck="false">
+      </div>
+      <div>
+        <label for="key">Share key</label>
+        <input id="key" placeholder="D75LV" spellcheck="false" autocapitalize="characters">
+      </div>
+      <button id="newKey" class="ghost">New key</button>
+      <button id="go">Connect</button>
+    </div>
+    <div class="meta">
+      <span class="pill"><span class="dot" id="dot"></span><span id="state">Idle</span></span>
+      <span class="pill">Peers: <b id="peers">—</b></span>
+      <span class="pill">Instance: <b id="instance">—</b></span>
+      <span class="pill">Last hop: <b id="rtt">—</b></span>
+    </div>
+    <div class="hint">Open this page on a second machine, enter the same key, and connect.</div>
+  </div>
+
+  <div class="panel">
+    <label for="out">Send</label>
+    <textarea id="out" placeholder="Type anything, then Send (or press Ctrl/Cmd+Enter)"></textarea>
+    <div class="row" style="margin-top:10px">
+      <button id="send" disabled>Send</button>
+      <button id="ping" class="ghost" disabled>Ping</button>
+      <button id="clear" class="ghost">Clear log</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <label for="in">Received</label>
+    <textarea id="in" readonly placeholder="Messages from other peers appear here"></textarea>
+  </div>
+
+  <div class="panel">
+    <label>Event log</label>
+    <div id="log"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ";      // Crockford-ish: no 0/O/1/I/L
+const ORIGIN_ID = Math.random().toString(36).slice(2, 8);
+const HEARTBEAT_MS = 30000;
+
+let sock = null, wantOpen = false, backoff = 1000, hbTimer = null;
+let sentAt = 0, seenInstance = null, intent = "join";
+// A key we generated ourselves must connect with intent:"create" so a collision
+// with a live room is detected rather than silently joined (OI-2). A key the
+// user typed or followed a link to is always intent:"join".
+let keyIsGenerated = false;
+
+const newKey = () => Array.from(crypto.getRandomValues(new Uint8Array(6)))
+  .map(b => ALPHABET[b % ALPHABET.length]).join("");
+
+function log(msg, cls = "t-sys") {
+  const el = $("log");
+  const at = new Date().toTimeString().slice(0, 8);
+  el.innerHTML += `<div class="${cls}">${at}  ${msg.replace(/</g, "&lt;")}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function setState(text, cls) {
+  $("state").textContent = text;
+  $("dot").className = "dot " + (cls || "");
+  const live = sock && sock.readyState === WebSocket.OPEN;
+  $("send").disabled = $("ping").disabled = !live;
+}
+
+function connect() {
+  const base = $("relay").value.trim().replace(/\/+$/, "");
+  const key = $("key").value.trim().toUpperCase();
+  if (!base || !key) return log("Relay URL and key are both required", "t-err");
+
+  localStorage.setItem("m0.relay", base);
+  localStorage.setItem("m0.key", key);
+  location.hash = key;
+
+  wantOpen = true;
+  setState("Connecting…", "wait");
+  log(`connecting to ${base}/ws/<hash of ${key}> as ${ORIGIN_ID}`);
+
+  roomHash(key).then(hash => {
+    sock = new WebSocket(`${base}/ws/${hash}`);
+
+    sock.onopen = () => {
+      backoff = 1000;
+      setState("Connected", "on");
+      log("websocket open — upgrade accepted", "t-rx");
+      send({ t: "hello", intent, originId: ORIGIN_ID });
+      hbTimer = setInterval(() => send({ t: "ping" }), HEARTBEAT_MS);
+    };
+
+    sock.onmessage = e => {
+      const m = JSON.parse(e.data);
+      if (m.t === "welcome") {
+        $("peers").textContent = m.peers;
+        $("instance").textContent = m.instance || "—";
+        log(`welcome — peers=${m.peers} existing=${m.existing} instance=${m.instance}`, "t-rx");
+
+        // OI-3: a changed instance id across reconnects means we may be hitting
+        // a different replica, and rooms are process-local. Fail loudly.
+        if (seenInstance && m.instance !== seenInstance) {
+          $("splitBanner").className = "banner show";
+          $("splitBanner").textContent =
+            `Split-brain risk: relay instance changed ${seenInstance} → ${m.instance}. ` +
+            `Rooms are per-process, so peers on different replicas cannot see each other. Pin replicas to 1.`;
+          log(`INSTANCE CHANGED ${seenInstance} -> ${m.instance}`, "t-err");
+        }
+        seenInstance = m.instance;
+
+        if (intent === "create" && m.existing > 0) {
+          log(`key collision: ${m.existing} peer(s) already here — regenerating (OI-2)`, "t-err");
+          sock.close(1000);
+          $("key").value = newKey();
+          setTimeout(connect, 150);
+          return;
+        }
+        if (m.last) showRx(m.last, "replayed last clip");
+      }
+      else if (m.t === "clip") {
+        showRx(m, `from ${m.originId} seq=${m.seq}`);
+      }
+      else if (m.t === "peers") {
+        $("peers").textContent = m.count;
+        log(`peers now ${m.count}`);
+      }
+      else if (m.t === "pong") {
+        const ms = Math.round(performance.now() - sentAt);
+        $("rtt").textContent = ms + " ms";
+        log(`pong ${ms} ms`, "t-rx");
+      }
+      else if (m.t === "error") log(`server error: ${m.code}`, "t-err");
+    };
+
+    sock.onclose = ev => {
+      clearInterval(hbTimer);
+      setState("Disconnected", "off");
+      log(`closed (code ${ev.code})`, "t-err");
+      if (wantOpen) {
+        const wait = backoff;
+        backoff = Math.min(backoff * 2, 30000);
+        const jitter = Math.round(wait * (0.8 + Math.random() * 0.4));
+        setState(`Reconnecting in ${(jitter / 1000).toFixed(1)}s…`, "wait");
+        log(`reconnecting in ${jitter} ms`);
+        setTimeout(() => { if (wantOpen) connect(); }, jitter);
+      }
+    };
+
+    sock.onerror = () => log("websocket error — upgrade may have been blocked", "t-err");
+  });
+}
+
+function showRx(m, note) {
+  const text = m.payload == null ? "" : atob(m.payload);
+  $("in").value = text;
+  log(`RX  ${note}  "${text.slice(0, 60)}"`, "t-rx");
+}
+
+function send(obj) {
+  if (!sock || sock.readyState !== WebSocket.OPEN) return;
+  if (obj.t === "ping") sentAt = performance.now();
+  sock.send(JSON.stringify(obj));
+}
+
+/* Room routing uses a hash of the key, so the relay never learns the key itself
+   (PRD 7.3). M0 stops here — payload encryption lands in M5. */
+async function roomHash(key) {
+  const bytes = new TextEncoder().encode("liveclip:" + key);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest).slice(0, 16))
+    .map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+$("go").onclick = () => {
+  if (wantOpen) { wantOpen = false; sock && sock.close(1000); $("go").textContent = "Connect"; }
+  else { intent = keyIsGenerated ? "create" : "join"; connect(); $("go").textContent = "Disconnect"; }
+};
+$("newKey").onclick = () => {
+  $("key").value = newKey();
+  keyIsGenerated = true;
+  log(`generated key ${$("key").value} (will connect with intent=create)`);
+};
+$("key").oninput = () => { keyIsGenerated = false; };   // typed by hand => joining
+$("send").onclick = () => {
+  const text = $("out").value;
+  if (!text) return;
+  send({ t: "clip", payload: btoa(text), iv: "", originId: ORIGIN_ID });
+  log(`TX  "${text.slice(0, 60)}"`, "t-tx");
+};
+$("ping").onclick = () => send({ t: "ping" });
+$("clear").onclick = () => $("log").innerHTML = "";
+$("out").onkeydown = e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") $("send").click();
+};
+
+$("relay").value = localStorage.getItem("m0.relay") || "ws://127.0.0.1:8000";
+const fromLink = location.hash.slice(1).toUpperCase() || localStorage.getItem("m0.key");
+if (fromLink) {
+  $("key").value = fromLink;              // shared or remembered => we are joining
+} else {
+  $("key").value = newKey();
+  keyIsGenerated = true;                  // fresh visit => we are creating
+}
+log("ready — set the relay URL, then Connect");
+</script>
+</body>
+</html>
