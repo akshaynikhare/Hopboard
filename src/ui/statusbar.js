@@ -28,7 +28,12 @@ export function init() {
     $("sbP2P").textContent = path === "relay" ? "Relay fallback" : "P2P connected";
   });
 
-  on(EV.FILE_PROGRESS, ({ percent }) => {
-    $("sbP2P").textContent = percent >= 100 ? "P2P connected" : `P2P ${percent}%`;
+  // The label must follow the actual path. Printing "P2P n%" for every tick
+  // overwrote the RELAY label mid-transfer, which is exactly the silent
+  // fallback FR-7.6 forbids — the user would have watched a relay transfer
+  // labelled as direct.
+  on(EV.FILE_PROGRESS, ({ percent, path }) => {
+    const label = path === "relay" ? "Relay" : "P2P";
+    $("sbP2P").textContent = percent >= 100 ? `${label} connected` : `${label} ${percent}%`;
   });
 }

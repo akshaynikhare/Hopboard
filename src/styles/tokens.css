@@ -31,6 +31,12 @@
   --hover:#2a2d2e;
   --sel:#264f78;
 
+  /* Foregrounds for the two surfaces that keep their colour in BOTH themes —
+     the activity bar and the status bar, exactly as VS Code does. These are
+     not theme-dependent, so they are defined once and never overridden below. */
+  --on-fixed:#ffffff;
+  --on-fixed-bad:#ffd0d0;   /* over-limit counter, on the blue status bar */
+
   /* semantic */
   --ok:#4ec9b0;
   --warn:#cca700;

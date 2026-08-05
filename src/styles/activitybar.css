@@ -22,8 +22,8 @@
   background:none;
   color:rgba(255,255,255,.5);
 }
-.abtn:hover { color:#fff; }
-.abtn.on { color:#fff; border-left-color:#fff; }
+.abtn:hover { color:var(--on-fixed); }
+.abtn.on { color:var(--on-fixed); border-left-color:var(--on-fixed); }
 
 .abtn svg {
   width:22px; height:22px;

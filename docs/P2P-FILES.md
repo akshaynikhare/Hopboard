@@ -99,11 +99,20 @@ Rather than run a TURN server, fall back to the relay we already have:
   3. Show the user which path was used — the peer list already has P2P / RELAY badges
 ```
 
-This works because the file cap is 5 MB, not 5 GB. 160 forwarded frames is well
-within what the relay already does for text, it stores nothing, and the payload is
-already end-to-end encrypted so the relay still cannot read it. The cost is
-bandwidth on the free tier, which is why fallback transfers should be rate-limited
-and visibly labelled.
+This works because the file cap is 5 MB, not 5 GB. The relay stores nothing, and
+the payload is end-to-end encrypted, so a fallback transfer is no more legible to
+the relay than a direct one.
+
+**Be honest about the speed, though.** The earlier "~160 frames" figure was wrong
+twice over: the real chunk size is ~18 KB (see §5), giving **289 frames**, and the
+sender paces at 8 frames/sec to stay under the relay's interactive cap and leave
+room for heartbeats. So a 5 MB file over the fallback takes roughly **36 seconds**,
+not the few seconds this document previously implied.
+
+That is survivable, but it is not a footnote: on the target corporate network the
+fallback is the *common* path, not the exception. The UI must show progress and
+the RELAY label from the moment the fallback is chosen — a 36-second transfer with
+no feedback is indistinguishable from a hang.
 
 **The UI must never silently fall back.** A user in a corporate office should be
 able to see that their file went via the relay, because that is a different
