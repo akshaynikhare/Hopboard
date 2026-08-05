@@ -1,0 +1,17 @@
+# Hopboard
+#
+# The marketing page is meant to be found. The app is not.
+#
+# A session key lives in the URL fragment, which is never sent to a server and
+# is not treated as a distinct URL by crawlers — so a key cannot leak through
+# the address itself. What could leak is the RENDERED app: crawlers execute
+# JavaScript, and by then the key, the clipboard contents and the history list
+# are all in the DOM. app.html carries a noindex meta tag; this file keeps
+# well-behaved crawlers from fetching it at all.
+
+User-agent: *
+Allow: /Hopboard/$
+Allow: /Hopboard/index.html
+Disallow: /Hopboard/app.html
+
+Sitemap: https://akshaynikhare.github.io/Hopboard/sitemap.xml

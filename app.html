@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hopboard</title>
+<meta name="theme-color" content="#007acc">
+
+<!-- The app itself must never be indexed.
+     A session key lives in the URL fragment, and a fragment is not sent to
+     servers or treated as a distinct URL by crawlers — so the key cannot leak
+     through the address alone. What CAN leak is the rendered page: Google
+     executes JavaScript, and by then the key is in the DOM, in the clipboard
+     content, and in the history list. noindex covers that. -->
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+
+<!-- Belt and braces: the key is in the fragment, which browsers never put in
+     a Referer header — but this also stops the path leaking to any third
+     party a user's clipboard content might reference. -->
+<meta name="referrer" content="no-referrer">
+
+<!-- Anything crawled here should be credited to the public page, not this one. -->
+<link rel="canonical" href="https://akshaynikhare.github.io/Hopboard/">
+<!-- Static rather than injected by install.js: Chrome evaluates install
+     criteria earlier this way, so beforeinstallprompt fires sooner. -->
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="stylesheet" href="./src/styles/main.css">
+<!-- Markup only. Behaviour lives in src/ — see docs/ARCHITECTURE.md -->
+<script type="module" src="./src/main.js"></script>
+</head>
+<body>
+<div class="vs">
+
+  <!-- ============ app header ============
+       One bar: identity, context, and the editor's actions. Replaces the
+       decorative menu strip, the single-document tab and the separate
+       breadcrumb — none of which did anything a one-document app needs. -->
+  <header class="appbar">
+    <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <rect x="8" y="3" width="8" height="4" rx="1"/>
+      <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
+      <path d="M9 13l2 2 4-4"/>
+    </svg>
+    <span class="brand">Hopboard</span>
+    <span class="crumb"><span id="bcKey">—</span><span class="sep">›</span>clipboard.txt</span>
+    <span class="tabspace"></span>
+    <!-- Live / Manual. The single most consequential setting, so it lives
+         here rather than in the settings pane. -->
+    <div id="mount-mode"></div>
+    <span class="tabspace"></span>
+    <div class="tabacts">
+      <button class="ibtn" id="aSelect" title="Select all">
+        <svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/></svg>
+      </button>
+      <button class="ibtn" id="aCopy" title="Copy all text to clipboard">
+        <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
+      </button>
+      <button class="ibtn" id="aPaste" title="Paste from clipboard">
+        <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="9" y="2" width="6" height="4" rx="1"/></svg>
+      </button>
+      <button class="ibtn" id="aSend" title="Send to your other devices">
+        <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+      </button>
+      <!-- Labelled, not a bare "×": an unlabelled cross on a text panel reads
+           as "close the tab", and this erases what you have typed. -->
+      <button class="ibtn danger" id="tabX" title="Erase the text in this editor">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/></svg>
+        <span class="lbl">Clear</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="body">
+
+    <!-- ============ PANEL 1 — editor ============ -->
+    <main class="main">
+
+      <!-- Components mount their own banners here (permission prompts, pending
+           clips, split-brain warnings). Keeps index.html free of per-feature
+           markup so modules stay self-contained. -->
+      <div id="mount-banners"></div>
+
+      <div class="edwrap">
+        <div class="gutter" id="gutter" aria-hidden="true">1</div>
+        <div class="edstack">
+          <textarea id="editor" spellcheck="false" aria-label="Shared clipboard text"></textarea>
+          <!-- Getting-started hints, shown only while the editor is empty and
+               faded out after a few seconds. aria-hidden because the same
+               guidance is on the landing page in real prose. -->
+          <div id="mount-hints" aria-hidden="true"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Drag to widen or narrow the sidebar. -->
+    <div class="resizer resizer-v" id="resizeSide" role="separator"
+         aria-orientation="vertical" aria-label="Resize sidebar" tabindex="0"></div>
+
+    <!-- ============ sidebar ============ -->
+    <aside class="side" id="side">
+      <div class="sidehead">Explorer</div>
+
+      <!-- PANEL 2 — files -->
+      <section class="pane grow" id="paneFiles">
+        <div class="paneh" data-toggle>
+          <span class="chev">⌄</span> Files &amp; Images
+          <span class="spacer"></span>
+          <span class="soft" id="fileN">0</span>
+          <button class="ibtn" id="bAdd" title="Add files">
+            <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
+        <div class="paneb">
+          <div class="drop" id="drop">
+            <b>Drop files or click to add</b>Max 5 MB each · sent peer-to-peer
+          </div>
+          <div class="grid" id="grid"></div>
+          <div class="none" id="noFiles">
+            Thumbnails appear here. The file itself only transfers when someone asks for it.
+          </div>
+          <input type="file" id="picker" multiple hidden>
+        </div>
+      </section>
+
+      <!-- Drag to rebalance the panes above and below. -->
+      <div class="resizer resizer-h" id="resizePanes" role="separator"
+           aria-orientation="horizontal" aria-label="Resize panels" tabindex="0"></div>
+
+      <!-- Feature modules mount additional panes here (history, transfers). -->
+      <div id="mount-panes"></div>
+
+      <!-- PANEL 3 — session -->
+      <section class="pane grow" id="paneSession">
+        <div class="paneh" data-toggle>
+          <span class="chev">⌄</span> Session
+          <span class="spacer"></span>
+          <button class="ibtn" id="bNew" title="New key">
+            <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/></svg>
+          </button>
+          <button class="ibtn" id="bLink" title="Copy share link">
+            <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/></svg>
+          </button>
+        </div>
+        <div class="paneb">
+          <div class="grp">Share key</div>
+          <div class="keyrow">
+            <div class="key" id="key">—</div>
+            <button class="btn ghost" id="bQr">QR</button>
+          </div>
+          <div class="warn">
+            Anyone with this key can read what you copy and request your files.
+            The key <em>is</em> the password — it never reaches the server.
+          </div>
+          <div class="alert" id="splitWarn"></div>
+
+          <div class="grp">Devices — <span id="peerN">1</span></div>
+          <div id="peers"></div>
+
+          <div class="grp">Clipboard</div>
+          <div class="row">
+            <div class="l"><b>Auto-write incoming</b><span>Put received text on this machine's clipboard</span></div>
+            <button class="sw" role="switch" aria-checked="true" data-k="autowrite" aria-label="Auto-write incoming"></button>
+          </div>
+          <div class="row">
+            <div class="l"><b>Auto-read on focus</b><span>Pick up copies when you switch back here</span></div>
+            <button class="sw" role="switch" aria-checked="true" data-k="autoread" aria-label="Auto-read on focus"></button>
+          </div>
+          <div class="row">
+            <div class="l"><b>Poll while focused</b><span>Catch copies without switching away</span></div>
+            <select id="poll" aria-label="Poll interval">
+              <option>Off</option><option selected>1s</option><option>500ms</option><option>2s</option>
+            </select>
+          </div>
+
+          <div class="grp">Transfer</div>
+          <div class="row">
+            <div class="l"><b>Auto-send my files</b><span>Let peers fetch your files without asking you first</span></div>
+            <button class="sw" role="switch" aria-checked="false" data-k="autoaccept" aria-label="Auto-accept files"></button>
+          </div>
+          <div class="row">
+            <div class="l"><b>Send thumbnails</b><span>Previews travel automatically — see OI-15</span></div>
+            <button class="sw" role="switch" aria-checked="true" data-k="thumbs" aria-label="Send thumbnails"></button>
+          </div>
+          <div class="row">
+            <div class="l"><b>Direction</b><span>Whether this device sends, receives, or both</span></div>
+            <select id="direction" aria-label="Direction">
+              <option>Both</option><option>Send only</option><option>Receive only</option>
+            </select>
+          </div>
+
+          <div class="grp">&nbsp;</div>
+          <div class="keyrow">
+            <button class="btn ghost" id="bLeave">Leave session</button>
+            <button class="btn ghost" id="bAbout">About</button>
+          </div>
+        </div>
+      </section>
+    </aside>
+  </div>
+
+  <!-- ============ status bar ============ -->
+  <div class="statusbar">
+    <div class="sitem" id="sbKey" title="Share key — click to copy the link">
+      <svg viewBox="0 0 24 24"><circle cx="7" cy="17" r="3"/><path d="M9.5 15L20 4.5M17 7l2 2M14 10l2 2"/></svg>
+      <span id="sbKeyText">—</span>
+    </div>
+    <div class="sitem plain" id="sbConn"><span class="dot"></span><span id="sbConnText">Not connected</span></div>
+    <div class="sitem plain" id="sbPeers">1 device</div>
+    <div class="sitem plain" id="sbMode">Live sync</div>
+    <div class="sitem plain optional" id="sbP2P">P2P idle</div>
+    <div class="sspacer"></div>
+    <div class="sitem plain" id="sbTier">checking…</div>
+    <div class="sitem plain" id="sbLnCol">Ln 1, Col 1</div>
+    <div class="sitem plain" id="sbChars">0 / 50,000</div>
+    <div class="sitem plain optional">UTF-8</div>
+    <div class="sitem plain optional">Plain Text</div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- Dialogs and overlays mount here (QR, file-accept prompts, about). -->
+<div id="mount-modals"></div>
+</body>
+</html>

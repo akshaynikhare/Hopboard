@@ -29,8 +29,8 @@ import { dirname, join, resolve } from "node:path";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const RELAY = process.argv[2] || "wss://hopboard.fastapicloud.dev";
 
-const dom = new JSDOM(readFileSync(join(REPO, "index.html"), "utf8"), {
-  url: "https://akshaynikhare.github.io/Hopboard/#BOOTTEST",
+const dom = new JSDOM(readFileSync(join(REPO, "app.html"), "utf8"), {
+  url: "https://akshaynikhare.github.io/Hopboard/app.html#BOOTTEST",
   pretendToBeVisual: true,
 });
 const { window } = dom;

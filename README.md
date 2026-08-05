@@ -43,7 +43,8 @@ and it stores nothing beyond the last message in RAM.
 ## Repo layout
 
 ```
-index.html              entry point
+index.html              marketing landing page (indexable)
+app.html                the app itself (noindex)
 src/
   main.js               composition root — wires modules together
   core/                 bus, config, state, crypto, storage

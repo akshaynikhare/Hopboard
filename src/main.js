@@ -34,6 +34,7 @@ import * as sessionPanel from "./ui/sessionPanel.js";
 import * as statusbar from "./ui/statusbar.js";
 import * as resizer from "./ui/resizer.js";
 import * as syncMode from "./ui/syncMode.js";
+import * as hints from "./ui/hints.js";
 
 /* ------------------------------------------------------------------
    session key
@@ -324,6 +325,7 @@ async function boot() {
   safeInit("session panel", sessionPanel.init);
   safeInit("resizers", resizer.init);
   safeInit("sync mode", syncMode.init);
+  safeInit("hints", hints.init);
   safeInit("install prompt", install.init);
 
   await loadOptional();
