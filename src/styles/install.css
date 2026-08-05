@@ -1,6 +1,11 @@
 /* PWA install / update banners. Mounted into #mount-banners by ui/install.js.
-   Styled after a VS Code editor notification: one line, an action, a dismiss.
-   Colours come from tokens.css — see docs/ARCHITECTURE.md §3. */
+   Colours come from tokens.css — see docs/ARCHITECTURE.md §3.
+
+   Deliberately its own class namespace rather than reusing .banner from
+   banners.css: the two modules are independent and neither should be able to
+   restyle the other by accident. The metrics below match .banner on purpose so
+   they still line up when both are on screen at once. The horizontal inset is
+   left to #mount-banners for the same reason. */
 
 /* Marker so ui/install.js can tell this sheet is already loaded (via an
    @import in main.css) and skip injecting a second <link> for it. */
@@ -10,19 +15,24 @@
   display:flex;
   align-items:center;
   gap:10px;
-  margin:0 16px 8px;
-  padding:7px 9px 7px 11px;
-  font-size:12px;
+  margin:0 0 6px;
+  padding:9px 11px;
+  border-radius:3px;
+  border-left:3px solid var(--blue);
+  background:color-mix(in srgb, var(--blue) 10%, transparent);
+  font-size:12.5px;
   line-height:1.45;
   color:var(--text);
-  background:var(--side);
-  border:1px solid var(--bd2);
-  border-left-width:2px;
-  border-radius:0 3px 3px 0;
 }
 
-.pwa.info { border-left-color:var(--blue); }
-.pwa.warn { border-left-color:var(--warn); }
+.pwa.info {
+  border-left-color:var(--blue);
+  background:color-mix(in srgb, var(--blue) 10%, transparent);
+}
+.pwa.warn {
+  border-left-color:var(--warn);
+  background:color-mix(in srgb, var(--warn) 10%, transparent);
+}
 
 .pwa-ico {
   width:15px; height:15px;
@@ -36,15 +46,20 @@
 .pwa.info .pwa-ico { color:var(--blue); }
 .pwa.warn .pwa-ico { color:var(--warn); }
 
-.pwa-msg { flex:1; min-width:0; }
+.pwa-msg { flex:1; min-width:0; word-break:break-word; }
 
-.pwa .btn { flex:none; }
+.pwa .btn { flex:none; padding:4px 10px; font-size:11.5px; }
+
 .pwa-x { color:var(--dim); }
 .pwa-x:hover { color:var(--text); }
 
-/* Single column on the Android target — the same breakpoint layout.css uses. */
+/* Single column on the Android target — the breakpoint layout.css uses.
+   Message and dismiss keep the top row; the action drops to a full-width row
+   rather than squeezing the text down to two words. */
 @media (max-width:900px) {
-  .pwa { flex-wrap:wrap; margin:0 12px 8px; }
-  .pwa-msg { flex:1 1 100%; order:3; }
-  .pwa .btn { margin-left:auto; }
+  .pwa { flex-wrap:wrap; }
+  .pwa-ico  { order:1; }
+  .pwa-msg  { order:2; flex:1 1 auto; }
+  .pwa-x    { order:3; }
+  .pwa .btn { order:4; flex:1 1 100%; }
 }

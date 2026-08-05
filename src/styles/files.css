@@ -46,6 +46,9 @@
 }
 .tile .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
 
+.tile.busy { border-color:var(--focus); }
+.tile.err  { border-color:var(--bad); }
+
 .tile .meta { padding:4px 5px 5px; }
 .tile .nm {
   font-size:10.5px;
@@ -54,7 +57,33 @@
   overflow:hidden;
   text-overflow:ellipsis;
 }
-.tile .sz { font-size:9.5px; color:var(--dim); font-family:var(--mono); }
+.tile .sz {
+  font-size:9.5px;
+  color:var(--dim);
+  font-family:var(--mono);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+/* A failed transfer states its reason on the tile, not only in a toast. */
+.tile .sz.bad { color:var(--bad); }
+
+/* Cancel sits opposite the badge so the two never collide. */
+.tile .tcancel {
+  position:absolute;
+  top:3px; left:3px;
+  width:16px; height:16px;
+  display:grid; place-items:center;
+  border:0;
+  border-radius:2px;
+  background:color-mix(in srgb, var(--editor) 72%, transparent);
+  color:var(--text);
+  font:inherit;
+  font-size:12px;
+  line-height:1;
+  cursor:pointer;
+}
+.tile .tcancel:hover { background:var(--bad); color:var(--bright); }
 
 /* The transport path is never hidden — a relay fallback is a different privacy
    story from a direct transfer, so it gets its own badge. */
@@ -72,6 +101,20 @@
 .badge.busy   { background:var(--warn); color:#241d00; }
 .badge.relay  { background:var(--warn); color:#241d00; }
 
+/* Outlined rather than solid: these two are states, not destinations. */
+.badge.err {
+  background:color-mix(in srgb, var(--bad) 22%, transparent);
+  color:var(--bad);
+  border:1px solid color-mix(in srgb, var(--bad) 45%, transparent);
+}
+/* A remote file nobody has fetched yet. It gets no P2P badge, because no
+   transfer has happened and the path is not ours to promise in advance. */
+.badge.want {
+  background:color-mix(in srgb, var(--text) 12%, transparent);
+  color:var(--dim);
+  border:1px solid var(--bd2);
+}
+
 .bar {
   position:absolute;
   left:0; bottom:0;
@@ -80,10 +123,85 @@
   background:var(--blue);
   transition:width .2s;
 }
+/* The bar carries the same warning colour as the RELAY badge, so a fallback
+   transfer looks different while it is running, not only once it lands. */
+.bar.viarelay { background:var(--warn); }
 
 .none {
   color:var(--dim);
   font-size:12px;
   padding:8px 12px;
   line-height:1.5;
+}
+
+/* ------------------------------------------------------------------ *
+ * File-request prompt (shown when settings.autoaccept is off)
+ *
+ * It appears on the machine that HOLDS the file. Session membership is the
+ * only thing authenticating a request, so this dialog is the last point at
+ * which anything can stop bytes leaving the disk — it is deliberately modal.
+ * ------------------------------------------------------------------ */
+
+.ask {
+  position:fixed;
+  inset:0;
+  z-index:60;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:16px;
+  background:color-mix(in srgb, var(--activity) 55%, transparent);
+}
+
+.ask .card {
+  width:min(380px, 92vw);
+  background:var(--side);
+  border:1px solid var(--bd2);
+  border-radius:4px;
+  padding:13px 15px 11px;
+  box-shadow:0 6px 24px color-mix(in srgb, var(--activity) 70%, transparent);
+}
+
+.ask .t {
+  font-size:12.5px;
+  color:var(--bright);
+  margin-bottom:7px;
+}
+.ask .f {
+  font-size:12px;
+  color:var(--text);
+  font-family:var(--mono);
+  word-break:break-all;          /* a peer chooses this name, not us */
+  margin-bottom:7px;
+}
+.ask .f .s { color:var(--dim); }
+
+.ask .w {
+  font-size:11px;
+  color:var(--dim);
+  line-height:1.45;
+  border-left:2px solid var(--warn);
+  padding-left:8px;
+  margin-bottom:11px;
+}
+.ask .w code {
+  font-family:var(--mono);
+  color:var(--str);
+}
+
+.ask .acts {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:7px;
+}
+/* The countdown is not decoration: the requesting side gives up on its own
+   deadline, so an unanswered prompt has to expire rather than mislead. */
+.ask .cd {
+  margin-right:auto;
+  font-size:10.5px;
+  font-family:var(--mono);
+  color:var(--dim);
 }

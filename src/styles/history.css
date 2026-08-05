@@ -1,0 +1,68 @@
+/*
+ * Clip history pane (PRD FR-2.9).
+ *
+ * Injected by ui/historyPanel.js rather than @imported from main.css, so the
+ * feature is self-contained: one init() line in main.js and nothing else moves.
+ *
+ * Structure comes from sidebar.css (.pane / .paneh / .paneb / .row) and
+ * components.css (.pill / .ibtn). Only the history-specific bits live here, and
+ * every colour is a tokens.css variable.
+ */
+
+.hist {
+  display: flex;
+  flex-direction: column;
+}
+
+.hrow {
+  cursor: pointer;
+  gap: 7px;
+  padding-right: 6px;
+}
+.hrow:focus-visible {
+  outline: 1px solid var(--focus);
+  outline-offset: -1px;
+}
+
+/* The copy button is quiet until the row is under the pointer — a button per
+   row is otherwise a wall of icons in a 20-item list. */
+.hrow .hcopy { opacity: 0; }
+.hrow:hover .hcopy,
+.hrow:focus-within .hcopy,
+.hrow .hcopy:focus-visible { opacity: 1; }
+
+/* Direction badges. Reuses the .pill sizing from components.css; the tint
+   pattern (colour at low alpha behind the same colour) matches .pill.p2p. */
+.pill.sent {
+  background: color-mix(in srgb, var(--focus) 22%, transparent);
+  color: var(--focus);
+}
+.pill.recv {
+  background: color-mix(in srgb, var(--ok) 22%, transparent);
+  color: var(--ok);
+}
+
+/* One line, always. What people paste here is stack traces and JSON, and a row
+   that grows to twenty lines destroys the list. */
+.hrow .hprev {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hrow .htime {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--dim);
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+#histEmpty code {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--str);
+}

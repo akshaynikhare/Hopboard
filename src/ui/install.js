@@ -29,6 +29,7 @@ const DISMISSED = "installDismissed";
 let deferredPrompt = null;    // the stashed beforeinstallprompt event
 let wantsReload = false;      // the user asked for the update, so reload on swap
 let hadController = false;    // was a worker already driving this page at boot?
+let started = false;          // init() is idempotent — listeners must not stack
 
 /* ---------------- OI-10: the fragment the install drops ---------------- */
 
@@ -251,6 +252,9 @@ export function init() {
   restoreRoom();
   linkStylesheet();
   linkManifest();
+
+  if (started) return;        // a second call must not double-register listeners
+  started = true;
 
   window.addEventListener("beforeinstallprompt", event => {
     event.preventDefault();          // suppress Chrome's own mini-infobar

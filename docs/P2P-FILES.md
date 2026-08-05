@@ -118,7 +118,22 @@ privacy and performance story from a direct transfer.
 | Max file size | 5 MB | Keeps relay fallback viable; keeps thumbnails cheap |
 | Thumbnail | 160 px longest edge, JPEG q0.7, ~8 KB | Rides inside the normal encrypted envelope |
 | Files per session | 20 | In-memory only; a browser tab is not a filing cabinet |
-| Chunk size (fallback) | 32 KB | Matches the existing relay frame cap — no protocol change |
+| Chunk size (P2P) | 32 KB | Raw binary over the data channel |
+| Chunk size (relay fallback) | ~18 KB, derived | See the correction below |
+
+> **Correction.** An earlier version of this document claimed the fallback could
+> reuse the 32 KB chunk size because it "matches the existing relay frame cap —
+> no protocol change". That is wrong. The relay's 32 KB cap applies to the
+> *encoded JSON frame*, and a relay chunk is base64'd (×4/3) with an AES-GCM tag
+> and envelope fields on top. A 32 KB chunk becomes a ~44 KB frame and the relay
+> rejects it — the fallback would have failed on its first chunk, on exactly the
+> corporate networks it exists to serve.
+>
+> `files/chunker.js` therefore *derives* `RELAY_CHUNK_BYTES` from
+> `FILES.CHUNK_BYTES` by working backwards through the expansion, landing at
+> ~18 KB and 289 chunks for a 5 MB file. Derived rather than hand-tuned, so the
+> two cannot drift apart. Still comfortably inside the relay's 400 chunks/sec
+> bulk allowance.
 
 Non-image files get an extension-based icon instead of a thumbnail. There is no
 server-side rendering of anything.

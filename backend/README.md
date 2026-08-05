@@ -25,7 +25,7 @@ python -m http.server 8080      # http://127.0.0.1:8080
 ## Test
 
 ```bash
-# 20-check protocol gate
+# 45-check protocol gate
 python test_relay.py ws://127.0.0.1:8000
 
 # hold a connection open on heartbeat alone

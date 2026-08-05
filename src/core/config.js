@@ -31,7 +31,18 @@ export const FILES = {
   MAX_COUNT: 20,              // per session, memory only (FR-7.7)
   THUMB_PX: 160,              // longest edge (FR-7.2)
   THUMB_QUALITY: 0.7,
-  CHUNK_BYTES: 32 * 1024,     // relay-fallback chunk, matches the relay frame cap (FR-7.6)
+  /**
+   * Chunk size for the P2P data channel, which carries raw binary.
+   *
+   * The relay fallback CANNOT use this value directly: a chunk there is
+   * base64'd inside a JSON frame, and base64 (plus the AES-GCM tag and the
+   * envelope fields) inflates it by roughly a third — a 32 KB chunk becomes a
+   * ~44 KB frame and is rejected by the relay's own 32 KB cap. The relay chunk
+   * size is therefore DERIVED from this, in files/chunker.js as
+   * RELAY_CHUNK_BYTES, rather than being a second hand-tuned number that could
+   * drift out of sync with it.
+   */
+  CHUNK_BYTES: 32 * 1024,
 };
 
 export const KEY = {

@@ -34,9 +34,12 @@ const ROOT = new URL("./", self.location).pathname;
  * The app shell, enumerated by hand.
  *
  * There is no build step to generate this (docs/ARCHITECTURE.md §1), so it is a
- * literal list and adding a module means adding a line here. A missing entry
- * degrades to "that file needs the network", not a broken install — see the
- * per-URL error handling in `install`.
+ * literal list and adding a module means adding a line here.
+ *
+ * Neither kind of drift is fatal. A missing entry still gets cached the first
+ * time the page asks for it (see `cacheFirst`), so it costs offline-on-first-
+ * -visit, not correctness; a stale entry for a deleted file fails its own
+ * cache.add() and is logged rather than failing the whole install.
  */
 const SHELL = [
   "./",
@@ -48,6 +51,8 @@ const SHELL = [
   "./src/core/bus.js",
   "./src/core/config.js",
   "./src/core/crypto.js",
+  "./src/core/device.js",
+  "./src/core/history.js",
   "./src/core/keys.js",
   "./src/core/state.js",
   "./src/core/storage.js",
@@ -55,6 +60,7 @@ const SHELL = [
   "./src/clipboard/capture.js",
   "./src/clipboard/os.js",
 
+  "./src/files/chunker.js",
   "./src/files/registry.js",
   "./src/files/thumbs.js",
   "./src/files/transfer.js",
@@ -63,10 +69,13 @@ const SHELL = [
   "./src/transport/relay.js",
 
   "./src/ui/activitybar.js",
+  "./src/ui/banners.js",
   "./src/ui/dom.js",
   "./src/ui/editor.js",
   "./src/ui/filesPanel.js",
+  "./src/ui/historyPanel.js",
   "./src/ui/install.js",
+  "./src/ui/qr.js",
   "./src/ui/sessionPanel.js",
   "./src/ui/statusbar.js",
   "./src/ui/toast.js",
@@ -82,6 +91,9 @@ const SHELL = [
   "./src/styles/files.css",
   "./src/styles/statusbar.css",
   "./src/styles/components.css",
+  "./src/styles/banners.css",
+  "./src/styles/history.css",
+  "./src/styles/qr.css",
   "./src/styles/install.css",
 
   "./icons/icon.svg",

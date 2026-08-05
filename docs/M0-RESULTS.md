@@ -18,7 +18,7 @@ architecture carry a WebSocket?* Everything below is evidence for or against tha
 | Artifact | Purpose |
 |---|---|
 | [`backend/main.py`](../backend/main.py) | The relay. ~170 lines, in-memory rooms, no DB |
-| [`backend/test_relay.py`](../backend/test_relay.py) | 20-check protocol gate, runs against any relay URL |
+| [`backend/test_relay.py`](../backend/test_relay.py) | 45-check protocol gate, runs against any relay URL |
 | [`backend/test_idle.py`](../backend/test_idle.py) | Long-idle heartbeat survival test |
 | ~~`m0/index.html`~~ | Two-machine browser harness. **Removed once M0 closed** — the real app does everything it did, and [`tests/e2e.mjs`](../tests/e2e.mjs) automates the same checks against live crypto |
 | [`backend/README.md`](../backend/README.md) | Deploy runbook, including the replica-pinning warning |
