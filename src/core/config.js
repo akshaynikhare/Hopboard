@@ -3,7 +3,19 @@
  * if you find a magic number elsewhere, it belongs here.
  */
 
-export const RELAY_URL = "ws://127.0.0.1:8000";   // M6: point at the deployed relay
+/**
+ * Relay endpoint.
+ *
+ * Must be wss:// in production: the site is served over HTTPS from GitHub
+ * Pages, and a browser refuses a ws:// connection from an https:// page as
+ * mixed content. Localhost is exempt from that rule, which is why the dev
+ * branch can stay ws://.
+ */
+const IS_LOCAL = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+
+export const RELAY_URL = IS_LOCAL
+  ? "ws://127.0.0.1:8000"
+  : "wss://hopboard.fastapicloud.dev";
 
 export const TEXT = {
   MAX_CHARS: 50_000,          // PRD FR-2.8
