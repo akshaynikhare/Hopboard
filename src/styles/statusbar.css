@@ -1,0 +1,42 @@
+/* Bottom status bar. */
+
+.statusbar {
+  height:var(--statusbar-h);
+  background:var(--status);
+  color:#fff;
+  display:flex;
+  align-items:center;
+  padding:0 4px;
+  flex:none;
+  font-size:12px;
+  user-select:none;
+}
+
+.sitem {
+  padding:0 8px;
+  height:var(--statusbar-h);
+  display:flex;
+  align-items:center;
+  gap:5px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.sitem:hover { background:rgba(255,255,255,.14); }
+.sitem.plain { cursor:default; }
+.sitem.plain:hover { background:none; }
+.sitem.over { color:#ffd0d0; font-weight:600; }
+
+.sspacer { flex:1; }
+
+.statusbar svg {
+  width:13px; height:13px;
+  fill:none; stroke:currentColor; stroke-width:1.6;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+
+.statusbar .dot { box-shadow:0 0 0 1px rgba(255,255,255,.35); }
+
+/* Drop the least useful items first on narrow screens. */
+@media (max-width:900px) {
+  #sbLnCol, .sitem.optional { display:none; }
+}

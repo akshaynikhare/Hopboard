@@ -1,0 +1,106 @@
+/* Shared primitives: buttons, switches, selects, pills, dots, toast. */
+
+.btn {
+  font:inherit;
+  font-size:12px;
+  cursor:pointer;
+  border-radius:2px;
+  border:1px solid transparent;
+  background:var(--blue);
+  color:#fff;
+  padding:5px 11px;
+}
+.btn:hover { filter:brightness(1.12); }
+.btn.ghost {
+  background:var(--input);
+  color:var(--text);
+  border-color:var(--bd2);
+}
+.btn.ghost:hover { background:var(--hover); }
+
+.ibtn {
+  width:22px; height:22px;
+  display:grid; place-items:center;
+  border:0; background:none;
+  color:var(--text);
+  cursor:pointer;
+  border-radius:4px;
+  flex:none;
+}
+.ibtn:hover { background:rgba(255,255,255,.12); }
+.ibtn svg {
+  width:14px; height:14px;
+  fill:none; stroke:currentColor; stroke-width:1.5;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+
+select {
+  background:var(--input);
+  color:var(--text);
+  border:1px solid var(--bd2);
+  border-radius:2px;
+  padding:3px 5px;
+  font:inherit;
+  font-size:12px;
+}
+
+.sw {
+  width:32px; height:18px;
+  border-radius:99px;
+  background:var(--bd2);
+  position:relative;
+  border:0;
+  flex:none;
+  cursor:pointer;
+  transition:background .14s;
+}
+.sw::after {
+  content:"";
+  position:absolute;
+  top:2px; left:2px;
+  width:14px; height:14px;
+  border-radius:99px;
+  background:#fff;
+  transition:transform .14s;
+}
+.sw[aria-checked="true"] { background:var(--blue); }
+.sw[aria-checked="true"]::after { transform:translateX(14px); }
+
+.dot {
+  width:7px; height:7px;
+  border-radius:99px;
+  background:var(--dim);
+  flex:none;
+}
+.dot.on   { background:var(--ok); }
+.dot.wait { background:var(--warn); }
+.dot.off  { background:var(--bad); }
+
+.pill {
+  font-size:9.5px;
+  font-weight:700;
+  padding:1px 5px;
+  border-radius:2px;
+  letter-spacing:.03em;
+}
+.pill.p2p   { background:color-mix(in srgb, var(--ok) 20%, transparent);   color:var(--ok); }
+.pill.relay { background:color-mix(in srgb, var(--warn) 20%, transparent); color:var(--warn); }
+
+.toast {
+  position:fixed;
+  bottom:34px; right:14px;
+  max-width:340px;
+  background:var(--side);
+  color:var(--text);
+  border:1px solid var(--bd2);
+  border-radius:3px;
+  padding:9px 13px;
+  font-size:12.5px;
+  opacity:0;
+  transform:translateY(8px);
+  transition:.18s;
+  pointer-events:none;
+  z-index:50;
+  box-shadow:0 3px 12px rgba(0,0,0,.45);
+}
+.toast.show { opacity:1; transform:translateY(0); }

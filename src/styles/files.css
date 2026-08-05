@@ -1,0 +1,89 @@
+/* Drop zone and thumbnail grid. */
+
+.drop {
+  margin:6px 10px;
+  border:1px dashed var(--bd2);
+  border-radius:3px;
+  padding:12px 10px;
+  text-align:center;
+  color:var(--dim);
+  font-size:12px;
+  cursor:pointer;
+}
+.drop:hover,
+.drop.over {
+  border-color:var(--focus);
+  color:var(--text);
+  background:color-mix(in srgb, var(--blue) 8%, transparent);
+}
+.drop b { display:block; color:var(--text); font-weight:400; margin-bottom:2px; }
+
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(92px, 1fr));
+  gap:6px;
+  padding:2px 10px 6px;
+}
+
+.tile {
+  background:var(--editor);
+  border:1px solid var(--bd2);
+  border-radius:3px;
+  overflow:hidden;
+  position:relative;
+  cursor:pointer;
+}
+.tile:hover { border-color:var(--focus); }
+
+.tile .thumb {
+  height:60px;
+  display:grid;
+  place-items:center;
+  background:var(--tab-off);
+  font-size:19px;
+  color:var(--dim);
+  overflow:hidden;
+}
+.tile .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+
+.tile .meta { padding:4px 5px 5px; }
+.tile .nm {
+  font-size:10.5px;
+  color:var(--text);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.tile .sz { font-size:9.5px; color:var(--dim); font-family:var(--mono); }
+
+/* The transport path is never hidden — a relay fallback is a different privacy
+   story from a direct transfer, so it gets its own badge. */
+.badge {
+  position:absolute;
+  top:3px; right:3px;
+  font-size:8px;
+  font-weight:700;
+  letter-spacing:.03em;
+  padding:2px 4px;
+  border-radius:2px;
+}
+.badge.local  { background:var(--blue); color:#fff; }
+.badge.remote { background:var(--ok);   color:#04231a; }
+.badge.busy   { background:var(--warn); color:#241d00; }
+.badge.relay  { background:var(--warn); color:#241d00; }
+
+.bar {
+  position:absolute;
+  left:0; bottom:0;
+  height:2px;
+  width:0;
+  background:var(--blue);
+  transition:width .2s;
+}
+
+.none {
+  color:var(--dim);
+  font-size:12px;
+  padding:8px 12px;
+  line-height:1.5;
+}

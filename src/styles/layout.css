@@ -1,0 +1,34 @@
+/* Application shell: title bar / [activity | editor | sidebar] / status bar. */
+
+.vs {
+  display:flex;
+  flex-direction:column;
+  height:100vh;
+}
+
+.body {
+  flex:1;
+  display:flex;
+  min-height:0;      /* lets children scroll instead of stretching the shell */
+}
+
+.main {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-width:0;
+  background:var(--editor);
+}
+
+/* Single column on small screens — the Android target. */
+@media (max-width:900px) {
+  .activity { display:none; }
+  .body { flex-direction:column; }
+  .main { min-height:44vh; }
+  .side {
+    width:auto;
+    border-left:0;
+    border-top:1px solid var(--bd);
+    max-height:52vh;
+  }
+}
