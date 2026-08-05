@@ -1,51 +1,5 @@
-/* Tabs, breadcrumb, gutter, textarea. */
-
-.tabs {
-  height:var(--tab-h);
-  background:var(--tab-off);
-  display:flex;
-  align-items:stretch;
-  flex:none;
-  border-bottom:1px solid var(--bd);
-}
-
-.tab {
-  display:flex;
-  align-items:center;
-  gap:7px;
-  padding:0 12px;
-  background:var(--tab-on);
-  border-right:1px solid var(--bd);
-  font-size:13px;
-  color:var(--bright);
-  position:relative;
-}
-.tab::before {          /* active-tab top accent */
-  content:"";
-  position:absolute; top:0; left:0; right:0; height:1px;
-  background:var(--blue);
-}
-.tab .fi { color:var(--blue); font-size:11px; font-weight:700; }
-.tab .x {
-  color:var(--dim); font-size:15px; line-height:1;
-  padding:1px 3px; border-radius:3px; cursor:pointer;
-}
-.tab .x:hover { background:var(--hover); color:var(--text); }
-
-.tabspace { flex:1; }
-.tabacts { display:flex; align-items:center; gap:2px; padding-right:8px; }
-
-.breadcrumb {
-  height:22px;
-  display:flex;
-  align-items:center;
-  gap:6px;
-  padding:0 16px;
-  font-size:12px;
-  color:var(--dim);
-  flex:none;
-}
-.breadcrumb .sep { opacity:.6; }
+/* The editor: gutter and textarea. The tab strip and breadcrumb moved into
+   the single app header — a one-document app has nothing to tab between. */
 
 .edwrap { flex:1; display:flex; min-height:0; overflow:hidden; }
 
@@ -54,7 +8,7 @@
 .gutter {
   flex:none;
   width:56px;
-  padding:6px 14px 6px 0;
+  padding:10px 14px 10px 0;
   text-align:right;
   overflow:hidden;
   color:var(--dim);
@@ -67,7 +21,7 @@
 #editor {
   flex:1;
   min-width:0;
-  padding:6px 16px 6px 0;
+  padding:10px 16px 10px 0;
   border:0;
   outline:none;
   resize:none;

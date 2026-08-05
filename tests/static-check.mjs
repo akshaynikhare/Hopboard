@@ -151,6 +151,29 @@ ok("service worker excludes the relay host",
    /fastapicloud|RELAY|ws:|wss:/.test(sw),
    "must skip relay traffic rather than cache it");
 
+/* ---------- 11. the precache list matches what is on disk ----------
+   cache.addAll() rejects as a unit, so ONE stale entry pointing at a deleted
+   file kills the whole install and offline support stops working with no
+   visible symptom. A hand-maintained list of 52 paths will rot; this makes
+   the rot fail a test instead of shipping. */
+const shellBlock = sw.match(/const SHELL = \[(.*?)\n\];/s)?.[1] ?? "";
+const listed = new Set([...shellBlock.matchAll(/"(\.\/[^"]*)"/g)].map(m => m[1]));
+
+const onDisk = new Set(["./", "./index.html", "./manifest.webmanifest"]);
+for (const dir of ["src", "icons"]) {
+  for (const f of walk(join(ROOT, dir))) {
+    if (/\.(js|css)$/.test(f) || dir === "icons") {
+      onDisk.add("./" + rel(f));
+    }
+  }
+}
+const stale = [...listed].filter(p => !onDisk.has(p));
+const unlisted = [...onDisk].filter(p => !listed.has(p));
+ok(`precache list matches disk (${listed.size} entries)`,
+   stale.length === 0 && unlisted.length === 0,
+   [stale.length ? `stale: ${stale.join(" ")}` : "",
+    unlisted.length ? `missing: ${unlisted.join(" ")}` : ""].filter(Boolean).join(" | "));
+
 console.log("\n" + "=".repeat(56));
 console.log(`STATIC: ${pass}/${pass + fail} passed`);
 console.log("=".repeat(56));

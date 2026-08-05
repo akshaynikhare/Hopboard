@@ -25,3 +25,7 @@ desktop.ini
 .env
 .env.*
 !.env.example
+
+# Only needed for tests/boot.mjs; the app ships with no dependencies
+node_modules/
+package-lock.json
