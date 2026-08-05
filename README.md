@@ -72,7 +72,7 @@ python -m http.server 8080
 cd backend
 pip install -r requirements.txt
 python -m uvicorn main:app --port 8000
-python test_relay.py ws://127.0.0.1:8000    # 20-check protocol gate
+python test_relay.py ws://127.0.0.1:8000    # 45-check protocol gate
 ```
 
 See [backend/README.md](backend/README.md) for deployment, **including the

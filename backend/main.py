@@ -79,20 +79,29 @@ CLASS_LIMITS = {"interactive": RATE_LIMIT_MSGS, "signal": 60, "bulk": 400}
 
 # Frames the relay forwards without looking inside them. Targeted frames name
 # one recipient in `to`; ROOM_WIDE frames fan out to everyone but the sender.
-TARGETED = {"rtc-offer", "rtc-answer", "rtc-ice", "file-req", "file-chunk"}
+#
+# The five file-* control frames after file-req are not in docs/P2P-FILES.md,
+# which only sketches the happy path. They are what the client actually emits
+# (src/files/transfer.js FRAMES): a transfer needs an accept/deny handshake,
+# a completion marker and a way to abort, and every one of them is addressed to
+# a single peer. Left out, they come back UNKNOWN_TYPE and the fallback path in
+# FR-7.6 cannot complete. The relay still reads nothing but `t` and `to`.
+TARGETED = {
+    "rtc-offer", "rtc-answer", "rtc-ice",
+    "file-req", "file-accept", "file-deny",
+    "file-chunk", "file-done", "file-cancel", "file-error",
+}
 ROOM_WIDE = {"file-meta"}
 
-FRAME_CLASS = {
+# Every forwarded frame is setup/teardown control traffic — bursty for a moment,
+# then silent — except file-chunk, which is the bulk path.
+FRAME_CLASS = dict.fromkeys(TARGETED | ROOM_WIDE, "signal")
+FRAME_CLASS.update({
     "clip": "interactive",
     "ping": "interactive",
     "hello": "interactive",
-    "rtc-offer": "signal",
-    "rtc-answer": "signal",
-    "rtc-ice": "signal",
-    "file-meta": "signal",
-    "file-req": "signal",
     "file-chunk": "bulk",
-}
+})
 
 app = FastAPI(title="Hopboard relay", version="0.2.0-m7")
 
@@ -187,7 +196,13 @@ async def _broadcast(room: Room, frame: str, exclude: WebSocket | None = None) -
 
 
 def _roster(room: Room) -> list[dict]:
-    """Who is in the room, in join order. Nicknames only — no payload, ever."""
+    """Who is in the room, in join order. Nicknames only — no payload, ever.
+
+    An empty `name` means the client has not told us one (it has not sent hello
+    yet, or sent it without a nickname). The relay does not invent a label for
+    it: naming a device is the client's job (FR-5.7), and `""` is the signal the
+    UI needs to substitute its own wording.
+    """
     return [{"peerId": p.peer_id, "name": p.name} for p in room.peers.values()]
 
 

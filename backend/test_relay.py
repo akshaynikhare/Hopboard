@@ -179,14 +179,176 @@ async def main():
     except Exception as e:
         check("/health reachable", False, f"{type(e).__name__}: {e}")
 
+    # --- G10-G13: P2P plumbing (M7) ---------------------------------------
+    # A fresh room: the M0 connections above are deliberately left rate limited.
+    await p2p(f"{BASE}/ws/{room}p2p")
+
     return summarise()
+
+
+async def p2p(url):
+    """Peer identity, targeted forwarding, and the relay-chunk file fallback."""
+
+    # --- G10: identity and presence --------------------------------------
+    print("\nG10  Peer identity")
+    p = await websockets.connect(url)
+    wp = await recv(p)
+    check("welcome carries own peerId as `you`",
+          isinstance(wp.get("you"), str) and bool(wp.get("you")), f"you={wp.get('you')}")
+    check("welcome still carries existing + peers (M0 clients)",
+          wp.get("existing") == 0 and wp.get("peers") == 1, json.dumps(wp)[:120])
+    check("welcome carries the roster list",
+          isinstance(wp.get("list"), list) and len(wp["list"]) == wp.get("peers"),
+          json.dumps(wp.get("list")))
+
+    q = await websockets.connect(url); await recv(q)
+    r = await websockets.connect(url); await recv(r)
+
+    await hello(p, "peerP", "Chrome · Windows")
+    await hello(q, "peerQ", "Firefox · Linux")
+    await hello(r, "peerR", "Safari · macOS")
+
+    roster = await last_peers(p, 0.6)
+    names = {e.get("peerId"): e.get("name") for e in roster.get("list", [])}
+    check("peers frame carries a list, not just a count",
+          roster.get("count") == 3 and len(roster.get("list", [])) == 3,
+          json.dumps(roster, ensure_ascii=False)[:160])
+    check("peer list carries ids and nicknames",
+          names.get("peerP") == "Chrome · Windows" and names.get("peerQ") == "Firefox · Linux"
+          and names.get("peerR") == "Safari · macOS",
+          json.dumps(names, ensure_ascii=False))
+
+    await drain(q); await drain(r)
+
+    s = await websockets.connect(url); await recv(s)
+    await hello(s, "peerP", "Impostor")
+    dup = [m.get("code") for m in await drain(s) if m.get("t") == "error"]
+    check("duplicate originId refused, so one id means one socket",
+          "PEER_ID_TAKEN" in dup, json.dumps(dup))
+    await s.close()
+    await drain(p); await drain(q); await drain(r)
+
+    # --- G11: targeted signalling -----------------------------------------
+    print("\nG11  Targeted signalling")
+    await send(p, {"t": "rtc-offer", "to": "peerQ", "sdp": "v=0 fake", "from": "spoofed"})
+    got = await recv_data(q, timeout=2.0)
+    check("rtc-offer reaches the addressed peer",
+          got.get("t") == "rtc-offer" and got.get("sdp") == "v=0 fake", json.dumps(got)[:120])
+    check("relay stamps `from`, overriding the sender's claim",
+          got.get("from") == "peerP", f"from={got.get('from')}")
+    leaked = [m for m in await drain(r) if m.get("t") != "peers"]
+    check("targeted frame does not leak to the rest of the room",
+          leaked == [], json.dumps(leaked)[:100])
+
+    await send(q, {"t": "rtc-answer", "to": "peerP", "sdp": "v=0 answer"})
+    await send(q, {"t": "rtc-ice", "to": "peerP", "cand": "candidate:1 1 udp"})
+    kinds = [m.get("t") for m in await drain(p) if m.get("t") != "peers"]
+    check("rtc-answer and rtc-ice forward the same way",
+          kinds == ["rtc-answer", "rtc-ice"], json.dumps(kinds))
+
+    await send(p, {"t": "rtc-offer", "to": "peerNOBODY", "sdp": "v=0"})
+    m = await recv_data(p, timeout=2.0)
+    check("NO_SUCH_PEER for an unknown target", m.get("code") == "NO_SUCH_PEER",
+          json.dumps(m)[:100])
+    await send(p, {"t": "rtc-ice", "cand": "candidate:2 1 udp"})
+    m = await recv_data(p, timeout=2.0)
+    check("NO_SUCH_PEER when `to` is missing entirely",
+          m.get("code") == "NO_SUCH_PEER" and m.get("to") is None, json.dumps(m)[:100])
+    check("connection survives a bad target", p.state.name == "OPEN", p.state.name)
+
+    # --- G12: file frames --------------------------------------------------
+    print("\nG12  File frames")
+    await send(p, {"t": "file-meta", "id": "f1", "name": "shot.png", "size": 4200000,
+                   "thumb": "dGh1bWJuYWls", "originId": "peerP"})
+    gq = await recv_data(q, timeout=2.0)
+    gr = await recv_data(r, timeout=2.0)
+    check("file-meta broadcasts to the room",
+          gq.get("t") == "file-meta" and gq.get("id") == "f1" and gr.get("id") == "f1",
+          json.dumps(gq)[:120])
+    echo = [m for m in await drain(p) if m.get("t") != "peers"]
+    check("file-meta is not echoed to its sender", echo == [], json.dumps(echo)[:100])
+
+    await send(q, {"t": "file-req", "id": "f1", "to": "peerP", "originId": "peerQ"})
+    req = await recv_data(p, timeout=2.0)
+    check("file-req reaches only its target",
+          req.get("t") == "file-req" and req.get("from") == "peerQ", json.dumps(req)[:120])
+    leaked = [m for m in await drain(r) if m.get("t") != "peers"]
+    check("file-req does not reach the rest of the room", leaked == [], json.dumps(leaked)[:100])
+
+    # The accept/deny handshake, completion marker and abort paths the client
+    # actually emits (src/files/transfer.js). Any one of these coming back as
+    # UNKNOWN_TYPE strands a transfer half-open.
+    control = ["file-accept", "file-deny", "file-done", "file-cancel", "file-error"]
+    for t in control:
+        await send(q, {"t": t, "id": "f1", "to": "peerP", "reason": "test"})
+    fwd = [m.get("t") for m in await drain(p) if m.get("t") != "peers"]
+    check("transfer control frames all forward", fwd == control, json.dumps(fwd))
+
+    # --- G13: relay-chunk fallback (FR-7.6) --------------------------------
+    print("\nG13  Relay-chunk fallback")
+    CHUNKS = 160          # a 5 MB file at the 32 KB frame cap — P2P-FILES §5
+    t0 = time.monotonic()
+    for i in range(CHUNKS):
+        await send(p, {"t": "file-chunk", "to": "peerQ", "id": "f1", "seq": i,
+                       "iv": "aXY=", "data": "Y2h1bms="})
+    got = 0
+    try:
+        while got < CHUNKS:
+            if (await recv(q, timeout=5.0)).get("t") == "file-chunk":
+                got += 1
+    except asyncio.TimeoutError:
+        pass
+    ms = (time.monotonic() - t0) * 1000
+    check("a whole 5 MB file's worth of chunks is delivered",
+          got == CHUNKS, f"{got}/{CHUNKS} in {ms:.0f} ms")
+    errs = [m.get("code") for m in await drain(p) if m.get("t") == "error"]
+    check("bulk transfer is not rate limited", errs == [], json.dumps(errs[:3]))
+
+    for i in range(520):  # past the 400/s bulk bound
+        await send(p, {"t": "file-chunk", "to": "peerQ", "id": "f2", "seq": i,
+                       "iv": "aXY=", "data": "Y2h1bms="})
+    codes = [m.get("code") for m in await drain(p, 1.0) if m.get("t") == "error"]
+    check("bulk is still bounded — a runaway sender is throttled",
+          "RATE_LIMITED" in codes, f"{len(codes)} of 520 limited")
+    await drain(q, 1.0)
+
+    await send(p, {"t": "file-chunk", "to": "peerQ", "id": "f3", "seq": 0,
+                   "iv": "aXY=", "data": "x" * 40000})
+    codes = [m.get("code") for m in await drain(p)]
+    check("32 KB cap still applies to file-chunk", "TOO_LARGE" in codes, json.dumps(codes[:3]))
+
+    # The other side of that cap: a chunk sized the way the client sizes it
+    # (src/files/chunker.js RELAY_CHUNK_BYTES) must fit. 32 KB is the budget for
+    # the whole encoded frame, not for the bytes inside it.
+    skeleton = {"t": "file-chunk", "to": "peerQ", "id": "f4", "originId": "peerP",
+                "seq": 288, "total": 289, "crc": 4294967295,
+                "iv": "YWJjZGVmZ2hpamtsbW5v", "b64": ""}
+    full = dict(skeleton, b64="A" * (32 * 1024 - len(json.dumps(skeleton)) - 8))
+    wire = len(json.dumps(full).encode())
+    await send(p, full)
+    got = await recv_data(q, timeout=2.0)
+    check("a full-size relay chunk fits under the cap",
+          got.get("t") == "file-chunk" and got.get("seq") == 288,
+          f"{wire} B frame delivered")
+
+    await send(p, {"t": "rtc-bogus", "to": "peerQ"})
+    codes = [m.get("code") for m in await drain(p)]
+    check("unknown types are still rejected", "UNKNOWN_TYPE" in codes, json.dumps(codes[:3]))
+
+    await p.send("[]")    # valid JSON, not a frame
+    codes = [m.get("code") for m in await drain(p)]
+    check("non-object JSON is an error, not a disconnect",
+          "BAD_JSON" in codes and p.state.name == "OPEN", f"{p.state.name} {codes[:2]}")
+
+    for sock in (p, q, r):
+        await sock.close()
 
 
 def summarise():
     print("\n" + "=" * 62)
     passed = sum(1 for _, ok, _ in results if ok)
     total = len(results)
-    print(f"M0 GATE: {passed}/{total} checks passed")
+    print(f"RELAY GATE (M0 + M7): {passed}/{total} checks passed")
     for name, ok, detail in results:
         if not ok:
             print(f"   FAILED: {name}  {detail}")
