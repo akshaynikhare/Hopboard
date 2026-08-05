@@ -1,11 +1,23 @@
 [project]
-name = "liveclip-relay"
+name = "hopboard-relay"
 version = "0.1.0"
-description = "LiveClip relay - in-memory WebSocket fan-out for clipboard sync"
+description = "Hopboard relay - in-memory WebSocket fan-out for clipboard sync"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi[standard]>=0.115.0",
 ]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+# This directory is flat and holds three top-level modules: main.py plus the two
+# test scripts. Without an explicit list, setuptools refuses to guess and the
+# build fails with "Multiple top-level modules discovered in a flat-layout".
+# Only main.py belongs in the deployed image; the tests live here to be run
+# against a relay, not shipped inside one.
+[tool.setuptools]
+py-modules = ["main"]
 
 # NOTE: this app keeps all room state in process memory by design (no DB).
 # It MUST run on a single replica or peers land on different instances and
