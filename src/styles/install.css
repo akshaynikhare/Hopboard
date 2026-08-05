@@ -1,0 +1,50 @@
+/* PWA install / update banners. Mounted into #mount-banners by ui/install.js.
+   Styled after a VS Code editor notification: one line, an action, a dismiss.
+   Colours come from tokens.css — see docs/ARCHITECTURE.md §3. */
+
+/* Marker so ui/install.js can tell this sheet is already loaded (via an
+   @import in main.css) and skip injecting a second <link> for it. */
+:root { --pwa-css:1; }
+
+.pwa {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:0 16px 8px;
+  padding:7px 9px 7px 11px;
+  font-size:12px;
+  line-height:1.45;
+  color:var(--text);
+  background:var(--side);
+  border:1px solid var(--bd2);
+  border-left-width:2px;
+  border-radius:0 3px 3px 0;
+}
+
+.pwa.info { border-left-color:var(--blue); }
+.pwa.warn { border-left-color:var(--warn); }
+
+.pwa-ico {
+  width:15px; height:15px;
+  flex:none;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.6;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.pwa.info .pwa-ico { color:var(--blue); }
+.pwa.warn .pwa-ico { color:var(--warn); }
+
+.pwa-msg { flex:1; min-width:0; }
+
+.pwa .btn { flex:none; }
+.pwa-x { color:var(--dim); }
+.pwa-x:hover { color:var(--text); }
+
+/* Single column on the Android target — the same breakpoint layout.css uses. */
+@media (max-width:900px) {
+  .pwa { flex-wrap:wrap; margin:0 12px 8px; }
+  .pwa-msg { flex:1 1 100%; order:3; }
+  .pwa .btn { margin-left:auto; }
+}

@@ -1,0 +1,182 @@
+/**
+ * Sidebar pane — in-session clip history (PRD FR-2.9).
+ *
+ * ── BUS CONTRACT ───────────────────────────────────────────────────────────
+ * Emits  "history:restore"  {text}   — user clicked a row; load it into the editor.
+ * Listens "history:changed" {clips}  — the list changed; re-render.
+ * (Both names are exported as history.EVENTS.RESTORE / .CHANGED — use those.)
+ *
+ * Why a new event rather than re-emitting EV.TEXT_RECEIVED: TEXT_RECEIVED means
+ * "a peer sent this". Restoring from history is neither remote nor new, and
+ * main.js routes TEXT_RECEIVED into clipboard/capture.apply() — so borrowing it
+ * would both lie about provenance and fire an unrequested OS clipboard write,
+ * with a suppression window that then swallows the user's next real copy.
+ * main.js should wire this to editor.setText() and nothing else.
+ *
+ * ── ESCAPING ───────────────────────────────────────────────────────────────
+ * Every clip value that reaches innerHTML goes through esc() first. Clip text is
+ * attacker-controlled by definition — anyone holding the session key can put
+ * `<img src=x onerror=…>` on your clipboard, and this pane is where it would
+ * land. There is no path in this file from raw clip text to markup.
+ */
+
+import { emit, on, EV } from "../core/bus.js";
+import * as history from "../core/history.js";
+import { write as writeClipboard } from "../clipboard/os.js";
+import { $, esc, on as bind } from "./dom.js";
+
+const PREVIEW_CHARS = 70;
+const TITLE_CHARS = 300;
+
+const STYLE_HREF = new URL("../styles/history.css", import.meta.url).href;
+
+/** Idempotent stylesheet injection — the module owns its own CSS so main.css
+ *  needs no edit, and a double init() must not produce a duplicate <link>. */
+function ensureStyles() {
+  if (document.querySelector('link[data-hb-style="history"]')) return;
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = STYLE_HREF;
+  link.dataset.hbStyle = "history";
+  document.head.appendChild(link);
+}
+
+export function init() {
+  if ($("paneHistory")) return;          // already mounted
+
+  ensureStyles();
+  history.init();                        // idempotent; keeps main.js to one line
+  mount();
+
+  bind("histList", "click", onListClick);
+  bind("histList", "keydown", e => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const row = e.target.closest?.(".hrow");
+    if (!row) return;
+    e.preventDefault();
+    restore(row.dataset.id);
+  });
+
+  bind("histClear", "click", e => {
+    e.stopPropagation();                 // header click toggles the pane; this must not
+    emit(EV.TOAST, history.clear() ? "History cleared" : "History is already empty");
+  });
+
+  on(history.EVENTS.CHANGED, render);
+  render();
+}
+
+/* ------------------------------------------------------------------- mount */
+
+/**
+ * No markup exists for this pane, so it builds its own and appends to the
+ * #mount-panes hook in index.html.
+ *
+ * Note the header deliberately does NOT carry [data-toggle]: sessionPanel.js
+ * binds a collapse handler to every [data-toggle] in the document at its own
+ * init(), and depending on module ordering this pane could be bound zero times
+ * or twice (two handlers = a click that toggles and untoggles). Owning the
+ * handler here makes the pane order-independent. The .paneh / .chev / .collapsed
+ * classes from styles/sidebar.css still do all the visual work.
+ */
+function mount() {
+  const host = $("mount-panes");
+  if (!host) return console.error("[historyPanel] #mount-panes missing");
+
+  const pane = document.createElement("section");
+  pane.className = "pane";
+  pane.id = "paneHistory";
+  pane.innerHTML = `
+    <div class="paneh" id="histHead">
+      <span class="chev">⌄</span> History
+      <span class="spacer"></span>
+      <span class="soft" id="histCount">0</span>
+      <button class="ibtn" id="histClear" title="Clear history" aria-label="Clear history">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/></svg>
+      </button>
+    </div>
+    <div class="paneb">
+      <div class="hist" id="histList"></div>
+      <div class="none" id="histEmpty">
+        Clips you send and receive appear here. Memory and <code>sessionStorage</code>
+        only — history is gone when this tab closes, and cleared when the key changes.
+      </div>
+    </div>`;
+
+  host.appendChild(pane);
+  bind("histHead", "click", () => pane.classList.toggle("collapsed"));
+}
+
+/* ------------------------------------------------------------------ render */
+
+function render() {
+  const items = history.all();
+  const count = $("histCount");
+  if (count) count.textContent = items.length;
+
+  const empty = $("histEmpty");
+  if (empty) empty.style.display = items.length ? "none" : "block";
+
+  const list = $("histList");
+  if (!list) return;
+
+  // esc() on every interpolation below. id and time are generated locally, text
+  // is hostile; escaping all three keeps the rule "everything is escaped here"
+  // checkable by eye instead of case by case.
+  list.innerHTML = items.map(c => `
+    <div class="row hrow" data-id="${esc(c.id)}" role="button" tabindex="0"
+         title="${esc(clamp(c.text, TITLE_CHARS))}">
+      <span class="pill ${c.direction === "sent" ? "sent" : "recv"}">${c.direction === "sent" ? "SENT" : "RECV"}</span>
+      <div class="l"><b class="hprev">${esc(preview(c.text))}</b></div>
+      <span class="htime">${esc(hhmm(c.at))}</span>
+      <button class="ibtn hcopy" title="Copy this clip" aria-label="Copy this clip">
+        <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
+      </button>
+    </div>`).join("");
+}
+
+/** One line, no runs of whitespace, ellipsised — a clip is often a stack trace. */
+function preview(text) {
+  return clamp(String(text).replace(/\s+/g, " ").trim(), PREVIEW_CHARS);
+}
+
+function clamp(text, n) {
+  const s = String(text);
+  return s.length > n ? `${s.slice(0, n - 1)}…` : s;
+}
+
+/** Manual padding rather than toLocaleTimeString: locale-independent, always 24h. */
+function hhmm(at) {
+  const d = at instanceof Date ? at : new Date(at);
+  if (Number.isNaN(d.getTime())) return "--:--";
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+/* ------------------------------------------------------------------ events */
+
+function onListClick(e) {
+  const row = e.target.closest(".hrow");
+  if (!row) return;
+
+  if (e.target.closest(".hcopy")) {
+    e.stopPropagation();
+    return copy(row.dataset.id);
+  }
+  restore(row.dataset.id);
+}
+
+/** clipboard/os.js is the only module allowed to touch the OS clipboard. */
+async function copy(id) {
+  const entry = history.get(id);
+  if (!entry) return;
+  if (await writeClipboard(entry.text)) {
+    emit(EV.TOAST, `Copied ${entry.chars.toLocaleString()} characters`);
+  }
+}
+
+function restore(id) {
+  const entry = history.get(id);
+  if (!entry) return;
+  emit(history.EVENTS.RESTORE, { text: entry.text });   // "history:restore"
+  emit(EV.TOAST, "Loaded into the editor");
+}

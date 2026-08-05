@@ -339,8 +339,8 @@ Hobby tier allowances, and what each means here:
   pyproject.toml       → required for deploy
   requirements.txt
   test_relay.py  test_idle.py
-/m0/index.html         → M0 transport spike harness
-/docs/                 → PRD.md, CLIPBOARD-FLOW.md, M0-RESULTS.md
+/tests/e2e.mjs         → end-to-end: two peers, real crypto, live relay
+/docs/                 → PRD.md, ARCHITECTURE.md, CLIPBOARD-FLOW.md, P2P-FILES.md, M0-RESULTS.md
 ```
 
 Both halves live in one repo and deploy independently:
