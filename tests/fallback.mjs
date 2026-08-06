@@ -19,7 +19,19 @@ import { createServer } from "node:http";
 
 import { NET, TRANSPORT } from "../src/core/config.js";
 
-const BASE = process.argv[2] || process.env.RELAY_BASE || "ws://127.0.0.1:8000";
+/**
+ * Localhost, and deliberately NOT RELAY_BASE like the other suites.
+ *
+ * This one measures the client's own timing — the probe window before it gives
+ * up on a hung WebSocket, and the race to reclaim a peer id across a fast
+ * rejoin. Both are tuned against a relay that answers in microseconds. Pointed
+ * at a deployed relay it fails on latency alone and reports a client bug that
+ * is not there, which is worse than not running.
+ *
+ * Skipping is the right answer when there is no local relay: the check below
+ * exits 0 rather than failing, so this stays safe in a hook and in CI.
+ */
+const BASE = process.argv[2] || "ws://127.0.0.1:8000";
 const HTTP = BASE.replace(/^ws/i, "http");
 
 let pass = 0, fail = 0;
