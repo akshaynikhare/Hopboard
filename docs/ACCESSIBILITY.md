@@ -211,7 +211,7 @@ behind them. Both themes. Thresholds: 4.5:1 normal text, 3:1 large text
 | **2.86 / 2.87** | 4.5 | dark / light | `.pill.sent` — `--focus` on a 22% tint of itself | `styles/history.css:41` |
 | **2.90 / 3.19** | 4.5 | dark / light | `.adslot-tag`, `--dim` at `opacity:.7`, 10 px | `styles/ads.css` |
 | **2.90 / 3.19** | 4.5 | dark / light | `#editor::placeholder`, `--dim` at `opacity:.7` (dead today — no placeholder is set) | `styles/editor.css:36` |
-| **2.99** | 4.5 | dark | breadcrumb `--dim` on `--title` | `styles/appbar.css:27` + `tokens.css` |
+| **2.99** | 4.5 | dark | breadcrumb `--dim` on `--title` | *gone — the breadcrumb was removed* |
 | **3.23** | 4.5 | light | `.badge.remote` — `#04231a` on `--ok` | `styles/files.css:99` |
 | **3.25** | 4.5 | light | key warning, `--warn` at `opacity:.85` on `--tab-off` | `styles/sidebar.css:36` |
 | **3.26** | 4.5 | both | **`--on-fixed-bad` on `--status`** — the over-limit character counter | `tokens.css:38` |
@@ -224,7 +224,7 @@ behind them. Both themes. Thresholds: 4.5:1 normal text, 3:1 large text
 | **3.86 / 4.02** | 4.5 | dark / light | `.alert` and `.qrfail` — `--bad` on a 10% tint of itself | `sidebar.css:125`, `qr.css:106` |
 | **3.98** | 4.5 | light | `.qrnote` and `.warn` — `--warn` on a 9% tint of itself | `qr.css:96`, `sidebar.css:115` |
 | **4.15** | 4.5 | dark | **`--dim` on `--side`** — every settings sublabel, group heading, pane count, empty state, drop-zone body, history timestamp, approval countdown | `tokens.css:24` |
-| **4.17** | 4.5 | dark | breadcrumb key — `--str` on `--title` | `styles/appbar.css:38` |
+| **4.17** | 4.5 | dark | breadcrumb key — `--str` on `--title` | *gone — the header key is boxed on `--editor`* |
 
 ### Passing, but worth knowing
 
@@ -287,7 +287,7 @@ colour change.
 | `styles/history.css:41,45` | `.pill.sent` is 2.86 — the worst text failure in the app. Match what `components.css` now does for `.pill.p2p`: solid background, `color:var(--editor)`. `--focus` as a solid gives 4.51/4.51; `--ok` gives 8.18/5.16. |
 | `styles/files.css:99–120` | `.badge.remote` and `.badge.busy` use fixed dark foregrounds that only work against the dark theme's brighter `--ok`/`--warn`. Replace both with `color:var(--editor)` — the same relationship the peer-cursor labels use — which gives 8.18/5.16 and 7.22/4.92. `.badge.err` and `.badge.want` should go solid the same way. |
 | `styles/cursors.css:106` | `.hb-cursor.c0 { --peer:var(--blue) }` puts `--editor` text on `--blue`: 3.70 in dark. Add `.hb-cursor.c0 .hb-cursor-name { color:var(--on-fixed); }` (4.51 both themes) rather than changing the palette entry. |
-| `styles/appbar.css:27,38` | The breadcrumb is `--dim` (2.99) and its key is `--str` (4.17) on `--title` in dark. The `--dim` change fixes the first (4.64). For the second, either accept it as decorative context or darken dark `--title` to `#333333`, which takes `--str` to 4.78. |
+| `styles/appbar.css` | Both breadcrumb failures are moot: the breadcrumb is gone, and the key that replaced it in the header carries its own `--editor` background, so `--str` is measured against that (6.75 dark, 7.85 light) rather than against `--title`. |
 
 ---
 
@@ -608,8 +608,8 @@ exactly this — the markup is the odd one out.
 
 ### B15 · The share key is pronounced as a word — **Medium**
 
-**Where:** `app.html:110` (`#key`), `app.html:45` (`#bcKey`), `app.html:227`
-(`#sbKeyText`). Written by `src/ui/sessionPanel.js:69–71`.
+**Where:** `#key` in the app header and `#sbKeyText` in the status bar. Written
+by `renderKey()` in `src/ui/sessionPanel.js`.
 
 **Problem:** the key exists to be read off one screen and typed on another. A
 screen reader says "D75LV" as a word, which is unusable for that.
@@ -618,23 +618,23 @@ screen reader says "D75LV" as a word, which is unusable for that.
 
 ```js
 function renderKey(key) {
-  ["key", "bcKey", "sbKeyText"].forEach(id => { const el = $(id); if (el) el.textContent = key; });
+  ["key", "sbKeyText"].forEach(id => { const el = $(id); if (el) el.textContent = key; });
   const spoken = $("keySpoken");
   if (spoken) spoken.textContent = `Share key: ${key.split("").join(", ")}`;
 }
 ```
 
 with `<div class="key" id="key" aria-hidden="true">—</div><span class="vh" id="keySpoken"></span>`
-in `app.html:110`. Do the same for `#sbKeyText`, or mark it `aria-hidden` since
-the sidebar already carries the spoken copy.
+in the header's `.keybar`. Do the same for `#sbKeyText`, or mark it
+`aria-hidden` since the header already carries the spoken copy.
 
 ### B16 · Target size — **Low**
 
 **WCAG 2.2 SC 2.5.8** wants 24×24 CSS px unless the spacing exception applies.
 
 - `.ibtn` is 22×22 (`components.css`). Every place it is used has ≥24 px
-  centre-to-centre spacing (`.tabacts{gap:3px}` → 25 px; `.keyhead-row{gap:5px}`
-  → 27 px; `.paneh{gap:5px}` → 27 px), so the exception holds. It holds by 1 px.
+  centre-to-centre spacing (`.tabacts{gap:3px}` → 25 px; `.keybar{gap:3px}`
+  → 25 px; `.paneh{gap:5px}` → 27 px), so the exception holds. It holds by 1 px.
   Going to 24×24 would remove the argument entirely.
 - `.tile .tcancel` is 16×16 (`styles/files.css:83`) and `.tile .tremove` is 17×17
   (`files.css:110`), both inside a ~92 px tile that is itself a target. The

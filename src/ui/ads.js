@@ -1,15 +1,34 @@
 /**
- * The one ad slot, under the editor.
- *
- * WHAT THIS IS: a placeholder. It renders a correctly-sized, correctly-labelled
- * box and nothing else — no third-party script, no network request, no ad
- * network. Going live is a deliberate step, described at the bottom of this
- * file, because on THIS page it is not a neutral one.
+ * The sponsor slot, under the editor.
  *
  * Why an ad at all: the app has no accounts, no subscription and no telemetry,
- * but the relay it depends on is a paid server. One slot that pays for the
- * relay is the least intrusive way to keep the app free, and saying so plainly
- * in the slot itself costs a line of text.
+ * but the relay it depends on is a paid server. A slot that pays for the relay
+ * is the least intrusive way to keep the app free, and saying so plainly in the
+ * slot itself costs a line of text.
+ *
+ * ---- THE DECISION THIS FILE ENCODES --------------------------------------
+ *
+ * Google AdSense runs on index.html, the landing page. It does NOT run here,
+ * and this slot will never load a third-party script. Two facts about THIS
+ * document, and neither is a matter of taste:
+ *
+ *   1. The session key is in location.hash. Any script in this document can
+ *      read location.href, ad tags report the page URL they ran on, and the
+ *      key is a bearer credential — whoever has it can read the session. It
+ *      does not matter whether today's tag strips the fragment: the tag
+ *      updates itself remotely and nobody here reviews the diff.
+ *
+ *   2. Decrypted clipboard text and file blobs are in this DOM. The whole
+ *      claim of the product is that only your devices see them.
+ *
+ * The slot stays because the space is worth having: it is sized and reserved
+ * for a FIRST-PARTY sponsor — a static image and a link, served from this
+ * origin, no script — which is the one form of paid content that costs the
+ * user nothing. Until there is one, it renders as the placeholder below.
+ *
+ * The change that would unlock ad-network inventory here is getting the key
+ * out of the fragment (hold it in memory, mint the share link on demand). That
+ * is worth doing on its own merits; it is not worth doing FOR the ads.
  *
  * Why it sits HERE and not in the sidebar: the sidebar holds the session key,
  * the file previews and the settings — everything you act on. Putting paid
@@ -22,52 +41,48 @@ import { $, esc } from "./dom.js";
 
 /**
  * A leaderboard on desktop, a mobile banner below it. Fixing the height in CSS
- * rather than letting the unit size itself means the editor does not jump when
- * a real ad finally loads — reserved space is the whole point of a placeholder.
+ * rather than letting the creative size itself means the editor does not jump
+ * when one loads — reserved space is the whole point of a placeholder.
  */
-const PLACEHOLDER_LABEL = "Ad slot · 728 × 90";
+const PLACEHOLDER_LABEL = "Sponsor slot · 728 × 90";
 
 export function init() {
   const host = $("mount-ad");
   if (!host) return;
 
   host.innerHTML = `
-    <aside class="adslot" id="adSlot" aria-label="Advertisement">
-      <div class="adslot-tag">Advertisement</div>
+    <aside class="adslot" id="adSlot" aria-label="Sponsor">
+      <div class="adslot-tag">Sponsored</div>
 
-      <!-- The real ad unit replaces the contents of this box, not the box. -->
+      <!-- A first-party creative replaces the contents of this box, not the
+           box. Static markup served from this origin — no ad script here, for
+           the reasons at the top of this file. -->
       <div class="adslot-box" id="adBox" role="presentation">
         <span class="adslot-ph">${esc(PLACEHOLDER_LABEL)}</span>
       </div>
 
-      <p class="adslot-note">
-        Hopboard is free, has no accounts and stores nothing on a server. This
-        single slot pays for the relay that keeps your devices talking to each
-        other. It lives outside the editor and never sees your clipboard — your
-        text and files are encrypted in this browser before they leave it.
+      <!-- One line, and it has to earn every word of it: what this pays for,
+           and the promise that matters. The long version is on the landing
+           page — this is a footnote, not a policy. -->
+      <p class="adslot-note"
+         title="This space pays for the relay. It runs no third-party code and never sees your clipboard.">
+        This space pays for the relay. It runs no third-party code and never
+        sees your clipboard.
       </p>
     </aside>`;
 }
 
 /* ------------------------------------------------------------------
-   Going live — read before pasting a publisher id in here
+   Filling this slot
 
-   1. Put the <ins class="adsbygoogle" data-ad-client data-ad-slot> markup
-      inside #adBox and load adsbygoogle.js once from init(). Keep the box's
-      fixed height so the editor still does not shift.
+   A sponsor creative goes in as static markup inside #adBox: an <img> or a
+   styled <a>, both served from this origin, keeping the 728×90 / 100px box.
+   No <script>, no pixel, no iframe pointing off-site — a tracking pixel leaks
+   the referrer and a remote script leaks everything, and this document holds
+   the session key and the decrypted clipboard.
 
-   2. app.html is `noindex, nofollow` and `referrer: no-referrer` on purpose
-      (see the comments there). AdSense wants a crawlable page; the page it
-      should be reading is index.html, the landing page. Serving ads on a page
-      Google is told not to index is worth checking against the AdSense policy
-      before it earns a penny.
+   AdSense belongs on index.html — see the ad section there.
 
-   3. The privacy claim in the note above has to stay true after step 1. An ad
-      script runs in the same document as the decrypted clipboard text, so it
-      can read the DOM if nothing stops it. If this goes live, it needs a CSP
-      that pins the ad origins, and the slot should stay out of the DOM subtree
-      the editor and history write into — as it is now.
-
-   4. Consider whether the slot should be suppressed while a session has peers
-      connected, i.e. while real clipboard content is on screen.
+   Whoever adds the creative also owns keeping the note above true. If it ever
+   stops being true, change the note in the same commit.
 ------------------------------------------------------------------- */

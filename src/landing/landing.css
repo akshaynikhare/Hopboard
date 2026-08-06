@@ -680,6 +680,53 @@ footer a:hover { color:var(--link); }
   .fpill  { font-size:11.5px; padding:6px 10px; }
 }
 
+/* ------------------------------------------------------------ the ad slot --
+   The only paid surface on the site. Styled to sit inside the editorial grid
+   rather than fight it: same container, same rule above, and a label saying
+   what it is — an ad that has to disguise itself is an ad in the wrong place. */
+
+/* The vertical rhythm goes on the CONTENT, never on .in — the horizontal rule
+   is .in's ::before, so padding there would push the rule off the section
+   boundary and open a gap above it. Same reason .shead and .cards carry their
+   own padding. */
+.adslot {
+  padding:clamp(30px,4vw,48px) 0;
+  text-align:center;
+}
+
+.adtag {
+  margin-bottom:9px;
+  color:var(--dim);
+  font:10.5px/1 var(--mono);
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  opacity:.75;
+}
+
+/* Dashed only while this is a placeholder — a solid box reads as a broken ad.
+   Fixed height, so nothing below moves when a real unit fills it. */
+.adbox {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:90px;
+  max-width:728px;
+  margin:0 auto;
+  border:1px dashed var(--rule2);
+  background:var(--sunk);
+}
+
+.adph { color:var(--dim); font:11.5px/1 var(--mono); opacity:.6; }
+
+/* Centred under the unit and narrower than a normal .hint: this is a footnote
+   for the curious, not a section of the page. */
+.adnote { margin:11px auto 0; max-width:60ch; font-size:12px; opacity:.85; }
+
+/* A leaderboard does not fit a phone; a 300×250 rectangle does. */
+@media (max-width:760px) {
+  .adbox { height:250px; max-width:300px; }
+}
+
 /* ------------------------------------------------------- reduced motion --
    The pill stops travelling, the dots stop marching, the globe stops turning
    (globe.js checks the same query) and in-page links stop scrolling. */

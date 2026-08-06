@@ -269,6 +269,36 @@
     </div>
   </section>
 
+  <!-- ============ the ad slot ============
+
+    THE live slot is here, on the landing page, and not in the app — that is a
+    deliberate split, written up in src/ui/ads.js. Short version: app.html
+    carries the session key in its URL fragment and the decrypted clipboard in
+    its DOM, and a remotely-updated third-party script has no business in that
+    document. This page has neither, and it is the page Google can actually
+    crawl.
+
+    Placed after "how it works" rather than in the hero: it sits at a real
+    section break, below the thing people came for, and above the long tail of
+    content where dwell time is. One slot on the whole site. -->
+  <section class="sec adsec">
+    <div class="in">
+      <aside class="adslot" aria-label="Advertisement">
+        <p class="adtag">Advertisement</p>
+        <!-- The ad unit replaces the contents of this box, never the box:
+             the height is reserved so the page below does not jump when it
+             loads. -->
+        <div class="adbox"><span class="adph">Ad slot · 728 × 90</span></div>
+        <p class="hint adnote">
+          Hopboard is free, has no accounts and sells nothing. This one slot pays for
+          the relay server that keeps your devices connected. There are no ads inside
+          the app itself — the page holding your clipboard runs no third-party code,
+          and that is not going to change.
+        </p>
+      </aside>
+    </div>
+  </section>
+
   <!-- ============ what you get ============ -->
   <section class="sec">
     <div class="in">

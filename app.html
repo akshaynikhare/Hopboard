@@ -37,9 +37,12 @@
 <div class="vs">
 
   <!-- ============ app header ============
-       One bar: identity, context, and the editor's actions. Replaces the
-       decorative menu strip, the single-document tab and the separate
-       breadcrumb — none of which did anything a one-document app needs. -->
+       One bar: identity, the session key, and the mode switch.
+       The old breadcrumb ("KEY › clipboard.txt") is gone: it repeated the key
+       and named a file that does not exist. The key itself moved up here from
+       the sidebar — it is the one thing you read off one screen to type on
+       another, so it belongs on the first row, not three panes down.
+       The editor's own actions moved to the editor — see .edtools below. -->
   <header class="appbar">
     <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
       <rect x="8" y="3" width="8" height="4" rx="1"/>
@@ -47,32 +50,25 @@
       <path d="M9 13l2 2 4-4"/>
     </svg>
     <span class="brand">Hopboard</span>
-    <span class="crumb"><span id="bcKey">—</span><span class="sep">›</span>clipboard.txt</span>
+
+    <!-- Key, QR, share link, rotate. -->
+    <div class="keybar">
+      <div class="key" id="key" title="Anyone with this key can read what you copy and request your files">—</div>
+      <button class="ibtn" id="bQr" title="Show QR code">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20h1"/></svg>
+      </button>
+      <button class="ibtn" id="bLink" title="Copy share link">
+        <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/></svg>
+      </button>
+      <button class="ibtn" id="bNew" title="Generate a new key and leave this session">
+        <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/></svg>
+      </button>
+    </div>
+
     <span class="tabspace"></span>
     <!-- Live / Manual. The single most consequential setting, so it lives
          here rather than in the settings pane. -->
     <div id="mount-mode"></div>
-    <span class="tabspace"></span>
-    <div class="tabacts">
-      <button class="ibtn" id="aSelect" title="Select all">
-        <svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/></svg>
-      </button>
-      <button class="ibtn" id="aCopy" title="Copy all text to clipboard">
-        <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
-      </button>
-      <button class="ibtn" id="aPaste" title="Paste from clipboard">
-        <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="9" y="2" width="6" height="4" rx="1"/></svg>
-      </button>
-      <button class="ibtn" id="aSend" title="Send to your other devices">
-        <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-      </button>
-      <!-- Labelled, not a bare "×": an unlabelled cross on a text panel reads
-           as "close the tab", and this erases what you have typed. -->
-      <button class="ibtn danger" id="tabX" title="Erase the text in this editor">
-        <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/></svg>
-        <span class="lbl">Clear</span>
-      </button>
-    </div>
   </header>
 
   <div class="body">
@@ -84,6 +80,33 @@
            clips, split-brain warnings). Keeps index.html free of per-feature
            markup so modules stay self-contained. -->
       <div id="mount-banners"></div>
+
+      <!-- The editor's actions, sitting on the editor they act on rather than
+           in the app header. They all operate on the text below them, and at
+           the top of the window they read as application-wide — Clear in
+           particular, which erases what you have typed. -->
+      <div class="edtools">
+        <div class="tabacts">
+          <button class="ibtn" id="aSelect" title="Select all">
+            <svg viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 011-1h3M16 4h3a1 1 0 011 1v3M20 16v3a1 1 0 01-1 1h-3M8 20H5a1 1 0 01-1-1v-3"/></svg>
+          </button>
+          <button class="ibtn" id="aCopy" title="Copy all text to clipboard">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
+          </button>
+          <button class="ibtn" id="aPaste" title="Paste from clipboard">
+            <svg viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="9" y="2" width="6" height="4" rx="1"/></svg>
+          </button>
+          <button class="ibtn" id="aSend" title="Send to your other devices">
+            <svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+          </button>
+          <!-- Labelled, not a bare "×": an unlabelled cross on a text panel
+               reads as "close the tab", and this erases what you have typed. -->
+          <button class="ibtn danger" id="tabX" title="Erase the text in this editor">
+            <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2M19 6l-1 14a1 1 0 01-1 1H7a1 1 0 01-1-1L5 6"/></svg>
+            <span class="lbl">Clear</span>
+          </button>
+        </div>
+      </div>
 
       <div class="edwrap">
         <div class="gutter" id="gutter" aria-hidden="true">1</div>
@@ -107,24 +130,12 @@
 
     <!-- ============ sidebar ============ -->
     <aside class="side" id="side">
-      <!-- The key is the one thing you need to read off the screen and type on
-           another device, so it sits at the top of the sidebar rather than
-           three panes down. The old "Explorer" label was decoration. -->
+      <!-- The key and its buttons now live in the app header. The disclosure
+           that goes with them stays: what the key grants is not something to
+           drop just because the control moved a row. -->
       <div class="keyhead">
-        <div class="keyhead-row">
-          <div class="key" id="key">—</div>
-          <button class="ibtn" id="bQr" title="Show QR code">
-            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20h1"/></svg>
-          </button>
-          <button class="ibtn" id="bLink" title="Copy share link">
-            <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/></svg>
-          </button>
-          <button class="ibtn" id="bNew" title="Generate a new key and leave this session">
-            <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/></svg>
-          </button>
-        </div>
         <div class="keyhead-warn">
-          Anyone with this key can read what you copy and request your files.
+          Anyone with the key in the title bar can read what you copy and request your files.
         </div>
       </div>
       <div class="alert" id="splitWarn"></div>

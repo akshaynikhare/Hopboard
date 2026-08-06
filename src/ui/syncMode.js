@@ -60,9 +60,18 @@ export function init() {
   paint(state.get().settings.syncMode);
 }
 
-function set(mode, announce) {
-  if (!Object.values(SYNC_MODES).includes(mode)) return;
-  if (state.get().settings.syncMode === mode) return;
+/**
+ * Change the mode. Exported because the switch is not only a header control:
+ * loading a clip out of history flips it to Manual (main.js), and that has to
+ * go through the one function that owns persistence and repainting rather than
+ * poking state.settings.syncMode behind this module's back.
+ *
+ * Returns true only when the mode actually changed, so a caller can decide
+ * whether the change is worth telling the user about.
+ */
+export function set(mode, announce) {
+  if (!Object.values(SYNC_MODES).includes(mode)) return false;
+  if (state.get().settings.syncMode === mode) return false;
 
   state.setSetting("syncMode", mode);
   storage.saveSettings(state.get().settings);
@@ -74,6 +83,7 @@ function set(mode, announce) {
       ? "Live — everything you copy is shared"
       : "Manual — only what you paste here is shared");
   }
+  return true;
 }
 
 function paint(mode) {
