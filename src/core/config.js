@@ -92,6 +92,69 @@ export const CRYPTO = {
   SALT: "hopboard-v1",
   ITERATIONS: 250_000,        // PBKDF2; derive once per session and cache (OI-8)
   ROOM_HASH_BYTES: 16,
+
+  /**
+   * Locked sessions — see LOCK below and core/crypto.js `deriveLocked`.
+   *
+   * The salt is a PREFIX, completed with the share key: the key is random per
+   * session, which is exactly what a salt is for. The open-session salt above
+   * is one global constant, so a single precomputed table covers every user on
+   * earth; here an attacker has to build one per key.
+   *
+   * 600k rather than 250k because the threat is different. An open session's
+   * secret is a 29-bit key an attacker has to guess; a locked session's secret
+   * is a PIN held by someone who may ALREADY have the link, so the PIN is the
+   * whole defence and every doubling of the iteration count is a doubling of
+   * their cost. It is paid once per session, behind the "unlocking" state.
+   */
+  LOCK_SALT: "hopboard-lock-v1:",
+  LOCK_ITERATIONS: 600_000,
+
+  /**
+   * HKDF info strings: one PBKDF2 run, three independent outputs.
+   *
+   * Asking PBKDF2 itself for 64 bytes would cost DOUBLE — it reruns the full
+   * iteration count per 32-byte output block, and OI-8 already flags PBKDF2
+   * cost on a low-end Android. HKDF expansion is a couple of HMACs.
+   */
+  LOCK_INFO: {
+    AES:  "hopboard-lock/aes",
+    ROOM: "hopboard-lock/room",
+    AUTH: "hopboard-lock/auth",
+  },
+};
+
+/**
+ * Locked sessions: the share key in the link, a PIN that never travels with it.
+ *
+ * The key is a bearer credential (PRD §7.1) and a link is a leaky thing — it
+ * gets forwarded, screenshotted, pasted into a group chat. A locked session
+ * adds a second secret that is never in the URL, never on disk, and never sent
+ * to the relay, so holding the link is not sufficient to read the clipboard.
+ *
+ * MIN_PIN is 6 and the PIN is free-form rather than 4-6 digits, because against
+ * someone who already has the link the key contributes nothing and the PIN is
+ * the entire secret: a 4-digit PIN is ~13 bits, which is minutes of offline
+ * guessing. The dialog states the number rather than an adjective.
+ */
+export const LOCK = {
+  MIN_PIN: 6,
+
+  /**
+   * Fragment marker: `#!ABCDEF`. That a session is locked is not a secret — the
+   * PIN is — and the app has to know before it connects, so the flag rides in
+   * the link. Leading rather than trailing: chat clients that trim punctuation
+   * off a pasted URL trim the END of it.
+   */
+  SIGIL: "!",
+
+  /**
+   * Sent once on creating a locked room, retained by the relay as the room's
+   * last clip and replayed to every joiner — so a joiner can tell "wrong PIN"
+   * from "first one here" by whether it decrypts. Receivers drop it instead of
+   * rendering it. See core/crypto.js and the beacon note in main.js.
+   */
+  BEACON: String.fromCharCode(0) + "hopboard-lock-v1",
 };
 
 export const NET = {

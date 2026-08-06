@@ -6,7 +6,7 @@
  * transport stay swappable while the rest of the app was being built.
  */
 
-import { TEXT, SYNC_MODES } from "./core/config.js";
+import { TEXT, SYNC_MODES, LOCK } from "./core/config.js";
 import { emit, on, EV } from "./core/bus.js";
 import * as state from "./core/state.js";
 import * as keys from "./core/keys.js";
@@ -35,6 +35,7 @@ import * as statusbar from "./ui/statusbar.js";
 import * as resizer from "./ui/resizer.js";
 import * as syncMode from "./ui/syncMode.js";
 import * as appLinks from "./ui/appLinks.js";
+import * as lockDialog from "./ui/lockDialog.js";
 import * as hints from "./ui/hints.js";
 import * as cursors from "./ui/cursors.js";
 import * as ads from "./ui/ads.js";
@@ -47,20 +48,68 @@ function resolveKey() {
   // A key from the URL or storage means we are JOINING. A key we generate
   // ourselves means CREATING, which must be collision-checked (OI-2) or we
   // could drop the user straight into a stranger's clipboard.
-  const fromUrl = keys.fromUrl();
-  if (keys.isValid(fromUrl)) return { key: fromUrl, intent: "join" };
+  const url = keys.fromUrl();
+  if (keys.isValid(url.key)) return { ...url, intent: "join" };
 
   const remembered = storage.loadLastKey();
-  if (remembered && keys.isValid(remembered)) return { key: remembered, intent: "join" };
+  if (remembered && keys.isValid(remembered.key)) return { ...remembered, intent: "join" };
 
-  return { key: keys.generate(), intent: "create" };
+  return { key: keys.generate(), locked: false, intent: "create" };
 }
 
-async function openSession(key, intent) {
-  keys.toUrl(key);
-  storage.saveLastKey(key);
+/**
+ * The current session's stretched PIN, so a rotate or a collision can re-derive
+ * without asking the user to prove themselves again for something they did not
+ * do. Module scope rather than state.js on purpose: `state.get()` hands out the
+ * whole mutable object and anything could log it wholesale, and this is the one
+ * value in the app that must never appear in a console.
+ *
+ * It is the PBKDF2 output, not the PIN. The string the user typed exists only
+ * as an argument to openSession() and is not retained anywhere.
+ */
+let lockPrk = null;
 
-  state.setConnection("connecting", "deriving key");
+/**
+ * Open a session, locked or not.
+ *
+ * `pin` is the string the user typed and is used exactly once, here, to derive.
+ * It is never stored, never emitted on the bus, and never reaches another
+ * module — what travels onwards is the derived material. If a caller has been
+ * through this before in the same tab it can pass `prk` instead and skip the
+ * 600k iterations entirely.
+ */
+async function openSession(key, intent, { locked = false, pin = null, prk = null } = {}) {
+  keys.toUrl(key, locked);
+  storage.saveLastKey(key, locked);
+
+  // Two different waits, so say which one this is. Locked sessions are four
+  // times the PBKDF2 work of an open one (OI-8) and the user is looking at a
+  // dialog they just dismissed, wondering whether it took.
+  state.setConnection("connecting", locked ? "unlocking" : "deriving key");
+
+  if (locked) {
+    const derived = prk
+      ? await cryptoBox.deriveLockedFromPrk(prk)
+      : await cryptoBox.deriveLocked(key, pin);
+
+    // Remembered against the room it unlocks, so a rotate invalidates it and a
+    // refresh does not re-prompt. sessionStorage — it dies with the tab.
+    lockPrk = derived.prk;
+    storage.saveLock(key, derived.prk);
+
+    state.setKey({
+      key,
+      roomHash: derived.roomHash,
+      aesKey: derived.aesKey,
+      locked: true,
+      authToken: derived.authToken,
+    });
+    announce(derived.roomHash, true);
+    relay.connect({
+      roomHash: derived.roomHash, intent, name: device.name(), auth: derived.authToken,
+    });
+    return;
+  }
 
   // PBKDF2 at 250k iterations is hundreds of ms on a low-end phone (OI-8), so
   // this is awaited once per session and the result cached — never per message.
@@ -69,8 +118,91 @@ async function openSession(key, intent) {
     cryptoBox.roomHash(key),
   ]);
 
+  lockPrk = null;
+  storage.clearLock();
   state.setKey({ key, roomHash, aesKey });
+  announce(roomHash, false);
   relay.connect({ roomHash, intent, name: device.name() });
+}
+
+/**
+ * The one line about the session that reaches the console.
+ *
+ * The room hash, never the key. The relay is told the hash anyway, so printing
+ * it discloses nothing new — whereas the key is the credential that opens the
+ * session, and it used to be logged on every boot, into every screen recording
+ * and every support-ticket screenshot the app has ever appeared in. The PIN,
+ * needless to say, appears nowhere at all.
+ */
+function announce(roomHash, locked) {
+  console.info(`[hopboard] session · room=${roomHash} locked=${locked}`);
+}
+
+/**
+ * Boot into a session, asking for the PIN first if the link says it is locked.
+ *
+ * The order matters and is the whole point: nothing connects until the PIN is
+ * in hand. A locked link whose prompt is cancelled leaves the app idle with a
+ * way back in — it must NOT quietly fall through to the unlocked room of the
+ * same name, which is a real room, joinable by anyone holding the link, and
+ * would hand the user a session that looks private and is not.
+ *
+ * A refresh skips the prompt: the stretched PIN is in sessionStorage against
+ * the room it unlocks. Which room that is depends on the PIN, so this has to
+ * derive to find out — hence the stored value being tried by re-deriving
+ * rather than looked up by key.
+ */
+async function startSession(key, intent, locked) {
+  if (!locked) return openSession(key, intent);
+
+  const known = storage.loadLock(key);
+  if (known) return openSession(key, intent, { locked: true, prk: known });
+
+  const pin = await lockDialog.ask({ mode: intent === "create" ? "create" : "join", key });
+  if (!pin) {
+    state.setConnection("idle", "locked — PIN required");
+    emit(EV.LOCK_STATE, { locked: true, verified: false });
+    return;
+  }
+  return openSession(key, intent, { locked: true, pin });
+}
+
+/** Re-open the current locked link, asking for the PIN again. */
+async function retryLock() {
+  const { key } = state.get();
+  const pin = await lockDialog.ask({ mode: "retry", key });
+  if (!pin) return;
+  relay.close();
+  cryptoBox.clearCache();
+  state.resetRoster();
+  await openSession(key, "join", { locked: true, pin });
+}
+
+/* ------------------------------------------------------------------
+   The lock beacon
+
+   A wrong PIN does not announce itself. It derives a different room hash, so
+   the device lands in a different — and therefore empty — room, which is
+   indistinguishable from being the first one to arrive. Secure, and silent,
+   and this codebase treats silent wrong behaviour as the expensive kind.
+
+   So a locked room says one thing about itself. On creating one we send a
+   single clip whose plaintext is a sentinel. The relay retains the last clip of
+   a room and replays it to everyone who joins (backend/main.py `room.last`), so
+   a joiner that can decrypt it has PROVED it is in the right room, before any
+   peer has to be awake to answer. Any real clip serves just as well, since it
+   overwrites the beacon.
+
+   What this cannot cover: a room whose last clip has expired with the room
+   itself (10 minutes after the last device leaves). Then there is nothing to
+   check against and the session stays "unverified" rather than guessing — see
+   the banner in ui/banners.js.
+------------------------------------------------------------------- */
+async function sendBeacon() {
+  const { aesKey } = state.get();
+  if (!aesKey || !relay.isOpen()) return;
+  const { payload, iv } = await cryptoBox.encrypt(aesKey, LOCK.BEACON);
+  relay.send(proto.clip({ payload, iv, originId: state.get().originId }));
 }
 
 /* ------------------------------------------------------------------
@@ -85,6 +217,17 @@ async function onFrame(msg) {
       if (!aesKey) return;
       try {
         const text = await cryptoBox.decrypt(aesKey, msg.payload, msg.iv);
+
+        // Anything that decrypts proves this device holds the right PIN — the
+        // beacon replayed on arrival, or any real clip since. Latched before
+        // the sentinel check, because the beacon's whole job is this line.
+        state.setVerified();
+
+        // The beacon is not a clip anybody typed. Swallowed here rather than
+        // downstream because TEXT_RECEIVED goes on to the editor, the history
+        // pane and — with auto-write on — the machine's actual clipboard.
+        if (text === LOCK.BEACON) return;
+
         emit(EV.TEXT_RECEIVED, { text, from: msg.originId });
       } catch {
         // Almost always a key mismatch, which shouldn't be reachable: the room
@@ -150,6 +293,7 @@ async function decryptFrame(frame) {
   if (!aesKey || !frame.payload || !frame.iv) return frame;
   try {
     const secret = JSON.parse(await cryptoBox.decrypt(aesKey, frame.payload, frame.iv));
+    state.setVerified();          // a sealed frame opened: the PIN is right
     const { payload, iv, ...routing } = frame;
     return { ...routing, ...secret };
   } catch {
@@ -222,9 +366,14 @@ function wire() {
   // join a stranger's session (OI-2).
   on(EV.KEY_COLLISION, async () => {
     relay.close();
+    cryptoBox.clearCache();
     const key = keys.generate();
     emit(EV.TOAST, "That key was taken — generated a new one");
-    await openSession(key, "create");
+    // A locked session keeps its PIN across the regenerated key: the collision
+    // is with the key, and re-asking for the PIN would look like the one the
+    // user just typed had been rejected.
+    const { locked } = state.get();
+    await openSession(key, "create", { locked, prk: locked ? lockPrk : null });
   });
 
   // A copied or pasted image becomes a normal file: its thumbnail is shared
@@ -266,21 +415,107 @@ function wire() {
       : "Loaded into the editor");
   });
 
-  on("session:rejoin", async ({ key }) => {
+  on("session:rejoin", async ({ key, locked = false }) => {
     relay.close();
+    cryptoBox.clearCache();
     state.resetRoster();
+
+    // A different room, so nothing about the old one carries over. A locked
+    // target needs its PIN asked for; cancelling leaves the app where it was
+    // rather than dropping the user into some other room.
+    if (locked) {
+      const pin = await lockDialog.ask({ mode: "join", key });
+      if (!pin) return;
+      return openSession(keys.normalise(key), "join", { locked: true, pin });
+    }
     await openSession(keys.normalise(key), "join");
   });
 
   // "Someone joined and it wasn't me" — get out of the room and take a new key.
+  //
+  // A locked session keeps its PIN. Rotation answers "somebody has my link",
+  // and somebody who only had the link never had the PIN; making the user
+  // invent and redistribute a second secret to solve the first one is a cost
+  // with no threat behind it. Changing the PIN is its own action.
   on("session:rotate", async () => {
     relay.close();
+    cryptoBox.clearCache();
+    state.resetRoster();
+    const { locked } = state.get();
+    const key = keys.generate(
+      state.get().settings.longKeys ? keys.LENGTHS.LONG : keys.LENGTHS.NORMAL);
+    emit(EV.TOAST, locked
+      ? "New key — the PIN is unchanged"
+      : "New key — the old session is abandoned");
+    await openSession(key, "create", { locked, prk: locked ? lockPrk : null });
+  });
+
+  /* ---- locking and unlocking ------------------------------------------
+     Both are room changes, not preferences.
+
+     The lock flag is part of the room hash, so turning it on or off cannot
+     happen underneath a live session — there is no such thing as "this room,
+     but locked". What actually happens is that we leave and open a different
+     one, which is also the honest behaviour: the clips already sitting in the
+     old room stay exactly as readable as they were, and pretending a switch
+     retroactively protected them would be a lie the UI told.
+  --------------------------------------------------------------------- */
+
+  on("session:lock", async () => {
+    const pin = await lockDialog.ask({ mode: "create" });
+    if (!pin) return;
+    relay.close();
+    cryptoBox.clearCache();
     state.resetRoster();
     const key = keys.generate(
       state.get().settings.longKeys ? keys.LENGTHS.LONG : keys.LENGTHS.NORMAL);
-    emit(EV.TOAST, "New key — the old session is abandoned");
+    emit(EV.TOAST, "Locked — your other devices need the new link and the PIN");
+    await openSession(key, "create", { locked: true, pin });
+  });
+
+  on("session:unlock", async () => {
+    if (!state.get().locked) return;
+    relay.close();
+    cryptoBox.clearCache();
+    state.resetRoster();
+    const key = keys.generate(
+      state.get().settings.longKeys ? keys.LENGTHS.LONG : keys.LENGTHS.NORMAL);
+    emit(EV.TOAST, "Unlocked — anyone with the new link can read this");
     await openSession(key, "create");
   });
+
+  on("session:repin", async () => {
+    if (!state.get().locked) return;
+    const pin = await lockDialog.ask({ mode: "create" });
+    if (!pin) return;
+    relay.close();
+    cryptoBox.clearCache();
+    state.resetRoster();
+    // Same key, new PIN — and therefore a different room, because the PIN is
+    // part of its name. The link does not change, which is the point: this is
+    // the action for "the PIN got out", not "the link got out".
+    emit(EV.TOAST, "New PIN — devices using the old one are left behind");
+    await openSession(state.get().key, "create", { locked: true, pin });
+  });
+
+  /* ---- the lock beacon ------------------------------------------------
+     Planted only into a room that is empty AND has no retained clip.
+
+     That condition is not caution, it is correctness: the beacon IS a clip,
+     and the relay keeps exactly one per room to replay to late joiners
+     (FR-3.3). Sending it into a room that already has one would overwrite
+     somebody's actual last clip with a sentinel, so a security feature would
+     have quietly broken the product's core behaviour.
+
+     It re-arms itself for free — after a relay redeploy or a 10-minute
+     eviction, whoever arrives first into the empty room plants it again.
+  --------------------------------------------------------------------- */
+  on(EV.ROOM_STATE, ({ existing, hasLast }) => {
+    if (!state.get().locked || existing > 0 || hasLast) return;
+    sendBeacon();
+  });
+
+  on("session:relock", () => retryLock());
 
   // A relay restart drops every socket (OI-13) and its rooms with them. On
   // reconnect the roster is rebuilt from scratch, so the peers we already knew
@@ -296,6 +531,13 @@ function wire() {
 
   on("session:leave", () => {
     relay.close();
+    // Leaving has to actually leave. The derived key used to outlive the room
+    // it belonged to — clearCache() had no callers at all — and a locked
+    // session's unlock would have sat in sessionStorage for the next person to
+    // sit down at this tab.
+    cryptoBox.clearCache();
+    lockPrk = null;
+    storage.clearLock();
     state.setConnection("idle");
     emit(EV.TOAST, "Left the session");
   });
@@ -399,8 +641,8 @@ async function boot() {
   // Deliberately not awaited: the session is the product, and it must not
   // queue behind panel rendering, a service-worker registration, or a QR
   // encoder. Errors are reported through the status bar.
-  const { key, intent } = resolveKey();
-  openSession(key, intent).catch(err => {
+  const { key, intent, locked } = resolveKey();
+  startSession(key, intent, locked).catch(err => {
     console.error("[hopboard] session failed to open", err);
     state.setConnection("offline", "could not start session");
     emit(EV.TOAST, "Could not start the session — check the console");
@@ -426,7 +668,7 @@ async function boot() {
   safeInit("mobile nav", mobileNav.init);
 
   console.info(
-    `[hopboard] booted · key=${key} intent=${intent} device=${device.name()}`
+    `[hopboard] booted · intent=${intent} locked=${!!locked} device=${device.name()}`
   );
 }
 

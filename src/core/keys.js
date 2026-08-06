@@ -1,6 +1,6 @@
 /** Share-key generation and normalisation. */
 
-import { KEY } from "./config.js";
+import { KEY, LOCK } from "./config.js";
 
 /**
  * Cryptographically random key from the unambiguous alphabet.
@@ -63,15 +63,71 @@ export function isValid(raw) {
   return k.length >= 4 && k.length <= 32;
 }
 
+/**
+ * Bits of entropy in a PIN, estimated from the character classes it actually
+ * uses rather than from its length alone.
+ *
+ * Deliberately pessimistic — it assumes an attacker who knows the alphabet you
+ * drew from, which is the only assumption worth making about someone running an
+ * offline attack. "123456" is counted as six digits, not six printable ASCII
+ * characters, so the dialog reports ~20 bits and not a flattering ~39.
+ *
+ * The number matters more here than it does for a key. A key is guessed from
+ * nothing; a PIN is guessed by someone who may already hold the link, and at
+ * that point it is the entire remaining secret.
+ */
+export function pinEntropyBits(pin) {
+  const p = String(pin ?? "");
+  if (!p) return 0;
+  let alphabet = 0;
+  if (/[a-z]/.test(p)) alphabet += 26;
+  if (/[A-Z]/.test(p)) alphabet += 26;
+  if (/[0-9]/.test(p)) alphabet += 10;
+  if (/[^a-zA-Z0-9]/.test(p)) alphabet += 33;      // printable ASCII punctuation
+  return Math.log2(alphabet) * p.length;
+}
+
+/* ------------------------------------------------------------------
+   The fragment
+
+   A locked session's link carries a marker but never the PIN: `#!ABCDEF`.
+   That a session is locked is not a secret — the PIN is — and the app has to
+   know before it derives anything, because the marker is what decides which of
+   two completely different derivations to run.
+
+   Parsing happens BEFORE normalise(), and that ordering is load-bearing:
+   normalise() strips everything outside [A-Z0-9], so running it first turns
+   "#!ABCDEF" into the perfectly valid, completely different key "ABCDEF".
+
+   An older build has no idea about any of this. It normalises the fragment,
+   drops the "!", and joins the UNLOCKED room named ABCDEF — a different room
+   from the locked one, which it cannot address. It finds an empty room and
+   learns nothing, which is the correct way for this to fail.
+------------------------------------------------------------------- */
+
+export const LOCK_SIGIL = LOCK.SIGIL;
+
+/** Split a raw fragment into its key and its lock flag. */
+export function parseFragment(raw) {
+  const s = String(raw ?? "").trim();
+  const locked = s.startsWith(LOCK.SIGIL);
+  return { key: normalise(locked ? s.slice(LOCK.SIGIL.length) : s), locked };
+}
+
+/** Build one. The inverse of parseFragment, and tested as such. */
+export function fragment(key, locked = false) {
+  return (locked ? LOCK.SIGIL : "") + normalise(key);
+}
+
 /** Read the key from the URL fragment. The fragment is never sent to a server. */
 export function fromUrl() {
-  return normalise(location.hash.slice(1));
+  return parseFragment(location.hash.slice(1));
 }
 
-export function toUrl(key) {
-  location.hash = normalise(key);
+export function toUrl(key, locked = false) {
+  location.hash = fragment(key, locked);
 }
 
-export function shareLink(key) {
-  return `${location.origin}${location.pathname}#${normalise(key)}`;
+export function shareLink(key, locked = false) {
+  return `${location.origin}${location.pathname}#${fragment(key, locked)}`;
 }

@@ -14,7 +14,7 @@
 
 import { emit, EV } from "../core/bus.js";
 import { $, esc } from "./dom.js";
-import { fromUrl, isValid, normalise } from "../core/keys.js";
+import { fromUrl, isValid, fragment } from "../core/keys.js";
 import { loadLastKey, read, write } from "../core/storage.js";
 
 /* URLs are resolved against this module's own location rather than the
@@ -46,20 +46,24 @@ let started = false;          // init() is idempotent — listeners must not sta
  * is the correct behaviour for a first launch.
  */
 function restoreRoom() {
-  if (isValid(fromUrl())) return null;            // the URL already names a room
+  if (isValid(fromUrl().key)) return null;        // the URL already names a room
 
   const last = loadLastKey();
-  if (!last || !isValid(last)) return null;       // let main.js generate one
+  if (!last || !isValid(last.key)) return null;   // let main.js generate one
 
-  const key = normalise(last);
+  // The lock marker is restored with the key. Dropping it would rebuild the
+  // fragment as an UNLOCKED room of the same name — a real room that anyone
+  // holding the link can read — so an installed app relaunching would silently
+  // move the user out of their private session and into a public one.
+  const hash = fragment(last.key, last.locked);
   try {
     // replaceState, not location.hash: no history entry to trap the back
     // button, and no hashchange event fired at a half-booted app.
-    history.replaceState(null, "", `#${key}`);
+    history.replaceState(null, "", `#${hash}`);
   } catch {
-    location.hash = key;                          // sandboxed contexts
+    location.hash = hash;                         // sandboxed contexts
   }
-  return key;
+  return hash;
 }
 
 restoreRoom();

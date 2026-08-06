@@ -58,4 +58,11 @@ export const ERRORS = {
   // is our own just-closed connection still holding the name, which clears on
   // its own. See relay.js reclaimIdentity().
   PEER_ID_TAKEN: "Another device in this session is using the same id — files may not reach this one",
+  // Locked sessions. In practice unreachable from a correct client: a locked
+  // room's name is derived from the PIN, so a device that got the PIN wrong is
+  // addressing a different room entirely rather than being turned away from
+  // this one. It fires if a client's room derivation and key derivation ever
+  // disagree — which is a bug, and this is how it surfaces instead of a
+  // session that connects and then reads nothing.
+  AUTH_FAILED:  "This session's PIN does not match the one already in use here",
 };

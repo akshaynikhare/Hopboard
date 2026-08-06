@@ -49,9 +49,11 @@ export const EV = {
   PEERS_CHANGED:   "peers:changed",    // {count, list}
   INSTANCE_CHANGED:"conn:instance",    // {from, to} — split-brain warning (OI-3)
   KEY_COLLISION:   "session:collision",// generated key was taken (OI-2)
+  ROOM_STATE:      "conn:room",        // {existing, hasLast} — what `welcome` said
 
   // session
-  KEY_CHANGED:     "session:key",      // {key}
+  KEY_CHANGED:     "session:key",      // {key, locked}
+  LOCK_STATE:      "session:lock",     // {locked, verified} — see core/crypto.js
 
   // files
   FILES_CHANGED:   "files:changed",    // full list

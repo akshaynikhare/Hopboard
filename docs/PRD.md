@@ -89,6 +89,13 @@ A static web app. Open it on machine A, get a short share key (e.g. `D75LV`). En
 | FR-1.5 | "Copy link" and QR code for the current room | Should |
 | FR-1.6 | Leave / rotate key (generates a new room, drops the old connection) | Should |
 | FR-1.7 | Last-used key persisted in `localStorage`, offered as "Rejoin `D75LV`" on next launch | Should |
+| FR-1.8 | **Locked sessions.** A session may carry a second secret — a PIN — that is never in the link. It is folded into the derivation of both the encryption key and the room hash, so a device holding the link without the PIN reaches a different room entirely (§7.5) | Should |
+| FR-1.9 | The PIN is **never** in the URL, never in `localStorage`, never sent to the relay, and never logged. Within a tab it may be remembered only as its PBKDF2 output, in `sessionStorage`, scoped to the share key | Must |
+| FR-1.10 | The link carries a lock **marker** (`#!D75LV`) — that a session is locked is not a secret. The marker is parsed before key normalisation, since normalisation would strip it and yield a valid unlocked key | Must |
+| FR-1.11 | A link marked locked **must not open a connection** until the PIN is given. Cancelling leaves the app idle; it must never fall through to the unlocked room of the same name | Must |
+| FR-1.12 | Locking, unlocking and changing the PIN each start a **new room**, because the lock state and the PIN are both part of the room's name. The UI says so before acting | Must |
+| FR-1.13 | Minimum PIN length **6**, free-form. The dialog states the entropy in bits as it is typed | Should |
+| FR-1.14 | A locked session distinguishes **confirmed** from **unconfirmed**: the padlock claims privacy only once something in the room has actually decrypted | Must |
 
 ### 3.2 Clipboard engine
 | ID | Requirement | Priority |
@@ -524,6 +531,9 @@ The clipboard carries passwords, tokens, and PII. The share key is a **bearer cr
 | Persistence | Nothing written to disk anywhere; browser keeps history in `sessionStorage` only; server keeps one clip in RAM with a 10-min idle eviction |
 | Stale room reuse | Room key rotation; explicit Leave |
 | XSS via clip content | `textContent` only, strict CSP, no `innerHTML`, no `eval` |
+| **Link is forwarded, screenshotted or pasted into a group chat** | Locked sessions (§7.5): a PIN that never travels with the link, so holding the link is not sufficient |
+| **PIN guessing by someone who already holds the link** | Against them the key contributes **zero** bits and the PIN is the whole secret — see the table in §7.5. Mitigated by a 6-character minimum, 600k PBKDF2 iterations, and stating the entropy in bits at the point of entry. Not mitigated by the iteration count alone, which buys ~1.3 bits |
+| **A locked link opened by a build that predates the feature** | The old build strips the `!` and joins the *unlocked* room of that name. It learns nothing about the locked session, but the user believes they are private — OI-21. Mitigated by the `sw.js` version bump on release |
 
 ### 7.3 End-to-end encryption (recommended, and it's cheap)
 The elegant part of the fragment-based design: the key the user types can serve **both** purposes without the server ever learning it.
@@ -541,6 +551,92 @@ The relay sees only `roomHash` and ciphertext. It cannot derive the key from the
 ### 7.4 Notices required in UI
 - On room creation: "Anyone with this key can read what you copy here."
 - On first clipboard-permission prompt: what is read, when, and that it never leaves encrypted.
+- On "Copy link" **in a locked session**: that the PIN is *not* in the link and has to be sent another way.
+- On the QR code in a locked session: the same — the code carries the key, not the PIN.
+- On locking, unlocking, or changing the PIN: that it starts a new session and leaves the current devices behind.
+
+### 7.5 Locked sessions
+
+A second secret that never travels with the link. Implemented in `core/crypto.js`.
+
+```
+── open session (unchanged, wire-compatible) ─────────────────────────────
+roomHash   :  SHA-256("hopboard:" + KEY)[0..16] hex
+aesKey     :  PBKDF2-SHA256(KEY, salt="hopboard-v1", 250k) → AES-GCM-256
+
+── locked session ────────────────────────────────────────────────────────
+PIN        :  NFC-normalised, ends trimmed, case and interior preserved.
+              Never in the link, never on disk, never sent.
+prk        :  PBKDF2-SHA256(password = PIN,
+                            salt     = "hopboard-lock-v1:" + KEY,
+                            iters    = 600_000, dkLen = 32)
+aesKey     :  AES-GCM-256( HKDF(prk, info="hopboard-lock/aes",  32) )
+roomHash   :  hex(         HKDF(prk, info="hopboard-lock/room", 16) )   ← sent
+authToken  :  hex(         HKDF(prk, info="hopboard-lock/auth", 16) )   ← sent
+fragment   :  "#!" + KEY
+```
+
+**The room hash requires the PIN, and that is the load-bearing decision.** It turns the
+feature from "you cannot read it" into "you cannot find it": a device with the link but
+not the PIN computes a different room hash, joins a different room, and never appears in
+the real one — no peer slot, no roster entry, no traffic metadata. Locked and unlocked
+rooms for one key are likewise disjoint, so the two kinds of client can never meet and
+spray decryption failures at each other.
+
+**One PBKDF2 run, three outputs, via HKDF.** PBKDF2 reruns its full iteration count per
+32-byte output block, so asking it for 64 bytes costs double — and OI-8 already flags
+PBKDF2 cost on low-end Android. HKDF expansion is a couple of HMACs.
+
+**What the salt does and does not buy.** The share key is the salt, which stops one
+precomputed table covering every session — the open-session path, with its single global
+`"hopboard-v1"`, has exactly that weakness. It buys **nothing** against the attacker this
+feature exists for: someone holding the link holds the key and can compute the salt.
+
+#### The honest number
+
+Against an attacker **who has the link**, the key contributes 0 bits and the PIN is the
+entire secret. Orders of magnitude, one consumer GPU, PBKDF2-HMAC-SHA256 at 600k:
+
+| PIN | Entropy | Offline |
+|---|---|---|
+| `1234` | ~13 bits | seconds |
+| `445566` | ~20 bits | minutes |
+| 6 chars, human-chosen | ~22 bits | minutes |
+| 6 chars, mixed alphabet | ~36 bits | weeks |
+| 4 dictionary words | ~52 bits | infeasible |
+
+Against an attacker **without** the link the two secrets multiply: a 6-digit PIN on top of
+a 6-char key is ~49 bits, comparable to the 10-char "Longer keys" option. The UI quotes
+the first number, because it is the one that matters when a link leaks.
+
+#### Confirming a PIN, and why it can be ambiguous
+
+A wrong PIN is not rejected — it addresses a different, empty room, which looks exactly
+like being the first to arrive. So a locked room states its own existence: the device that
+creates one sends a single clip whose plaintext is a NUL-prefixed sentinel. The relay
+retains the last clip of a room and replays it to every joiner, so a joiner that decrypts
+it has *proved* it is in the right room without needing any peer to be awake.
+
+The beacon is planted **only into a room reporting `existing == 0` and no retained clip**.
+It is itself a clip, and sending it into a room that already has one would overwrite
+somebody's real last clip — a security feature breaking FR-3.3. The condition re-arms
+itself for free after a relay redeploy or a 10-minute eviction.
+
+Residual ambiguity, tracked as OI-19: if the room is empty *and* its last clip has expired,
+there is nothing to check against. The session then reads **"Private · unconfirmed"** and a
+banner offers to re-enter the PIN, rather than the app guessing.
+
+#### What a locked session does not hide
+
+The relay still sees a room hash with devices in it, their nicknames (sent in the clear on
+`hello`), the routing fields of every frame (`originId`, `id`, `seq`, `total`, `crc`), and
+frame timing. **Locked mode hides content, not the existence of a session.** What it does
+remove is any way for a link-holder without the PIN to be *in* that session.
+
+The relay additionally checks `authToken` at join (`?a=`, `backend/main.py` `_admits`),
+trust-on-first-use per room. This is defence in depth against our own derivation bugs, not
+a new security property — the room's name already required the PIN — and it is no defence
+against the relay operator, who sees the room hash regardless.
 
 ---
 
@@ -570,6 +666,7 @@ The relay sees only `roomHash` and ciphertext. It cannot derive the key from the
 | **M5 — Security** | E2EE, rate limits, size caps, CSP, privacy copy | Relay logs verified to contain no plaintext |
 | **M6 — Ship** | GitHub Actions deploy to Pages, relay deploy, README, full matrix tested | Public URL live |
 | **M7 — P2P files** | Thumbnails over the relay, WebRTC signalling + data channel, progress/cancel, relay-chunk fallback with visible labelling | 5 MB file moves between two machines directly; corporate path falls back and says so (§3.7, OI-14) |
+| **M8 — Locked sessions** | PIN folded into the room hash and the encryption key, fragment marker, PIN dialog, beacon confirmation, relay admission token (§7.5) | A link without its PIN reaches an empty room; a wrong PIN never appears in the real room's roster; the open-session wire format is byte-identical |
 
 > **M0 is a genuine gate, not a formality.** WebSocket support on FastAPI Cloud is undocumented (R3) and it is the assumption the entire architecture rests on. Proving it costs an afternoon; discovering it at M4 costs a rewrite.
 
@@ -599,6 +696,9 @@ The relay sees only `roomHash` and ciphertext. It cannot derive the key from the
 | D2 | E2E encryption in v1? | ✅ **Yes, from the start.** ~40 lines of `crypto.subtle`; it is what makes "no DB, blind relay" a real privacy claim rather than a slogan, and it is the answer to corporate data-handling review |
 | D6 | Chrome extension? | ✅ **No — excluded permanently.** Corporate policy blocks extension installs. PWA only |
 | D7 | Target platforms | ✅ **Windows, macOS, Android — Chrome on each.** Firefox/Safari degrade gracefully to the paste tier rather than being blocked |
+| D9 | Does the PIN belong in the room hash? | ✅ **Yes.** The alternative — PIN in the encryption key only, room hash unchanged — was considered and rejected. It keeps a wrong PIN *visible* (you sit in the right room failing to decrypt, which is easy to report), but it costs three things: a link-holder with no PIN occupies one of 8 peer slots and appears in everyone's roster; they can overwrite `room.last` with ciphertext nobody can decrypt, permanently forging "wrong PIN" for every subsequent joiner; and locked and unlocked clients on one key collide in a single room. Binding the PIN into the hash removes all three and makes the feature admission control rather than encryption alone. The cost — a wrong PIN is silent — is paid down by the lock beacon and the "unconfirmed" state (§7.5, OI-19) |
+| D10 | Is the PIN ever persisted? | ✅ **Never as the PIN.** Within a tab, its PBKDF2 output is kept in `sessionStorage` scoped to the share key, so a refresh does not re-prompt and does not re-run 600k iterations. Never `localStorage`: that is where the plaintext key already lives, and storing both together would mean the second secret bought nothing. The string the user typed is not retained anywhere |
+| D11 | Relay-side admission in v1? | ✅ **Yes, but as defence in depth.** The relay compares an `authToken` (HKDF output, trust-on-first-use per room) at join on both transports. It is not the primary control — the room's *name* already requires the PIN — and it does not defend against the relay operator. It catches the case where a client's room derivation and key derivation disagree, which would otherwise present as a session that connects and then reads nothing |
 
 ### 11.2 Still open
 
@@ -635,6 +735,16 @@ The relay sees only `roomHash` and ciphertext. It cannot derive the key from the
 | T18 | Relay restarted mid-session (redeploy) | All clients reconnect; no crash, no duplicate delivery |
 | T19 | Auto-generated key collides with a live room | Client detects `peers > 0` on a `create` and silently regenerates — never joins a stranger |
 | T20 | Two tabs open on the same machine, same room | Content sent once, not twice; no self-echo between tabs |
+| T21 | B opens a locked link and enters the right PIN | Joins the same room as A; clips flow both ways |
+| T22 | B enters the wrong PIN | Lands in an empty room of its own — never appears in A's roster, never occupies one of A's 8 slots |
+| T23 | B cancels the PIN prompt | No socket is opened at all; app sits idle. **Must not** fall through to the unlocked room of the same key |
+| T24 | Locked session, network drops and recovers | Reconnects without re-prompting; the padlock stays confirmed |
+| T25 | B refreshes the tab mid-session | No re-prompt (the stretched PIN is in `sessionStorage`); closing the tab and reopening does prompt |
+| T26 | B joins a locked room whose creator has gone and whose last clip has expired | Reads "Private · unconfirmed" with a re-enter-PIN banner — never a confident padlock |
+| T27 | A locked and an unlocked client use the same key | Two different rooms; neither sees the other; no "key mismatch" toasts |
+| T28 | Rotate the key inside a locked session | New link, PIN unchanged, still locked; toast says so |
+| T29 | A build predating the feature opens `#!KEY` | Lands in the unlocked room `KEY` — learns nothing about the locked session (OI-21) |
+| T30 | Beacon is planted into a room that already has a last clip | Never happens — a late joiner still receives the real last clip (FR-3.3) |
 
 ---
 
@@ -663,6 +773,10 @@ Severity: **Blocker** = stops the build · **High** = silent wrong behaviour if 
 | **OI-17** | 🟡 Medium | **A device joining was silent.** The key is a bearer credential and the device list going 2→3 is not something anyone notices — the moment of arrival is the only observable signal that someone else holds your key | ✅ Fixed: roster diffing in `state.setPeers` raises a named warning with a "New key" action. The first roster after connecting is not announced, and the roster resets on disconnect, so a relay redeploy does not report your own devices as intruders and train you to ignore the alert |
 | **OI-18** | 🟢 Low | **The retraction seam is in the wrong module.** `registry.announceGone()` takes an injected signal sender because `registry` sits under `transfer` and cannot import it. The outbound half arguably belongs in `transfer.js` beside `announce()`, which already subscribes to `EV.FILE_ADDED` | Left as built: it works, it is covered by 39 tests, and it uses the same injection contract `transfer.js` itself uses. Worth moving if `transfer.js` is touched for other reasons |
 | **OI-13** | 🟡 Medium | **Frontend commits restart the relay.** FastAPI Cloud redeploys on any push to the default branch, so a CSS tweak drops every live WebSocket and clears in-memory rooms | Clients already auto-reconnect and re-fetch the last clip, so the blast radius is a brief blip rather than data loss. If it becomes disruptive: develop the frontend on a branch and merge in batches, or move the relay to its own repo so its deploys are independent of site changes | M6 |
+
+| **OI-19** | 🟡 Medium | **A locked session can be unconfirmable.** A wrong PIN addresses a different, empty room, which is indistinguishable from being the first to arrive. The lock beacon closes this for any room whose last clip is still retained — but once the room has been evicted (10 min after the last device leaves) there is nothing to check against, and the app genuinely cannot tell "you are first" from "your PIN is wrong" | Not papered over: the padlock reads **"Private · unconfirmed"** and a banner offers to re-enter the PIN after 12 s with no successful decrypt. Resolving it properly needs server-side state that survives eviction — a room existence marker keyed on the hash — which trades away the "no persistence anywhere" property in §7.2. Not obviously worth it | M8 |
+| **OI-20** | 🟢 Low | **Locked mode hides content, not the existence of a session.** The relay still sees a room hash with devices in it, their nicknames in the clear (`hello.name`), every routing field, and frame timing | Documented in §7.5 rather than fixed. The link-holder-without-PIN — the attacker the feature is for — cannot reach the room at all, so what leaks leaks only to the relay operator, who is already outside the trust boundary. Sealing the nickname would be a genuine improvement and is independent of this feature |
+| **OI-21** | 🟢 Low | **A cached old build downgrades a locked link.** `sw.js` serves the shell cache-first, so during a rollout a client on the previous build opening `#!KEY` strips the marker and joins the *unlocked* room `KEY`. It learns nothing about the locked session, but the user clicked a link they were told was private | Bounded to the rollout window and mitigated by the `VERSION` bump (`v3` → `v4`), which is mandatory on any deploy touching `src/` anyway. A permanent fix would need the marker to make the fragment unparseable to an old build, which would break the "old clients degrade quietly" property in the other direction |
 
 ### 13.1 Decisions still open
 Carried from §11.2, repeated here so the register is complete: **D3** default key length (rec. 6, with a 10-char option) · **D4** frontend stack (rec. vanilla JS, no build) · **D5** custom domain (rec. yes — allowlisting) · **D8** keep-alive vs scale-to-zero (blocked on M0 measurement).

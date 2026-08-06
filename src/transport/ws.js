@@ -23,7 +23,7 @@ export const LABEL = "WebSocket";
 
 export const available = () => typeof WebSocket !== "undefined";
 
-export function create({ url, roomHash, onOpen, onFrame, onDown }) {
+export function create({ url, roomHash, auth = null, onOpen, onFrame, onDown }) {
   let done = false;
 
   const finish = (code, reason) => {
@@ -34,7 +34,13 @@ export function create({ url, roomHash, onOpen, onFrame, onDown }) {
 
   let sock;
   try {
-    sock = new WebSocket(`${url.replace(/\/+$/, "")}/ws/${roomHash}`);
+    // `?a=` is a locked session's admission token. Not a secret in the sense
+    // the PIN is — it is HKDF output the relay compares against the room's
+    // first arrival — but it is still session material, so it rides in the
+    // query rather than the path for the same reason `sid` does on the SSE
+    // path: paths are what proxies and access logs like to keep.
+    sock = new WebSocket(
+      `${url.replace(/\/+$/, "")}/ws/${roomHash}${auth ? `?a=${encodeURIComponent(auth)}` : ""}`);
   } catch (err) {
     // Constructing the socket throws synchronously on a malformed URL, and on
     // a Content-Security-Policy that forbids the scheme — which is one of the

@@ -46,6 +46,7 @@ means one socket.
 """
 
 import asyncio
+import hmac
 import json
 import os
 import time
@@ -288,6 +289,15 @@ class Room:
     seq: int = 0
     evict_task: asyncio.Task | None = None
 
+    # Locked sessions: the admission token the first arrival presented, if any.
+    #
+    # Trust on first use, and safe here for a reason that is worth stating: the
+    # room hash of a locked session is itself derived from the PIN, so reaching
+    # this room at all already required the secret. A squatter cannot get here
+    # first without it. That also means this check is defence in depth rather
+    # than the primary control — see the note on _admits().
+    auth: str | None = None
+
 
 rooms: dict[str, Room] = {}
 
@@ -500,11 +510,37 @@ def _country_of(headers) -> str:
     return country if len(country) == 2 and country.isalpha() else ""
 
 
-async def _join(room_hash: str, conn: Connection, country: str, extra: dict | None = None):
+def _admits(room: Room, auth: str | None) -> bool:
+    """Does this room accept a peer presenting `auth`?
+
+    Locked sessions (see src/core/crypto.js `deriveLocked`) hand the relay a
+    token derived alongside the encryption key. The relay can compare two peers'
+    tokens without being able to reverse either into the PIN or the share key —
+    it is HKDF output over 600k-iteration PBKDF2, and the relay never sees the
+    inputs.
+
+    Be clear about what this buys, because over-claiming it would be worse than
+    not having it. A locked room's NAME already requires the PIN, so a peer
+    without it cannot address this room and never arrives to be refused. This
+    check therefore catches implementation slips — a client that derives a room
+    hash correctly but its key wrongly, a future refactor that decouples the
+    two — not an attacker. It is also no defence against the relay operator,
+    who sees the room hash regardless.
+
+    An empty token matches an empty token, so open sessions are unaffected.
+    """
+    if room.auth is None and not room.peers:
+        return True                       # first arrival sets the room's answer
+    return hmac.compare_digest(room.auth or "", auth or "")
+
+
+async def _join(room_hash: str, conn: Connection, country: str,
+                extra: dict | None = None, auth: str | None = None):
     """Put a connection in a room and welcome it. Returns (room, peer) or None.
 
-    None means the room is full and the caller must end the connection; the
-    error frame has already been sent.
+    None means the connection must be ended — the room is full, or the peer
+    failed the locked-session admission check. The error frame has already been
+    sent either way.
     """
     room = rooms.get(room_hash)
     if room is None:
@@ -513,6 +549,16 @@ async def _join(room_hash: str, conn: Connection, country: str, extra: dict | No
     if len(room.peers) >= MAX_PEERS:
         await _send(conn, {"t": "error", "code": "ROOM_FULL"})
         return None
+
+    if not _admits(room, auth):
+        # Deliberately says nothing about what the right token would look like,
+        # and nothing about whether the room exists — the response to a bad
+        # token is identical to the response to a token for the wrong room.
+        await _send(conn, {"t": "error", "code": "AUTH_FAILED"})
+        return None
+
+    if not room.peers:
+        room.auth = auth or None          # includes re-arming after an eviction
 
     # A room that was counting down to eviction is alive again.
     if room.evict_task and not room.evict_task.done():
@@ -639,7 +685,10 @@ async def ws(sock: WebSocket, room_hash: str):
     await sock.accept()
     conn = WsConnection(sock)
 
-    joined = await _join(room_hash, conn, _country_of(sock.headers))
+    # ?a= is a locked session's admission token. Absent for open sessions, and a
+    # client older than this check simply never sends one.
+    joined = await _join(room_hash, conn, _country_of(sock.headers),
+                         auth=sock.query_params.get("a"))
     if joined is None:
         await sock.close(code=1013)
         return
@@ -691,8 +740,13 @@ async def sse(room_hash: str, request: Request):
     """Downstream half of the fallback: everything the room sends this peer."""
     conn = SseConnection()
 
+    # Same admission check as the WebSocket path. The fallback exists so a
+    # blocked network is not a broken app, not so it is a laxer door — a check
+    # that only one transport enforces is a check an attacker chooses not to
+    # meet.
     joined = await _join(room_hash, conn, _country_of(request.headers),
-                         extra={"sid": conn.sid})
+                         extra={"sid": conn.sid},
+                         auth=request.query_params.get("a"))
 
     async def stream() -> AsyncIterator[bytes]:
         # 2 KB of comment before anything else. Some proxies (and one or two
@@ -702,7 +756,7 @@ async def sse(room_hash: str, request: Request):
         # every SSE parser.
         yield b":" + b" " * 2048 + b"\n\n"
 
-        if joined is None:                     # room full; the error is queued
+        if joined is None:                     # room full or refused; error queued
             while not conn.queue.empty():
                 item = conn.queue.get_nowait()
                 if item is not None:
