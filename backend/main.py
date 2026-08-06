@@ -221,6 +221,69 @@ FRAME_CLASS.update({
 })
 CLASS_LIMITS["cursor"] = 20
 
+# ---- permessage-deflate, off ---------------------------------------------
+#
+# The single largest thing standing between this relay and its memory ceiling.
+#
+# `websockets` negotiates the permessage-deflate extension by default, and every
+# accepted connection then allocates a zlib context — a ~256 KB window, per
+# socket, for as long as the socket is open. Measured against this relay on a
+# 512 MB container:
+#
+#     deflate on    63.6 MB baseline + 276 KB/connection  ->  ~1,600 sockets
+#     deflate off   38.3 MB baseline +  80 KB/connection  ->  ~5,900 sockets
+#
+# and the compression was never buying anything, because of what this relay
+# carries. Every payload is AES-GCM ciphertext, base64'd, produced in a browser
+# (PRD §7.3). Ciphertext is incompressible by construction — that is what makes
+# it ciphertext — so deflate was spending a quarter of a megabyte per peer to
+# emit random bytes slightly larger than it found them. Turning it off gives
+# back roughly three quarters of the connection ceiling and costs nothing at
+# all; it even trims a few bytes per frame that deflate was adding.
+#
+# Why a monkeypatch and not a flag: the flag is `--ws-per-message-deflate false`
+# on uvicorn's command line, and on a managed platform we do not own that
+# command line — `fastapi deploy` builds it. So this reaches the same switch
+# from inside the app.
+#
+# Why a property and not an assignment: `Config.__init__` has already run and
+# already written `ws_per_message_deflate = True` into the config INSTANCE by
+# the time this module is imported (the server loads the app after building its
+# config), so a class attribute would be shadowed by it. A property is a data
+# descriptor, and data descriptors on the class take precedence over the
+# instance `__dict__` — which is what makes this work on the live config object
+# rather than only on ones built later. All three of uvicorn's WebSocket
+# implementations read this one attribute per connection, so patching it covers
+# whichever is in play.
+#
+# Set HOPBOARD_WS_DEFLATE=1 to leave the default alone.
+def _disable_permessage_deflate() -> str:
+    """Force permessage-deflate off. Returns what happened, for the boot log."""
+    if os.getenv("HOPBOARD_WS_DEFLATE", "").lower() in {"1", "true", "yes"}:
+        return "left on (HOPBOARD_WS_DEFLATE)"
+    try:
+        from uvicorn.config import Config
+    except ImportError:
+        # Not running under uvicorn. Nothing to do, and nothing is broken —
+        # another server simply will not have this knob.
+        return "skipped (not uvicorn)"
+    try:
+        if isinstance(Config.__dict__.get("ws_per_message_deflate"), property):
+            return "already off"
+        Config.ws_per_message_deflate = property(
+            lambda self: False,
+            lambda self, value: None,      # swallow Config.__init__'s assignment
+        )
+        return "off"
+    except Exception as exc:               # pragma: no cover — never fail boot
+        # A memory optimisation must never be the reason the relay does not
+        # start. Worst case we run as we did before, using more RAM.
+        return f"could not disable ({exc.__class__.__name__})"
+
+
+WS_DEFLATE_STATE = _disable_permessage_deflate()
+print(f"[relay] permessage-deflate: {WS_DEFLATE_STATE}")
+
 app = FastAPI(title="Hopboard relay", version="0.2.0-m7")
 
 # CORS on every response, including the ones this file never writes.
