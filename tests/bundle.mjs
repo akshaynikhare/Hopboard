@@ -115,7 +115,7 @@ catch {
 }
 
 const dom = new JSDOM(read("app.html"), {
-  url: "https://akshaynikhare.github.io/RealtimeClipboard/app.html#BUNDLE",
+  url: "https://realtimeclipboard.com/app.html#BUNDLE",
   pretendToBeVisual: true,
 });
 const { window } = dom;
@@ -126,7 +126,14 @@ global.location = window.location;
 put("navigator", window.navigator);
 global.localStorage = window.localStorage;
 global.sessionStorage = window.sessionStorage;
-global.performance = window.performance;
+// Node's own `performance`, NOT jsdom's. undici — the fetch built into Node —
+// calls performance.markResourceTiming() when a request finishes, and jsdom's
+// implementation has no such method, so replacing the global kills the process
+// with "markResourceTiming is not a function" the moment the app fetches
+// anything. It surfaced when the bundled app started loading changelog.json.
+// The app itself only ever calls performance.now(), which Node has.
+Object.defineProperty(window, "performance",
+  { value: globalThis.performance, configurable: true });
 global.HTMLElement = window.HTMLElement;
 global.Node = window.Node;
 global.CustomEvent = window.CustomEvent;
