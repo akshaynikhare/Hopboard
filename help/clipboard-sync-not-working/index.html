@@ -19,15 +19,15 @@
 -->
 <title>Clipboard Sync Not Working? Fixes for Windows, Android, Mac and iPhone</title>
 <meta name="description" content="Clipboard sync greyed out or copy-paste between devices not working? The fix order for Windows 11, Samsung, Android, Mac and iPhone — plus what to do when your work PC blocks it entirely.">
-<link rel="canonical" href="https://akshaynikhare.github.io/Hopboard/clipboard-sync-not-working/">
+<link rel="canonical" href="https://akshaynikhare.github.io/Hopboard/help/clipboard-sync-not-working/">
 <meta name="theme-color" content="#007acc">
-<link rel="icon" href="../icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="../../icons/icon.svg" type="image/svg+xml">
 
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Hopboard">
 <meta property="og:title" content="Clipboard Sync Not Working? Fixes for Windows, Android, Mac and iPhone">
 <meta property="og:description" content="Why the “Sync across your devices” toggle is greyed out, and how to fix copy-paste between devices on every platform.">
-<meta property="og:url" content="https://akshaynikhare.github.io/Hopboard/clipboard-sync-not-working/">
+<meta property="og:url" content="https://akshaynikhare.github.io/Hopboard/help/clipboard-sync-not-working/">
 <meta property="og:image" content="https://akshaynikhare.github.io/Hopboard/social/og-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -45,14 +45,14 @@
   "@graph": [
     {
       "@type": "TechArticle",
-      "@id": "https://akshaynikhare.github.io/Hopboard/clipboard-sync-not-working/#article",
+      "@id": "https://akshaynikhare.github.io/Hopboard/help/clipboard-sync-not-working/#article",
       "headline": "Clipboard sync not working? Fixes for Windows, Android, Mac and iPhone",
       "description": "Why the clipboard sync toggle is greyed out on Windows 11, and how to fix copy-paste between devices on Samsung, Android, Mac and iPhone.",
       "inLanguage": "en",
       "datePublished": "2026-08-06",
       "dateModified": "2026-08-06",
       "publisher": { "@id": "https://akshaynikhare.github.io/Hopboard/#org" },
-      "mainEntityOfPage": "https://akshaynikhare.github.io/Hopboard/clipboard-sync-not-working/"
+      "mainEntityOfPage": "https://akshaynikhare.github.io/Hopboard/help/clipboard-sync-not-working/"
     },
     {
       "@type": "BreadcrumbList",
@@ -66,6 +66,12 @@
         {
           "@type": "ListItem",
           "position": 2,
+          "name": "Help",
+          "item": "https://akshaynikhare.github.io/Hopboard/help/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
           "name": "Clipboard sync not working"
         }
       ]
@@ -74,7 +80,8 @@
 }
 </script>
 
-<link rel="stylesheet" href="../src/landing/landing.css">
+<link rel="stylesheet" href="../../src/landing/landing.css">
+<script type="module" src="../../src/landing/faq.js"></script>
 </head>
 <body>
 
@@ -85,7 +92,7 @@
 <header class="topbar">
   <div class="in">
     <div class="row">
-      <a class="brand" href="../">
+      <a class="brand" href="../../">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
           <rect x="8" y="3" width="8" height="4" rx="1"/>
           <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
@@ -95,7 +102,7 @@
       </a>
       <span class="spacer"></span>
       <a class="tlink" href="https://github.com/akshaynikhare/Hopboard">GitHub</a>
-      <a class="tlink strong" href="../app.html">Open the app</a>
+      <a class="tlink strong" href="../../app.html">Open the app</a>
     </div>
   </div>
 </header>
@@ -106,7 +113,8 @@
     <div class="in">
 
       <nav class="crumb" aria-label="Breadcrumb">
-        <a href="../">Hopboard</a> <span aria-hidden="true">/</span>
+        <a href="../../">Hopboard</a> <span aria-hidden="true">/</span>
+        <a href="../">Help</a> <span aria-hidden="true">/</span>
         <span aria-current="page">Clipboard sync not working</span>
       </nav>
 
@@ -307,7 +315,7 @@
         <p>
           A clipboard that lives in a web page sidesteps all three assumptions,
           because there is nothing to install and no account to be signed into.
-          That is what <a href="../">Hopboard</a> is: open the same page on both
+          That is what <a href="../../">Hopboard</a> is: open the same page on both
           devices, type the same five-character key, and what you copy on one is
           ready to paste on the other.
         </p>
@@ -330,66 +338,93 @@
         </p>
 
         <p>
-          <a class="btn" href="../app.html">Open the clipboard</a>
+          <a class="btn" href="../../app.html">Open the clipboard</a>
         </p>
       </div>
 
       <div class="faq" id="faq">
-        <h2>Common questions</h2>
+        <div class="faqhead">
+          <h2>Common questions</h2>
+          <button type="button" class="faqall" id="faqAll"
+                  aria-expanded="false" aria-controls="faq" hidden>
+            <span class="faqall-i" aria-hidden="true"></span>
+            <span class="faqall-t">Expand all</span>
+          </button>
+        </div>
 
-        <h3>Why is clipboard sync greyed out in Windows 11?</h3>
-        <p>
-          Almost always because clipboard history is switched off — the sync
-          toggle stays inert until you enable clipboard history above it in
-          <code>Settings › System › Clipboard</code>. If it is still greyed out,
-          you are signed in with a local account rather than a Microsoft account,
-          or the machine is managed and Group Policy has disabled the feature.
-        </p>
+        <details class="qa">
+          <summary><h3>Why is clipboard sync greyed out in Windows 11?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Almost always because clipboard history is switched off — the sync
+            toggle stays inert until you enable clipboard history above it in
+            <code>Settings › System › Clipboard</code>. If it is still greyed out,
+            you are signed in with a local account rather than a Microsoft account,
+            or the machine is managed and Group Policy has disabled the feature.
+            </p>
+          </div>
+        </details>
 
-        <h3>Does Windows clipboard sync work with Android or Mac?</h3>
-        <p>
-          No. Windows clipboard sync only works between Windows PCs signed into
-          the same Microsoft account. Microsoft's Phone Link can move clipboard
-          content between some Android phones and a Windows PC, but that is a
-          separate feature with its own device requirements.
-        </p>
+        <details class="qa">
+          <summary><h3>Does Windows clipboard sync work with Android or Mac?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            No. Windows clipboard sync only works between Windows PCs signed into
+            the same Microsoft account. Microsoft's Phone Link can move clipboard
+            content between some Android phones and a Windows PC, but that is a
+            separate feature with its own device requirements.
+            </p>
+          </div>
+        </details>
 
-        <h3>Why is copy and paste between my iPhone and Mac not working?</h3>
-        <p>
-          Universal Clipboard needs all five of its conditions at once: the same
-          Apple Account, Wi-Fi on, Bluetooth on, Handoff enabled, and the devices
-          within Bluetooth range. Bluetooth is the one most often overlooked,
-          because copying text feels like it should travel over the network.
-        </p>
+        <details class="qa">
+          <summary><h3>Why is copy and paste between my iPhone and Mac not working?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Universal Clipboard needs all five of its conditions at once: the same
+            Apple Account, Wi-Fi on, Bluetooth on, Handoff enabled, and the devices
+            within Bluetooth range. Bluetooth is the one most often overlooked,
+            because copying text feels like it should travel over the network.
+            </p>
+          </div>
+        </details>
 
-        <h3>Can my employer block clipboard sync?</h3>
-        <p>
-          Yes, and this is common. On a domain-joined or MDM-managed machine,
-          Group Policy can disable clipboard history and its syncing entirely,
-          and that overrides the Settings app. There is no user-side workaround —
-          the toggle will not respond. A web page is often the only route left,
-          assuming the site itself is not blocked.
-        </p>
+        <details class="qa">
+          <summary><h3>Can my employer block clipboard sync?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes, and this is common. On a domain-joined or MDM-managed machine,
+            Group Policy can disable clipboard history and its syncing entirely,
+            and that overrides the Settings app. There is no user-side workaround —
+            the toggle will not respond. A web page is often the only route left,
+            assuming the site itself is not blocked.
+            </p>
+          </div>
+        </details>
 
-        <h3>Is there a clipboard sync that works without an account?</h3>
-        <p>
-          Yes — a browser-based clipboard needs no account at all, because the
-          session is identified by a short key you type on both devices rather
-          than by a signed-in identity. That is the approach
-          <a href="../">Hopboard</a> takes, and it is why it works between
-          different brands and on machines where you cannot install anything.
-        </p>
+        <details class="qa">
+          <summary><h3>Is there a clipboard sync that works without an account?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes — a browser-based clipboard needs no account at all, because the
+            session is identified by a short key you type on both devices rather
+            than by a signed-in identity. That is the approach
+            <a href="../../">Hopboard</a> takes, and it is why it works between
+            different brands and on machines where you cannot install anything.
+            </p>
+          </div>
+        </details>
       </div>
 
     </div>
   </section>
-
 </main>
 
 <footer class="sec">
   <div class="in">
     <div class="footgrid">
       <p>Open source — <a href="https://github.com/akshaynikhare/Hopboard">github.com/akshaynikhare/Hopboard</a></p>
+      <p><a href="../../">Home</a> · <a href="../">Help</a> · <a href="../../blog/">Blog</a></p>
       <p>Sessions are held in memory and never written to disk. Clipboard contents are
          encrypted in your browser before they are sent.</p>
     </div>

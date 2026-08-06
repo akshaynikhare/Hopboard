@@ -89,6 +89,17 @@ export function init() {
   // device to a list nobody re-reads is not enough — if a stranger guesses or
   // is handed the key, the moment they arrive is the only moment it is
   // noticeable.
+  /**
+   * A banner from anywhere, by event.
+   *
+   * Every banner above is one this module knows the meaning of, which is right
+   * for the ones tied to session state. "What's new" is not: it is a notice
+   * about the build, its content comes from a data file, and teaching this
+   * module to parse a changelog to render it would put the knowledge in the
+   * wrong place. So the shape stays here and the content comes in.
+   */
+  on("ui:banner", ({ key, ...opts }) => { if (key) show(key, opts); });
+
   on(EV.PEER_JOINED, ({ name }) => {
     const who = name || "An unnamed device";
     // In a locked session the arrival means more, not less: reaching this room
@@ -124,6 +135,26 @@ export function init() {
    * Only raised once peers have had a chance to appear; a banner that fires the
    * instant a creator opens their own new session would be pure noise.
    */
+  /**
+   * The prompt was cancelled, so nothing is connected and nothing will be.
+   *
+   * This is the one state the app can end up in with no route forward: the
+   * dialog is gone, the session was never opened, and the status bar alone does
+   * not offer a way back. Raised off the connection detail rather than a
+   * dedicated event because "idle, because a PIN is required" is exactly what
+   * that field already says.
+   */
+  on(EV.CONN_STATE, ({ state: connState, detail }) => {
+    if (connState !== "idle" || !detail?.includes("PIN")) return;
+    show("lock", {
+      tone: "info",
+      title: "This session is locked",
+      body: "It needs its PIN before this device can join. The PIN is not in the "
+          + "link — whoever sent it to you has to pass it on separately.",
+      action: { label: "Enter PIN", onClick: () => emit("session:relock") },
+    });
+  });
+
   on(EV.LOCK_STATE, ({ locked, verified }) => {
     if (!locked || verified) return dismiss("lock");
     clearTimeout(lockDoubt);

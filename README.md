@@ -149,22 +149,52 @@ python -m http.server 8080
 cd backend
 pip install -r requirements.txt
 python -m uvicorn main:app --port 8000
-python test_relay.py ws://127.0.0.1:8000    # 45-check protocol gate
+python test_relay.py ws://127.0.0.1:8000    # 51-check protocol gate
 python test_sse.py http://127.0.0.1:8000    # 33-check fallback gate
 ```
+
+The relay must be on **port 8000**: `src/core/config.js` points the app there
+automatically when the page is served from localhost, so nothing needs
+configuring — but nothing else will be found either. Open `app.html#DEVKEY` in
+two windows to watch a clip cross between them.
 
 With the relay running, `node tests/fallback.mjs ws://127.0.0.1:8000` exercises
 the client's WebSocket → SSE failover with WebSockets simulated as blocked.
 
-See [backend/README.md](backend/README.md) for deployment, **including the
-replica-pinning step that must not be skipped.**
+Full setup, the service-worker cache trap, and how to check a UI change:
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). For deployment see
+[backend/README.md](backend/README.md), **including the replica-pinning step
+that must not be skipped.**
+
+## Contributing and releasing
+
+```bash
+npm install                          # sets up the git hooks
+git switch -c fix/whatever           # main refuses direct commits
+git commit -m "fix(scope): what changed"
+```
+
+The tests run **locally, in a git hook, before the commit exists** — there is no
+CI. GitHub's only workflow copies files to Pages, and it runs on a version tag
+and nothing else. The reasoning, the trade that comes with it, and the commit
+message format the changelog is generated from are in
+[docs/RELEASING.md](docs/RELEASING.md).
+
+```bash
+npm run verify                       # what the pre-commit hook runs
+npm test                             # everything, needs a relay
+npm run release -- minor             # verify, changelog, tag, push, deploy
+```
 
 ## Docs
 
 | Doc | What it covers |
 |---|---|
 | [PRD.md](docs/PRD.md) | Requirements, architecture, security model, open issues |
+| [DEVELOPMENT.md](docs/DEVELOPMENT.md) | Running it locally, the test suite, the landing-page grid and globe, and the traps |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Module layout, boundaries, and how to add a feature |
+| [RELEASING.md](docs/RELEASING.md) | Hooks instead of CI, tag-triggered deploys, and the generated changelog |
+| [CHANGELOG.md](CHANGELOG.md) | What shipped in each release — generated from the commits |
 | [CLIPBOARD-FLOW.md](docs/CLIPBOARD-FLOW.md) | How the browser reaches the OS clipboard, and why background capture is impossible |
 | [P2P-FILES.md](docs/P2P-FILES.md) | Thumbnails over the relay, bytes over WebRTC, and the corporate-network problem |
 | [M0-RESULTS.md](docs/M0-RESULTS.md) | Transport gate results |

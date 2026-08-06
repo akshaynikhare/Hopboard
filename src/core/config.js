@@ -241,9 +241,17 @@ export const REPO = {
 export const LINKS = {
   REPO:    `https://github.com/${REPO.OWNER}/${REPO.NAME}`,
   ISSUES:  `https://github.com/${REPO.OWNER}/${REPO.NAME}/issues`,
-  /** Straight to the form: "report" that lands on a list of other people's
-      bugs asks the user to find the button themselves. */
-  NEW_ISSUE: `https://github.com/${REPO.OWNER}/${REPO.NAME}/issues/new`,
+  /**
+   * The chooser, not a blank issue: "report" that lands on a list of other
+   * people's bugs asks the user to find the button themselves, and a blank box
+   * asks them to guess what we need.
+   *
+   * `/new/choose` picks between the bug and feature forms in
+   * .github/ISSUE_TEMPLATE/ — which is also where the "do not paste your share
+   * key" warning lives, and that warning is the single most valuable thing on
+   * the page for this product.
+   */
+  NEW_ISSUE: `https://github.com/${REPO.OWNER}/${REPO.NAME}/issues/new/choose`,
   SPONSOR: `https://github.com/sponsors/${REPO.OWNER}`,
   COFFEE:  `https://www.buymeacoffee.com/${REPO.COFFEE_HANDLE}`,
 };

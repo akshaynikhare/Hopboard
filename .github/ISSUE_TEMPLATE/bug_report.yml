@@ -1,0 +1,169 @@
+name: Bug report
+description: Something does not work the way it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      # First, and deliberately alarming. Hopboard's whole job is moving
+      # passwords and tokens between machines, so the natural instinct when
+      # reporting a bug — paste the thing that went wrong — is exactly the
+      # instinct that publishes a live credential in a public issue.
+      value: |
+        > [!CAUTION]
+        > **Never paste your share key, your session PIN, or anything you copied.**
+        >
+        > The share key is a password: anyone who reads it can open your session
+        > and read what you copy. The same goes for a link containing one
+        > (`…/app.html#D75LV`) and for a screenshot with the key visible in the
+        > title bar or status bar.
+        >
+        > Redact them as `#XXXXXX`. A key is never needed to reproduce a bug —
+        > if it turns out we need one, we will ask you to make a throwaway
+        > session.
+
+        Before filing: [clipboard sync is not working](https://akshaynikhare.github.io/Hopboard/help/clipboard-sync-not-working/)
+        covers the common causes — blocked WebSockets, clipboard permission, and
+        a browser that will not read the clipboard in the background.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, and what the app did instead of what you expected.
+      placeholder: |
+        I copied a URL on my laptop. My phone showed "Connected · 2 devices"
+        but the clip never arrived. Copying from the phone to the laptop worked.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: >
+        Number them. Most Hopboard bugs involve two devices, so say which device
+        did what — "copy on A, nothing on B" is a different bug from
+        "copy on B, nothing on A".
+      placeholder: |
+        1. Open the app on device A, note the key
+        2. Open the same key on device B
+        3. Copy some text on A
+        4. B stays empty
+    validations:
+      required: true
+
+  - type: input
+    id: frequency
+    attributes:
+      label: How often
+      description: Every time, or only sometimes? Intermittent bugs are still worth reporting — say so rather than waiting until you can reproduce it reliably.
+      placeholder: Every time / about 1 in 5 / once, and not since
+
+  # Two devices, two sets of answers. Almost every sync bug depends on the pair
+  # rather than on either half, and a report with only one side of it usually
+  # costs a round trip before anything can be looked at.
+  - type: input
+    id: device_a
+    attributes:
+      label: Device A — the one you copied on
+      description: Browser, version, and operating system.
+      placeholder: Chrome 141, Windows 11
+    validations:
+      required: true
+
+  - type: input
+    id: device_b
+    attributes:
+      label: Device B — the one you expected it on
+      description: Leave blank if only one device was involved.
+      placeholder: Chrome 141, Android 15
+
+  - type: dropdown
+    id: connection
+    attributes:
+      label: What did the status bar say?
+      description: >
+        Bottom-left of the app. This one line separates "the relay is
+        unreachable" from "the relay is fine and the clipboard is not being
+        read", which are unrelated bugs with the same symptom.
+      options:
+        - Connected
+        - Connecting… (and it stayed there)
+        - Reconnecting
+        - Not connected / Offline
+        - I did not look
+    validations:
+      required: true
+
+  - type: dropdown
+    id: transport
+    attributes:
+      label: Which transport?
+      description: >
+        Click the connection item in the status bar. "HTTP fallback" means
+        WebSockets are blocked on that network — usually a corporate proxy, and
+        useful to know up front.
+      options:
+        - WebSocket
+        - HTTP fallback (SSE)
+        - Automatic, and I do not know which it picked
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: session
+    attributes:
+      label: Session type
+      options:
+        - Normal session
+        - Locked session (with a PIN)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: instance
+    attributes:
+      label: Where are you running it?
+      options:
+        - The hosted app (akshaynikhare.github.io/Hopboard)
+        - Installed as an app (PWA)
+        - My own copy, hosted somewhere else
+        - Locally, from a checkout
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: >
+        F12 → Console, on both devices if you can. Hopboard logs a line at boot
+        with the room hash and whether the session is locked — that line is safe
+        to paste, it contains no key and no PIN.
+
+
+        **Read what you paste before you paste it.** Nothing here should contain
+        a `#` fragment from the address bar.
+      render: text
+      placeholder: |
+        [hopboard] session · room=2bab2d0b41e31a44b28eeaacf7ac6249 locked=false
+        [hopboard] booted · intent=join locked=false device=Chrome · Windows
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: >
+        Settings (gear, bottom-right) → About → What's new shows the version you
+        are running. If the app will not load at all, say so instead.
+      placeholder: v1.2.0
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: >
+        Screenshots, a network trace, what you had tried already. Drag images
+        straight in — but check the title bar and the status bar are not showing
+        your key first.

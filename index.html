@@ -106,6 +106,7 @@
      competes with first paint. -->
 <link rel="stylesheet" href="./src/landing/landing.css">
 <script type="module" src="./src/landing/landing.js"></script>
+<script type="module" src="./src/landing/faq.js"></script>
 </head>
 <body>
 
@@ -553,93 +554,143 @@
     <div class="in">
       <header class="shead">
         <p class="eyebrow">Questions</p>
-        <div class="htext"><h2>Online clipboard questions, answered</h2></div>
+        <div class="htext">
+          <h2>Online clipboard questions, answered</h2>
+          <!-- hidden until faq.js reveals it: with no JS the button cannot do
+               anything, and a dead control is worse than no control. The
+               accordion itself needs none — <details> opens on its own. -->
+          <button type="button" class="faqall" id="faqAll"
+                  aria-expanded="false" aria-controls="faqList" hidden>
+            <span class="faqall-i" aria-hidden="true"></span>
+            <span class="faqall-t">Expand all</span>
+          </button>
+        </div>
       </header>
 
-      <div class="faq">
-        <h3>What is an online clipboard?</h3>
-        <p>
-          An online clipboard is a web page that holds what you copy on one device so
-          you can paste it on another. Instead of emailing yourself a link or plugging
-          in a cable, both devices open the same page, identify themselves with a short
-          key, and share a single clipboard between them.
-        </p>
+      <div class="faq" id="faqList">
+        <details class="qa">
+          <summary><h3>What is an online clipboard?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            An online clipboard is a web page that holds what you copy on one device so
+            you can paste it on another. Instead of emailing yourself a link or plugging
+            in a cable, both devices open the same page, identify themselves with a short
+            key, and share a single clipboard between them.
+            </p>
+          </div>
+        </details>
 
-        <h3>How do I sync my clipboard between my phone and my PC?</h3>
-        <p>
-          Open Hopboard on both, type the same five-character key on each, and copy
-          something. It arrives on the other device ready to paste. There is no account
-          to make and nothing to install, so it works on a machine where you do not have
-          admin rights.
-        </p>
+        <details class="qa">
+          <summary><h3>How do I sync my clipboard between my phone and my PC?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Open Hopboard on both, type the same five-character key on each, and copy
+            something. It arrives on the other device ready to paste. There is no account
+            to make and nothing to install, so it works on a machine where you do not have
+            admin rights.
+            </p>
+          </div>
+        </details>
 
-        <h3>Can I share a clipboard between Windows and Android without an account?</h3>
-        <p>
-          Yes. Hopboard needs no email, no password and no sign-in — the five-character
-          key is the whole identity of a session. When you close the tab the session is
-          gone, and nothing about it was ever written to disk.
-        </p>
+        <details class="qa">
+          <summary><h3>Can I share a clipboard between Windows and Android without an account?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes. Hopboard needs no email, no password and no sign-in — the five-character
+            key is the whole identity of a session. When you close the tab the session is
+            gone, and nothing about it was ever written to disk.
+            </p>
+          </div>
+        </details>
 
-        <h3>Does it work if the two devices are on different networks?</h3>
-        <p>
-          Yes. Text goes through a relay, so a laptop on home Wi-Fi and a phone on mobile
-          data share a clipboard perfectly well. This is the main difference from
-          Snapdrop, LocalSend and AirDrop, which need both devices on the same network.
-          Files are the exception: they go directly between the two machines, and that
-          direct connection is the part corporate firewalls sometimes block.
-        </p>
+        <details class="qa">
+          <summary><h3>Does it work if the two devices are on different networks?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes. Text goes through a relay, so a laptop on home Wi-Fi and a phone on mobile
+            data share a clipboard perfectly well. This is the main difference from
+            Snapdrop, LocalSend and AirDrop, which need both devices on the same network.
+            Files are the exception: they go directly between the two machines, and that
+            direct connection is the part corporate firewalls sometimes block.
+            </p>
+          </div>
+        </details>
 
-        <h3>Is an online clipboard safe to use?</h3>
-        <p>
-          It depends entirely on whether the server can read what you copy — and with
-          Hopboard it cannot. Text is encrypted in your browser with AES-GCM before it is
-          sent, and the key never leaves your device: the server only sees a hash that
-          tells it which room to route to, and ciphertext it has no way to open. It keeps
-          neither. The honest caveat is that the key is a bearer credential — anyone who
-          learns it can read that session while it is open.
-        </p>
+        <details class="qa">
+          <summary><h3>Is an online clipboard safe to use?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            It depends entirely on whether the server can read what you copy — and with
+            Hopboard it cannot. Text is encrypted in your browser with AES-GCM before it is
+            sent, and the key never leaves your device: the server only sees a hash that
+            tells it which room to route to, and ciphertext it has no way to open. It keeps
+            neither. The honest caveat is that the key is a bearer credential — anyone who
+            learns it can read that session while it is open.
+            </p>
+          </div>
+        </details>
 
-        <h3>Is this a real-time clipboard?</h3>
-        <p>
-          Yes. Hopboard is a live clipboard: the moment a copy is captured it is
-          encrypted and pushed over an open WebSocket, so it lands on the other
-          device in well under a second on a normal connection. There is no polling
-          and no refresh button — the other device already has it by the time you
-          look at it.
-        </p>
+        <details class="qa">
+          <summary><h3>Is this a real-time clipboard?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes. Hopboard is a live clipboard: the moment a copy is captured it is
+            encrypted and pushed over an open WebSocket, so it lands on the other
+            device in well under a second on a normal connection. There is no polling
+            and no refresh button — the other device already has it by the time you
+            look at it.
+            </p>
+          </div>
+        </details>
 
-        <h3>Where is my clipboard data stored?</h3>
-        <p>
-          Nowhere. There is no database and nothing is written to disk. The relay holds
-          the last message for a room in memory and drops it; files never reach the
-          server at all, because they travel peer-to-peer between your two devices.
-        </p>
+        <details class="qa">
+          <summary><h3>Where is my clipboard data stored?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Nowhere. There is no database and nothing is written to disk. The relay holds
+            the last message for a room in memory and drops it; files never reach the
+            server at all, because they travel peer-to-peer between your two devices.
+            </p>
+          </div>
+        </details>
 
-        <h3>Can it watch my clipboard in the background?</h3>
-        <p>
-          No, and neither can any other web app on any browser — reading the clipboard
-          requires the window to have focus, which is a deliberate browser security rule.
-          You switch to the Hopboard tab and it picks up whatever you copied. A native
-          app can do this; a web page cannot, and anything claiming otherwise on the web
-          is worth a second look.
-        </p>
+        <details class="qa">
+          <summary><h3>Can it watch my clipboard in the background?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            No, and neither can any other web app on any browser — reading the clipboard
+            requires the window to have focus, which is a deliberate browser security rule.
+            You switch to the Hopboard tab and it picks up whatever you copied. A native
+            app can do this; a web page cannot, and anything claiming otherwise on the web
+            is worth a second look.
+            </p>
+          </div>
+        </details>
 
-        <h3>Which browsers does it work in?</h3>
-        <p>
-          Chromium browsers get the full experience — Chrome, Edge, Brave and Chrome on
-          Android can read the clipboard directly. Firefox and Safari can receive
-          everything and can send anything you paste in by hand, but cannot read the
-          clipboard on their own, because they have not implemented that part of the
-          Clipboard API.
-        </p>
+        <details class="qa">
+          <summary><h3>Which browsers does it work in?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Chromium browsers get the full experience — Chrome, Edge, Brave and Chrome on
+            Android can read the clipboard directly. Firefox and Safari can receive
+            everything and can send anything you paste in by hand, but cannot read the
+            clipboard on their own, because they have not implemented that part of the
+            Clipboard API.
+            </p>
+          </div>
+        </details>
 
-        <h3>Is Hopboard free?</h3>
-        <p>
-          Yes, free and open source under the MIT licence, with no paid tier and no
-          account. The relay is a small FastAPI service you can also
-          <a href="https://github.com/akshaynikhare/Hopboard">run yourself</a> if you
-          would rather not use someone else's.
-        </p>
+        <details class="qa">
+          <summary><h3>Is Hopboard free?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes, free and open source under the MIT licence, with no paid tier and no
+            account. The relay is a small FastAPI service you can also
+            <a href="https://github.com/akshaynikhare/Hopboard">run yourself</a> if you
+            would rather not use someone else's.
+            </p>
+          </div>
+        </details>
       </div>
     </div>
   </section>
@@ -661,10 +712,11 @@
   <div class="in">
     <div class="footgrid">
       <p>Open source — <a href="https://github.com/akshaynikhare/Hopboard">github.com/akshaynikhare/Hopboard</a></p>
-      <!-- Guides are linked from here rather than the top bar: they are for
-           people who arrived from a search, not for someone about to press the
-           button. A crawler still finds them on the first page it fetches. -->
-      <p>Guides — <a href="./clipboard-sync-not-working/">Clipboard sync not working?</a></p>
+      <!-- The two content hubs. Linked from the footer rather than the top bar
+           because they are for people who arrived from a search, not for
+           someone about to press the button — but a crawler still reaches both,
+           and through them every article, from the first page it fetches. -->
+      <p><a href="./help/">Help</a> · <a href="./blog/">Blog</a></p>
       <p>Sessions are held in memory and never written to disk. Clipboard contents are
          encrypted in your browser before they are sent.</p>
     </div>

@@ -126,6 +126,7 @@ function onMenuEvent(e, close) {
   if (action === "lock")   { close(); return emit("session:lock"); }
   if (action === "unlock") { close(); return emit("session:unlock"); }
   if (action === "repin")  { close(); return emit("session:repin"); }
+  if (action === "whatsnew") { close(); return emit("ui:whatsnew"); }
   if (action === "qr")     { close(); return showQr(); }
 }
 
@@ -237,7 +238,11 @@ function gearMenu() {
     + swRow("longKeys", "Longer keys", keyStrength())
     + lockRows()
     + group("Presence")
-    + swRow("cursors", "Show other cursors", "See where the other devices are pointing");
+    + swRow("cursors", "Show other cursors", "See where the other devices are pointing")
+    + group("About")
+    + `<div class="sacts">
+         <button class="btn ghost" type="button" data-act="whatsnew" data-mi="whatsnew">What's new</button>
+       </div>`;
 }
 
 /**
