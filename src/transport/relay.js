@@ -64,6 +64,7 @@ let mode = TRANSPORT.WS;
 let announced = null;            // last transport reported on the bus
 let stuck = false;               // both transports have failed; cleared by any success
 let unsupported = false;         // the relay is reachable but predates the fallback
+let forced = null;               // a transport the user pinned by hand; null = auto
 let failures = { [TRANSPORT.WS]: 0, [TRANSPORT.SSE]: 0 };
 let backoff = NET.BACKOFF_MIN_MS;
 let heartbeat = null;
@@ -90,6 +91,7 @@ export function connect({ roomHash, intent = "join", url = RELAY_URL, name = "" 
   channel?.close(1000);            // a second connect() replaces, never stacks
   session = { roomHash, intent, url, name };
   wantOpen = true;
+  forced = storage.loadTransportChoice();
   failures = { [TRANSPORT.WS]: 0, [TRANSPORT.SSE]: 0 };
   backoff = NET.BACKOFF_MIN_MS;
   mode = preferred();
@@ -117,19 +119,63 @@ export const isOpen = () => channel?.isOpen() === true;
 /**
  * Where to start.
  *
- * A remembered choice wins: on a network that blocks WebSockets, re-probing
- * costs NET.PROBE_MS of "Connecting…" on every single load, and the answer is
- * the same every time. storage.js expires the memory on its own, so moving off
- * that network re-probes rather than pinning the user to the slower transport
- * forever.
+ * A hand-picked transport wins outright, and never expires — it is an
+ * instruction, not a measurement. Failing over would undo it, so a forced
+ * transport keeps retrying itself and the status bar says it is locked.
+ *
+ * Failing that, a remembered choice: on a network that blocks WebSockets,
+ * re-probing costs NET.PROBE_MS of "Connecting…" on every single load and the
+ * answer is the same every time. storage.js expires that memory on its own, so
+ * moving off that network re-probes rather than pinning the user to the slower
+ * transport forever.
  */
 function preferred() {
+  if (forced && CHANNELS[forced]?.available()) return forced;
   const remembered = storage.loadTransport();
   if (remembered && CHANNELS[remembered]?.available()) return remembered;
   return wsChannel.available() ? TRANSPORT.WS : TRANSPORT.SSE;
 }
 
+/**
+ * Pin the transport, or hand it back to the app.
+ *
+ * Exists because "it works but it is on the slow one" and "it should be on the
+ * slow one and is not" both need an answer a user can act on, and because
+ * reproducing a blocked network to test the fallback otherwise means finding a
+ * blocked network. `null` means auto.
+ */
+export function setTransport(choice) {
+  const next = choice === TRANSPORT.WS || choice === TRANSPORT.SSE ? choice : null;
+  if (next === forced) return;
+
+  forced = next;
+  storage.saveTransportChoice(forced);
+  announced = null;                // the lock changed; the UI needs to hear it
+
+  if (!wantOpen || !session) return announce();
+
+  // Reconnect now rather than at the next drop: the point of choosing is to
+  // see the choice take effect.
+  channel?.close(1000);
+  channel = null;
+  stopTimers();
+  epoch++;
+  stuck = false;
+  failures = { [TRANSPORT.WS]: 0, [TRANSPORT.SSE]: 0 };
+  backoff = NET.BACKOFF_MIN_MS;
+  mode = preferred();
+  announce();
+  start();
+}
+
+export const transportChoice = () => forced;
+
 function switchTransport() {
+  // A forced transport does not fail over. Someone asked for this one
+  // specifically, and silently moving them off it is exactly the behaviour the
+  // switch was added to be able to override.
+  if (forced) return;
+
   const next = OTHER[mode];
   if (!CHANNELS[next].available()) return;
 
@@ -152,13 +198,17 @@ function blocked() {
 }
 
 function announce() {
-  const key = stuck ? `blocked:${unsupported}` : mode;
+  const key = `${stuck ? `blocked:${unsupported}` : mode}:${forced}`;
   if (key === announced) return;   // don't re-raise a banner on every reconnect
   announced = key;
   emit(EV.TRANSPORT, {
     mode: stuck ? null : mode,
     label: CHANNELS[mode].LABEL,
     blocked: stuck,
+    // What the picker in the status bar shows as selected. `mode` is what is
+    // actually carrying frames right now; this is what the user asked for, and
+    // on auto they are not the same question.
+    forced,
     // "the relay is old" and "the network is blocking us" present identically
     // and have opposite fixes, so the UI is given the difference rather than a
     // single sentence that has to cover both.
@@ -209,7 +259,12 @@ function up() {
   idRetries = 0;
   backoff = NET.BACKOFF_MIN_MS;
   failures[mode] = 0;
-  storage.saveTransport(mode);
+
+  // Only an automatic success is evidence. A forced transport working proves
+  // nothing about what this network allows — it proves someone clicked it — and
+  // recording it would mean pinning HTTP once left "Automatic" choosing HTTP
+  // for the next twelve hours, which is the opposite of handing control back.
+  if (!forced) storage.saveTransport(mode);
 
   state.setConnection("connected", detail());
   announce();
@@ -279,8 +334,15 @@ function stopTimers() {
   heartbeat = probe = null;
 }
 
-/** Status-bar text: whatever the state wants to say, plus the transport. */
-const detail = (extra = "") => [extra, NOTE[mode]].filter(Boolean).join(" · ");
+/**
+ * Status-bar text: whatever the state wants to say, plus the transport.
+ *
+ * "locked" is not decoration. A pinned transport does not fail over, so a user
+ * who pinned WebSocket on a network that blocks it would otherwise watch an
+ * endless reconnect with no hint that they are the reason.
+ */
+const detail = (extra = "") =>
+  [extra, NOTE[mode], forced ? "locked" : ""].filter(Boolean).join(" · ");
 
 /* ------------------------------------------------------------------
    protocol

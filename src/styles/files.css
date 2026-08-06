@@ -216,6 +216,38 @@
   background:color-mix(in srgb, var(--activity) 55%, transparent);
 }
 
+/* ------------------------------------------------------------------ *
+ * The incoming-request variant is NOT modal.
+ *
+ * It used to share the overlay above, which meant an unanswered request froze
+ * the app for whoever was being asked — editor included — until someone dealt
+ * with it or it timed out. It now docks above the status bar and leaves
+ * everything usable underneath.
+ *
+ * What kept the transfer safe was never the backdrop: it is that no bytes move
+ * without a click, and that an unanswered card counts down to a denial. Both
+ * still hold. What the backdrop did do was stop the page being used, which is
+ * not a security property.
+ * ------------------------------------------------------------------ */
+.ask.req {
+  inset:auto 12px calc(var(--statusbar-h) + 12px) auto;
+  background:none;
+  padding:0;
+  align-items:flex-end;
+  /* Only the cards take clicks. The rest of this box is empty space over an
+     app that has to stay usable. */
+  pointer-events:none;
+  max-height:70vh;
+  overflow-y:auto;
+}
+.ask.req .card {
+  pointer-events:auto;
+  /* Stronger than the modal's shadow, not weaker: without a backdrop dimming
+     everything else, this is the only thing lifting it off the page. */
+  box-shadow:0 8px 28px color-mix(in srgb, var(--activity) 85%, transparent);
+  border-color:var(--warn);
+}
+
 .ask .card {
   width:min(380px, 92vw);
   background:var(--side);

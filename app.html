@@ -247,7 +247,12 @@
       <svg viewBox="0 0 24 24"><circle cx="7" cy="17" r="3"/><path d="M9.5 15L20 4.5M17 7l2 2M14 10l2 2"/></svg>
       <span id="sbKeyText">—</span>
     </div>
-    <div class="sitem plain" id="sbConn"><span class="dot"></span><span id="sbConnText">Not connected</span></div>
+    <!-- A button, not a label: clicking it picks the transport. The menu is
+         built by ui/statusbar.js into #mount-transport, below. -->
+    <button class="sitem" id="sbConn" type="button" aria-haspopup="menu" aria-expanded="false"
+            title="Connection — click to choose how this device reaches the relay">
+      <span class="dot"></span><span id="sbConnText">Not connected</span>
+    </button>
     <div class="sitem plain" id="sbPeers">1 device</div>
     <div class="sitem plain" id="sbMode">Live sync</div>
     <!-- Peers can see this device's pointer, and until this existed there was
@@ -274,6 +279,7 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- Dialogs and overlays mount here (QR, file-accept prompts, about). -->
+<div id="mount-transport"></div>
 <div id="mount-modals"></div>
 </body>
 </html>

@@ -73,6 +73,7 @@
 import { FILES, NET } from "../core/config.js";
 import { emit, on, EV } from "../core/bus.js";
 import * as state from "../core/state.js";
+import * as storage from "../core/storage.js";
 import * as registry from "./registry.js";
 import * as chunker from "./chunker.js";
 import { T } from "../transport/protocol.js";
@@ -130,12 +131,13 @@ const RELAY_FRAMES_PER_SEC = 8;
 const RELAY_FRAME_GAP_MS = Math.ceil(1000 / RELAY_FRAMES_PER_SEC);
 
 /**
- * How long the receiver waits, in ICE timeouts. The holder may spend a whole
- * ICE_TIMEOUT_MS racing before it even starts the relay fallback, so waiting
- * one timeout would abort a transfer that was about to succeed.
+ * How long a transfer that HAS started may go quiet, in ICE timeouts. Bytes
+ * arriving and then stopping is a different failure from never starting, and it
+ * is the one that scales with the network rather than with a human — so this
+ * one stays tied to the ICE timeout. What replaced its sibling, RESPONSE_GRACE,
+ * is `requestTimeout` below.
  */
-const RESPONSE_GRACE = 3;   // nothing at all has arrived
-const IDLE_GRACE = 4;       // arrived, then went quiet mid-transfer
+const IDLE_GRACE = 4;
 
 /* ------------------------------------------------------------------ *
  * Injected collaborators
@@ -167,15 +169,29 @@ export const iceTimeoutMs = NET.ICE_TIMEOUT_MS;
 export const currentIceTimeoutMs = () => iceTimeout;
 
 /**
- * How long the requester will wait before giving up. The approval prompt must
- * not outlive it, or a user could approve a transfer whose other end has
- * already gone home.
+ * How long the requester will wait before giving up, and how long the holder's
+ * prompt has to be answered. One number for both ends: a prompt that outlives
+ * the request lets someone approve a transfer whose other end has already gone
+ * home, and a request that outlives the prompt leaves a spinner running against
+ * a decision that was made against it.
+ *
+ * It was `iceTimeout * RESPONSE_GRACE`, which tied how long a human gets to
+ * read a dialog to a network constant — shortening the ICE race in a test also
+ * shortened the dialog. `requestTimeout` is now its own value, settable for the
+ * same reason the ICE one is.
  */
-export const requestTimeoutMs = () => iceTimeout * RESPONSE_GRACE;
+let requestTimeout = FILES.REQUEST_TIMEOUT_MS;
+
+export const requestTimeoutMs = () => requestTimeout;
 
 /** Shorten the ICE race. Tests use it; a "slow network" setting could too. */
 export function setIceTimeoutMs(ms) {
   iceTimeout = Number.isFinite(ms) && ms > 0 ? ms : NET.ICE_TIMEOUT_MS;
+}
+
+/** Shorten the answer deadline. Tests use it. */
+export function setRequestTimeoutMs(ms) {
+  requestTimeout = Number.isFinite(ms) && ms > 0 ? ms : FILES.REQUEST_TIMEOUT_MS;
 }
 
 /* ------------------------------------------------------------------ *
@@ -231,12 +247,13 @@ export async function request(id) {
     return fail(id, "could not reach the relay");
   }
 
-  // The holder may burn a whole ICE timeout before it starts the fallback, so
-  // give it several before declaring the request unanswered.
+  // Nobody waits forever. The holder is either prompting a human, racing ICE,
+  // or gone, and this is the deadline all three share — the same one counting
+  // down on the holder's prompt, so the two ends give up together.
   t.deadline = setTimeout(() => {
     finish(t);
-    fail(id, "no response — the other device may be offline");
-  }, iceTimeout * RESPONSE_GRACE);
+    fail(id, "no answer — the other device did not respond in time");
+  }, requestTimeout);
 
   return true;
 }
@@ -886,6 +903,11 @@ on(EV.PEERS_CHANGED, ({ count }) => {
   knownPeers = count;
 });
 
+// Rotating the key is how someone ejects a device from the session. An
+// allowance that survived it would let the ejected device keep pulling files,
+// which is the opposite of what the button that rotates the key promises.
+on(EV.KEY_CHANGED, () => syncAllowances());
+
 function signal(frame) {
   if (!sendSignal) {
     console.warn("[transfer] no signal sender wired — main.js must call setSignalSender()");
@@ -899,13 +921,84 @@ function signal(frame) {
   }
 }
 
+/* ------------------------------------------------------------------ *
+ * Session allowances — "stop asking me about this device"
+ *
+ * Answering a prompt per file is right for a stranger and tiresome for your own
+ * phone, which is the device most of these requests come from. So the prompt
+ * offers a third answer that lasts as long as the session does.
+ *
+ * Three deliberate limits, because this is a standing grant to send files off
+ * the machine without asking again:
+ *
+ *   - per device, not global. The `autoaccept` setting is the global version
+ *     and lives in Settings, where a permanent choice belongs.
+ *   - per room. Allowances are stored against the room hash and dropped the
+ *     moment the key changes, so rotating the key — the way someone ejects a
+ *     device — actually ejects it.
+ *   - per tab. sessionStorage, so closing it forgets.
+ *
+ * And never silent: an allowed request still says out loud that it was sent.
+ * A file leaving the machine with no trace anywhere is the thing this whole
+ * dialog exists to prevent.
+ * ------------------------------------------------------------------ */
+
+let allowances = new Set();
+let allowRoom = null;
+
+/** Called when the session key changes — a different room, a clean slate. */
+function syncAllowances() {
+  const room = state.get().roomHash;
+  if (room === allowRoom) return;
+  allowRoom = room;
+  allowances = new Set(storage.loadAllowances(room));
+}
+
+/** Trust this peer for the rest of this session, in this room, in this tab. */
+export function allowPeer(peer) {
+  const id = _short(peer);
+  if (!id) return false;
+  syncAllowances();
+  allowances.add(id);
+  storage.saveAllowances(allowRoom, [...allowances]);
+  return true;
+}
+
+export function forgetPeer(peer) {
+  syncAllowances();
+  const gone = allowances.delete(_short(peer));
+  storage.saveAllowances(allowRoom, [...allowances]);
+  return gone;
+}
+
+export function allowedPeers() {
+  syncAllowances();
+  return [...allowances];
+}
+
+export function isPeerAllowed(peer) {
+  syncAllowances();
+  return allowances.has(_short(peer));
+}
+
+const _short = v => (typeof v === "string" && v.trim() ? v.trim() : null);
+
 /**
- * Approval. autoaccept short-circuits it; otherwise the UI decides. With no
- * approver installed we deny, because failing open here means anyone holding
- * the session key silently pulls any file (docs/P2P-FILES.md §6).
+ * Approval. autoaccept and a session allowance short-circuit it; otherwise the
+ * UI decides. With no approver installed we deny, because failing open here
+ * means anyone holding the session key silently pulls any file
+ * (docs/P2P-FILES.md §6).
  */
 async function allowed(file, peer) {
   if (state.get().settings.autoaccept) return true;
+
+  if (isPeerAllowed(peer)) {
+    // Said out loud on purpose. The user allowed this device, not this file,
+    // and a transfer nobody is told about is indistinguishable from a leak.
+    emit(EV.TOAST, `Sent ${file.name} — ${peer} is allowed for this session`);
+    return true;
+  }
+
   if (!approver) {
     console.warn("[transfer] no approver wired — denying. ui/filesPanel.js should call setApprover()");
     return false;

@@ -355,6 +355,18 @@ select { min-height:38px; font-size:16px; padding:7px 8px; }
 .qrmodal { padding:14px; }
 .ask { padding:14px; }
 
+/* The request card is docked rather than modal, so on a phone it has the same
+   job as the toast: clear the status bar and the tab bar, and span the width
+   instead of floating in a corner too small to hold a filename. */
+.ask.req {
+  left:12px;
+  right:12px;
+  padding:0;
+  bottom:calc(var(--statusbar-h) + 62px + env(safe-area-inset-bottom, 0px));
+  align-items:stretch;
+}
+.ask.req .card { width:auto; }
+
 }   /* end (max-width:900px) */
 
 

@@ -64,6 +64,21 @@ export const FILES = {
    * drift out of sync with it.
    */
   CHUNK_BYTES: 32 * 1024,
+
+  /**
+   * How long a file request lives before both ends give up on it.
+   *
+   * Both ends, deliberately: the holder's prompt counts down to a denial and
+   * the requester stops waiting, on the same number, so neither is left
+   * believing in a transfer the other has already abandoned. Approving into a
+   * peer that gave up thirty seconds ago sends 5 MB nowhere.
+   *
+   * Its own constant rather than a multiple of the ICE timeout, which is what
+   * it used to be. That coupling meant shortening the ICE race in a test also
+   * shortened how long a human had to answer a dialog, and tuning the network
+   * silently retuned the UI.
+   */
+  REQUEST_TIMEOUT_MS: 15_000,
 };
 
 export const KEY = {

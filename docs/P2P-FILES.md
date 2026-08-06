@@ -161,6 +161,20 @@ server-side rendering of anything.
   threshold. Raised as an open question rather than decided.
 - File requests are authenticated only by session membership — anyone with the key
   can request any file in the session. Same bearer-credential model as the text.
+- **The approval prompt is docked, not modal** (FR-7.9). It used to cover the
+  screen, on the reasoning that it is the last point at which anything can stop
+  bytes leaving the disk. That reasoning was half right: the safety comes from
+  nothing moving without a click and from an unanswered prompt expiring into a
+  denial — both still true — while covering the screen only meant one device
+  could stop another being used by asking for a file and walking away.
+- **"Allow all" is deliberately small.** A standing approval for one device,
+  scoped to the room and the tab, dropped when the key rotates, and every
+  transfer it authorises still announces itself. Three limits, each with a
+  failure it prevents: not global, or one impatient click covers strangers who
+  join later; not cross-room, or rotating the key — the way a device is thrown
+  out — would leave it trusted; not persistent, or "just this once" quietly
+  becomes forever. `autoaccept` in Settings remains the permanent version, where
+  a permanent choice is made deliberately.
 
 ---
 
