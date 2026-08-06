@@ -16,9 +16,11 @@ touch the server.
                      (never touch the server)
 ```
 
-**Status: pre-alpha.** The relay is built and tested; the frontend is a layout
-preview with the OS clipboard wired up and the network stubbed. See
-[docs/M0-RESULTS.md](docs/M0-RESULTS.md) for exactly what is proven.
+**Status: pre-alpha, and it works end to end.** The relay is deployed and live,
+the frontend is wired to it over a WebSocket with an SSE fallback, and the
+17-check end-to-end suite runs two real peers with real crypto against the
+production relay. See [docs/M0-RESULTS.md](docs/M0-RESULTS.md) for exactly what
+is proven, and [Known limitations](#known-limitations) for what is not.
 
 ---
 

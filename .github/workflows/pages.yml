@@ -37,6 +37,17 @@ jobs:
           # precached by the service worker, and a share card that only
           # crawlers ever fetch has no business in a user's offline cache.
           cp -r src icons docs social _site/
+          # Content pages. Each is a directory holding an index.html, so the URL
+          # is /clipboard-sync-not-working/ with no extension. Copied by glob
+          # rather than named one by one — this set grows to a dozen or more
+          # (docs/SEO.md §2) and a per-page edit here is a step someone forgets,
+          # which fails silently as a 404 rather than as a broken build.
+          for d in */ ; do
+            if [ -f "${d}index.html" ] && [ "$d" != "_site/" ]; then
+              cp -r "$d" _site/
+              echo "content page: ${d}"
+            fi
+          done
           # Pages runs Jekyll by default, which ignores files starting with _.
           touch _site/.nojekyll
 
@@ -64,7 +75,8 @@ jobs:
                    src/main.js src/styles/main.css src/ui/install.js \
                    icons/icon-192.png icons/icon-512.png \
                    icons/maskable-192.png icons/maskable-512.png \
-                   social/og-card.png; do
+                   social/og-card.png \
+                   clipboard-sync-not-working/index.html; do
             test -f "_site/$f" || { echo "::error::missing $f"; exit 1; }
           done
           python3 -c "import xml.dom.minidom;xml.dom.minidom.parse('_site/sitemap.xml')"

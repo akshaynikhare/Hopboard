@@ -484,7 +484,12 @@ h3 {
 .stage[data-ready] .fpill { opacity:1; }
 .fpill .sq { width:7px; height:7px; background:var(--ok); flex:none; }
 
-.flow-fallback { color:var(--dim); font-size:14.5px; max-width:66ch; padding-top:10px; }
+.flow-fallback {
+  color:var(--dim);
+  font-size:14.5px;
+  max-width:calc(200% / 3);      /* two columns — this is the no-JS diagram */
+  padding-top:10px;
+}
 .stage[data-ready] .flow-fallback {
   position:absolute; width:1px; height:1px; overflow:hidden;
   clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; padding:0;
@@ -567,8 +572,11 @@ h3 {
 .livereadout { grid-column:1 / span 2; padding-left:var(--gut); padding-right:clamp(26px,3vw,48px); }
 .globewrap   { grid-column:3 / span 1; padding:0 var(--gut); }
 
-.stats { display:flex; flex-wrap:wrap; gap:10px 42px; }
-.stat { display:flex; flex-direction:column; gap:2px; }
+/* Three equal columns rather than a flex row: the readout spans two of the
+   page's columns, so thirds of it are a rhythm of their own instead of three
+   numbers huddled at the left edge with the rest of the span empty. */
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px 0; }
+.stat { display:flex; flex-direction:column; gap:2px; padding-right:20px; }
 .statn {
   font:650 clamp(30px,4vw,44px)/1 var(--mono);
   letter-spacing:-.02em;
@@ -601,6 +609,14 @@ h3 {
 .countrylist li::before { top:.58em; background:var(--ok); }
 .countrylist b { color:var(--text); font-weight:600; font-variant-numeric:tabular-nums; }
 
+/* One highlight, two views of it: globe.js sets .on here from the same value
+   that lights the marker, whichever end the pointer came in at. */
+.countrylist li[data-code] { cursor:pointer; }
+.countrylist li.on { color:var(--text); }
+.countrylist li.on b { color:var(--ok); }
+.countrylist li::before { transition:box-shadow .2s var(--ease); }
+.countrylist li.on::before { box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 26%,transparent); }
+
 /* The globe sits in a faint well rather than floating on the page background:
    at the limb the dots fade to nothing, and without something behind them the
    sphere loses its edge on a dark screen. */
@@ -619,6 +635,15 @@ h3 {
     color-mix(in srgb,var(--blue) 13%,transparent),
     transparent 68%);
 }
+/* On white the same wash is a blue smudge rather than a well — and while the
+   globe is still loading it is the ONLY thing in that column. */
+@media (prefers-color-scheme: light) {
+  .globewrap .globefield::before {
+    background:radial-gradient(circle at 50% 42%,
+      color-mix(in srgb,var(--blue) 6%,transparent),
+      transparent 66%);
+  }
+}
 #globe {
   position:relative;
   display:block;
@@ -626,6 +651,9 @@ h3 {
   height:auto;
   aspect-ratio:1;
   margin:0 auto;
+  /* Drag sideways to spin it; keep the vertical swipe for the page. Without
+     this a thumb on the globe is a thumb that cannot scroll past it. */
+  touch-action:pan-y;
 }
 .globewrap figcaption { text-align:center; margin-top:12px; }
 
@@ -686,15 +714,94 @@ h3 {
 .cmp .y { color:var(--ok); }
 .cmp .n { color:var(--warn); }
 
+/* --------------------------------------------------------------- article --
+   Long-form content pages (clipboard-sync-not-working/ and the rest of the
+   keyword set). Measure is capped at ~72ch because these are read top to
+   bottom, unlike the landing page's scannable blocks. */
+
+.crumb {
+  font:11.5px/1.4 var(--mono);
+  text-transform:uppercase;
+  letter-spacing:.11em;
+  color:var(--dim);
+  padding-top:clamp(26px,3.4vw,40px);
+}
+.crumb a { color:var(--dim); text-decoration:none; }
+.crumb a:hover { color:var(--link); }
+.crumb span[aria-current] { color:var(--text); }
+
+.article {
+  max-width:72ch;
+  padding:clamp(22px,3vw,34px) 0 clamp(34px,4vw,50px);
+}
+.article h1 { margin-bottom:20px; }
+.article h2 {
+  margin-top:clamp(38px,4.6vw,58px);
+  margin-bottom:14px;
+  padding-top:clamp(18px,2.2vw,26px);
+  border-top:1px solid var(--rule);
+}
+.article h3 { margin-top:26px; }
+.article p { margin-bottom:16px; color:var(--dim); }
+.article p b, .article li b { color:var(--text); font-weight:650; }
+.article .lede { margin-bottom:20px; max-width:none; }
+.article ul, .article ol { margin-bottom:20px; }
+/* The landing page stacks the step number ABOVE its text in a 3-column grid.
+   In an article the steps read as a sequence, so the grid becomes a single
+   column and the number moves out into the left margin. */
+.article .steps {
+  display:block;
+  padding-bottom:0;
+}
+.article .steps li {
+  padding:0 0 0 40px;
+  margin-bottom:18px;
+}
+.article .steps li:nth-child(4) { padding-top:0; }   /* grid rule, not ours */
+.article .steps li::before {
+  position:absolute;
+  left:0;
+  top:1px;
+  margin-bottom:0;
+}
+.article .honest { margin:clamp(26px,3.4vw,38px) 0; }
+.article .honest p { color:var(--dim); margin-bottom:0; }
+.article .tablewrap { margin:clamp(22px,3vw,30px) 0; }
+.article .btn { margin-top:10px; }
+
+/* kbd reads as a physical key rather than as code, which <code> already owns. */
+kbd {
+  font:0.88em/1 var(--mono);
+  color:var(--text);
+  background:var(--sunk);
+  border:1px solid var(--rule2);
+  border-bottom-width:2px;
+  border-radius:3px;
+  padding:2px 5px;
+  white-space:nowrap;
+}
+
 /* ------------------------------------------------------------------- faq --
    Questions are h3 so they sit under the section's h2, and each answer is one
    paragraph — the shape a snippet or an AI answer lifts cleanly. */
 
 /* Blocks that fill the whole container rather than sitting in a column still
-   have a rule on each side of them, so they take the same inset. */
-.sec > .in > .hint { padding:0 var(--gut) clamp(30px,4vw,48px); }
+   have a rule on each side of them, so they take the same inset.
 
-.faq { max-width:74ch; padding:0 var(--gut) clamp(40px,6vw,66px); }
+   Their WIDTH is a column count, not a character count. A measure set in ch
+   lands wherever the font happens to put it — which for the FAQ was three
+   quarters of the way across the middle column, so every answer ended with a
+   rule drawn through it. Two thirds of the container is exactly two columns,
+   and the gutter inside that stops the last word short of the line. */
+.sec > .in > .hint {
+  padding:0 var(--gut) clamp(30px,4vw,48px);
+  max-width:calc(100% / 3);      /* one column */
+}
+
+.faq {
+  max-width:calc(200% / 3);      /* two columns */
+  padding:0 var(--gut) clamp(40px,6vw,66px);
+}
 .faq h3 {
   margin-top:clamp(26px,3.4vw,38px);
   margin-bottom:8px;
@@ -768,6 +875,10 @@ footer a:hover { color:var(--link); }
   .closing .btn { justify-self:start; padding-left:30px; padding-right:30px; }
   .footgrid p:first-child { padding-right:var(--gut); }
   .footgrid p:last-child { grid-column:1 / -1; }
+
+  /* Column counts, restated for two columns. */
+  .faq, .flow-fallback { max-width:none; }
+  .sec > .in > .hint { max-width:50%; }
 }
 
 @media (max-width:620px) {
@@ -791,6 +902,7 @@ footer a:hover { color:var(--link); }
   .tlink.strong { padding:6px 10px; }
   .tag { display:none; }
   .hero > .in::after { inset:-6% -20% 40% 0; }
+  .sec > .in > .hint { max-width:none; }
 }
 
 /* Fine for a phone in landscape, but a 44px-tall dotted path is not worth the
