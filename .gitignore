@@ -1,46 +1,64 @@
-# Python
+# A pattern without a leading slash matches at EVERY level, which is rarely what
+# is meant. `/_site/` is one directory at the repo root; `_site/` would also
+# swallow a content page someone happens to name that. So: anchor anything that
+# is one specific directory, and leave bare only what really is anywhere.
+
+# ---- dependencies -----------------------------------------------------------
+#
+# package-lock.json and desktop/src-tauri/Cargo.lock are COMMITTED, deliberately,
+# and against this file's earlier advice. The app still ships with zero RUNTIME
+# dependencies — that has not changed. What changed is that the BUILD now has
+# them: tools/build.mjs bundles the site with esbuild, and the desktop shell is
+# a Rust crate. A floating dependency is a floating artifact, and "the build is
+# reproducible" stops being true. `npm ci` also refuses to run without a lock.
+node_modules/
+
+# ---- build output -----------------------------------------------------------
+
+# The assembled site. Produced by tools/build.mjs, in CI or locally.
+/_site/
+
+# Rust build artifacts: gigabytes of intermediates after a real build, 7 MB
+# after a failed one. Cargo.lock is what makes that build reproducible; this is
+# only the scratch space it works in.
+/desktop/src-tauri/target/
+
+# Generated package-manager manifests — output of tools/manifest.mjs.
+/dist/
+
+# `npm pack` output, produced when verifying a tarball before publishing.
+*.tgz
+
+# ---- local machine state ----------------------------------------------------
+
+# FastAPI Cloud link file — contains app and team ids for this machine.
+/.fastapicloud/
+
+.claude/settings.local.json
+
+# Scratch screenshots from local UI checks — output, not source.
+/.shots/
+
+# ---- python -----------------------------------------------------------------
 __pycache__/
 *.py[cod]
 .venv/
 venv/
 *.egg-info/
 
-# FastAPI Cloud link file (contains app/team ids for this machine)
-.fastapicloud/
-
-# Local tool state
-.claude/settings.local.json
-
-# OS
+# ---- editors and OS ---------------------------------------------------------
+.vscode/
+.idea/
+*.swp
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# Editors
-.vscode/
-.idea/
-*.swp
-
-# Env
+# ---- secrets ----------------------------------------------------------------
+#
+# Last, and the one worth reading twice. The relay's join token and any signing
+# credentials arrive through the environment, and a .env committed once stays in
+# the history long after it is deleted.
 .env
 .env.*
 !.env.example
-
-# The app still ships with zero RUNTIME dependencies, and that has not changed.
-# What changed is that the DEPLOY now has one: tools/build.mjs bundles the site
-# with esbuild, so a floating esbuild version is a floating bundle, and "the
-# build is reproducible" stops being true. The lock file is therefore committed
-# — and `npm ci` in the workflows requires it to exist at all.
-node_modules/
-
-# Scratch screenshots from local UI checks — output, not source
-.shots/
-
-# The assembled deploy. Built by tools/build.mjs, in CI or locally — output.
-_site/
-
-# Generated package manifests — output of tools/manifest.mjs
-dist/
-
-# npm pack output
-*.tgz
