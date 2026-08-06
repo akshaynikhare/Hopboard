@@ -43,6 +43,8 @@
     "test:bundle": "node tests/bundle.mjs",
     "test:fallback": "node tests/fallback.mjs",
     "build": "node tools/build.mjs",
+    "build:og": "python tools/build-og-card.py",
+    "check:og": "python tools/build-og-card.py --check",
     "check:csp": "node tools/build.mjs _site && node tools/csp-check.mjs",
     "relay": "python -m uvicorn main:app --app-dir backend --port 8000",
     "relay:up": "node tools/relay-up.mjs",
