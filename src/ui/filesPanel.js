@@ -224,7 +224,7 @@ function render() {
   // assistive tech. Enter/Space are handled below, which a div does not get free.
   $("grid").innerHTML = items.map(f => `
     <div class="tile${tileClass(f)}" data-id="${esc(f.id)}" title="${esc(tooltip(f))}"
-         role="button" tabindex="0" aria-label="${esc(tooltip(f))}"
+         role="button" tabindex="0" aria-label="${esc(tooltip(f))}">
       <div class="thumb">${f.thumb
         ? `<img src="${esc(f.thumb)}" alt="">`
         : `<span>${iconFor(f.name)}</span>`}${removeButton(f)}</div>

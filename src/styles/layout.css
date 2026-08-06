@@ -20,19 +20,9 @@
   background:var(--editor);
 }
 
-/* Single column on small screens — the Android target. The sidebar's explicit
-   width comes from a drag and would otherwise survive into the stacked
-   layout, so it is overridden here. */
-@media (max-width:900px) {
-  body { overflow:auto; }
-  .vs { height:auto; min-height:100vh; }
-  .body { flex-direction:column; }
-  .main { min-height:44vh; }
-  .side {
-    width:auto !important;
-    border-left:0;
-    border-top:1px solid var(--bd);
-    max-height:52vh;
-  }
-  .pane { height:auto !important; flex:1 !important; }
-}
+/* The narrow layout lives in styles/mobile.css.
+   It used to be here: a stacked single column that unpinned the shell and let
+   the whole document scroll — editor at 44vh, sidebar at 52vh with a scrollbar
+   of its own, status bar below the fold. Three nested scroll regions and half a
+   screen of editor on a phone. See the header of mobile.css for what replaced
+   it and why. */

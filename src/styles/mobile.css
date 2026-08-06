@@ -1,0 +1,376 @@
+/**
+ * Phone layout.
+ *
+ * ── WHAT WAS WRONG ─────────────────────────────────────────────────────────
+ * The old narrow layout (a `@media (max-width:900px)` block in layout.css)
+ * unpinned the shell and let the whole document scroll: editor `min-height:44vh`,
+ * sidebar `max-height:52vh` with its own `overflow:auto`, status bar somewhere
+ * below the fold. On a 360×640 phone that is three nested scroll regions, an
+ * editor you can never see more than half of, and a connection indicator you
+ * have to scroll past two panels to read. Every touch target in it — the header
+ * buttons, the pane headers, the settings switches — was 18–22px, less than half
+ * the 44px a finger needs.
+ *
+ * ── WHAT THIS DOES ─────────────────────────────────────────────────────────
+ * One screen, one view. The shell is pinned to the viewport again and a bottom
+ * tab bar (ui/mobileNav.js) switches between Text, Files, Clips and Devices, so
+ * exactly one thing scrolls at a time and whichever it is gets the whole screen.
+ * Controls grow to finger size, the line-number gutter and the leaderboard-sized
+ * ad slot give their pixels back to the text, and the editor goes to 16px —
+ * below that iOS zooms the page on focus and never zooms back out.
+ *
+ * Imported LAST from main.css on purpose: most of this overrides an earlier
+ * sheet's rule at the same specificity, and source order is what decides that.
+ */
+
+/* Two spellings of the same label, one for each layout — see the drop zone in
+   app.html. "Drop files" is a lie on a device with no pointer. */
+.only-narrow { display:none; }
+
+/* No tab bar above the breakpoint; ui/mobileNav.js still builds it, because a
+   window can be resized across the breakpoint without a reload. */
+.mnav { display:none; }
+
+@media (max-width:900px) {
+
+/* ------------------------------------------------------------------ *
+ * The shell
+ * ------------------------------------------------------------------ */
+
+html, body {
+  height:100%;
+  overflow:hidden;
+  /* Pull-to-refresh reloads the document, and nothing in the editor survives a
+     navigation. Overscroll chaining also drags the whole page when you flick
+     past the end of the file list. */
+  overscroll-behavior:none;
+}
+
+/* `dvh` before `vh` would be ignored by anything that does not understand it,
+   so both are declared in that order. The distinction is not cosmetic: on a
+   phone `100vh` is the viewport measured with the URL bar HIDDEN, so a `100vh`
+   shell puts its bottom ~60px — here, the tab bar — underneath browser chrome
+   that has not gone anywhere. */
+.vs { height:100vh; height:100dvh; }
+
+.body { flex-direction:column; min-height:0; }
+
+/* Either column can be the whole view now, so both have to be able to fill the
+   shell alone. Which one is on screen is ui/mobileNav.js's business. */
+.main { min-height:0; }
+
+.side {
+  /* The drag-set width from resizer.js must not survive into a layout with no
+     splitter to change it. */
+  width:auto !important;
+  max-height:none;
+  min-height:0;
+  flex:1;
+  border-left:0;
+  border-top:0;
+}
+
+/* Same story for the inline height resizer.js writes onto #paneFiles. */
+.pane { height:auto !important; flex:1 1 auto !important; border-top:0; }
+
+/* The cap exists so a 20-clip list cannot push the Devices pane off the bottom
+   of a shared sidebar. Here the pane IS the screen. */
+#paneHistory .paneb { max-height:none; }
+
+/* Set by ui/mobileNav.js on everything that is not part of the current view.
+   Scoped inside the media query so a stale class — a resize the script missed,
+   a script that never ran — cannot blank out the desktop layout. */
+.mv-hide { display:none !important; }
+
+/* base.css draws VS Code's 14px scrollbar, which is a mouse target and here is
+   simply 14px of a 360px screen given to a thing you scroll with your thumb.
+   Thin, and no transparent border to eat what is left of it. */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-thumb { border:0; border-radius:99px; }
+
+/* ------------------------------------------------------------------ *
+ * App header
+ *
+ * At 360px the key, its three buttons and the Live/Manual switch do not fit on
+ * one row, and at 320px they are not close. Rather than pick a control to drop,
+ * the bar wraps: `flex-wrap` puts the mode switch on a second row only when the
+ * first is genuinely full, and `margin-left:auto` keeps it right-aligned in
+ * both cases. So a 390px phone gets one row and a 320px phone gets two, with no
+ * breakpoint deciding it in advance.
+ * ------------------------------------------------------------------ */
+
+.appbar {
+  height:auto;
+  min-height:var(--titlebar-h);
+  flex-wrap:wrap;
+  row-gap:4px;
+  column-gap:7px;
+  padding:4px 8px;
+  /* Zero unless the page is displayed edge-to-edge; harmless when it is not. */
+  padding-top:calc(4px + env(safe-area-inset-top, 0px));
+}
+
+#mount-mode { margin-left:auto; }
+
+.appbar .key { font-size:13px; letter-spacing:.12em; padding:6px 7px 6px 11px; }
+
+/* ------------------------------------------------------------------ *
+ * Touch targets
+ *
+ * 22px icon buttons and an 18px switch are mouse sizes. These are the sizes a
+ * finger can hit (WCAG 2.5.8 asks for 24px minimum, 44px is the platform
+ * convention) — applied on the narrow layout rather than on `pointer:coarse`,
+ * because a touchscreen laptop is still a laptop.
+ * ------------------------------------------------------------------ */
+
+.ibtn { width:34px; height:34px; border-radius:6px; }
+.ibtn svg { width:17px; height:17px; }
+.ibtn.danger { width:auto; min-width:34px; padding:0 10px; }
+
+.modebtn { padding:8px 12px; font-size:12px; }
+
+.sw { width:42px; height:24px; }
+.sw::after { top:3px; left:3px; width:18px; height:18px; }
+.sw[aria-checked="true"]::after { transform:translateX(18px); }
+
+.btn { min-height:40px; padding:9px 16px; font-size:13px; }
+.banner .btn.sm, .pwa .btn { min-height:36px; font-size:12.5px; }
+
+/* 16px for the same reason as the editor below: iOS zooms the page when a
+   control with smaller text takes focus, and a select is a control. */
+select { min-height:38px; font-size:16px; padding:7px 8px; }
+
+.row { min-height:46px; padding:7px 14px; gap:12px; }
+.row .l b { font-size:13.5px; }
+.row .l span { font-size:12px; }
+.grp { font-size:11.5px; padding:12px 14px 4px; }
+.keyrow { padding:8px 14px 12px; }
+.keyrow .btn { flex:1 1 auto; }
+
+.paneh { height:42px; font-size:12px; padding:0 12px; }
+
+/* A control revealed by hover is a control a phone does not have — the same
+   repair files.css already makes for the tile's remove button. */
+@media (hover: none) {
+  .hrow .hcopy { opacity:1; }
+}
+
+/* ------------------------------------------------------------------ *
+ * Editor
+ * ------------------------------------------------------------------ */
+
+/* 56px of line numbers is a sixth of a 360px screen. They are worth that on a
+   desktop, where the point of them — quoting a line of a shared stack trace —
+   is something you do with a keyboard anyway; they are not worth it here.
+   ui/editor.js stops rendering them at the same breakpoint, so a 50,000-
+   character paste does not also build 1,200 invisible <div>s. */
+.gutter { display:none; }
+
+#editor {
+  /* THE 16px IS LOAD-BEARING. Below it, iOS Safari zooms the page when the
+     textarea takes focus — and it does not zoom back out when focus leaves, so
+     the app is left scaled up with its right-hand side off-screen for the rest
+     of the session. The gutter is hidden here, so the two no longer have to
+     share a font size. */
+  font-size:16px;
+  line-height:1.5;
+  padding:12px 14px;
+}
+
+.edtools { padding:4px 6px 2px; }
+/* Spread rather than clustered top-right: at this size the whole row is within
+   reach and the buttons stop being a 5-target pile-up. */
+.tabacts { flex:1; justify-content:space-around; gap:2px; }
+
+.hints { inset:auto 14px 12px 14px; }
+
+/* ------------------------------------------------------------------ *
+ * Files
+ * ------------------------------------------------------------------ */
+
+.only-wide   { display:none; }
+.only-narrow { display:inline; }
+
+.drop { margin:8px 12px; padding:18px 12px; font-size:13px; }
+.drop b { font-size:14px; margin-bottom:4px; }
+
+.grid {
+  grid-template-columns:repeat(auto-fill, minmax(104px, 1fr));
+  gap:8px;
+  padding:2px 12px 10px;
+}
+.tile .thumb { height:78px; }
+.tile .nm { font-size:11.5px; }
+.tile .sz { font-size:10.5px; }
+.tile .tcancel,
+.tile .tremove { width:26px; height:26px; }
+.tile .tremove svg { width:14px; height:14px; }
+
+.none { font-size:12.5px; padding:10px 14px; line-height:1.55; }
+
+/* ------------------------------------------------------------------ *
+ * Sidebar chrome
+ * ------------------------------------------------------------------ */
+
+.keyhead { padding:8px 12px; }
+.keyhead-warn { font-size:11.5px; }
+
+/* The warning belongs with the thing it warns about, and on a phone that is the
+   Devices view — the key itself is in the header on every view, and repeating
+   two lines of disclosure above the file grid and the clip list costs 40px of a
+   screen that has none to spare. */
+[data-mview="files"] .keyhead,
+[data-mview="history"] .keyhead { display:none; }
+
+/* #splitWarn is deliberately NOT hidden with it: it says sync has silently
+   stopped working. It still lives in a pane the Text view does not show, so
+   ui/mobileNav.js puts a dot on the Devices tab while it is up. */
+
+#mount-banners:not(:empty) { padding:0 10px 6px; }
+.banner { font-size:13px; }
+
+/* install.css wraps the PWA prompt at this breakpoint so the action gets a row
+   of its own. `flex:1 1 auto` gives the message a flex-basis of its own content
+   width, though — three lines of it — so the icon could not share a line with
+   it either, and the prompt came out four rows tall: icon, text, dismiss,
+   button. Let the message shrink and the top row holds all three. */
+.pwa-msg { flex:1 1 0; min-width:0; }
+
+/* ------------------------------------------------------------------ *
+ * Ad slot
+ *
+ * A 100px box plus a two-line footnote is ~150px of a ~480px content area, and
+ * the content area is the product. A 320×50 mobile banner is the unit that fits
+ * a phone; the footnote is on the landing page in full.
+ * ------------------------------------------------------------------ */
+
+.adslot { padding:8px 14px 10px; }
+.adslot-tag { margin-bottom:4px; font-size:9.5px; }
+.adslot-box { height:50px; }
+.adslot-note { display:none; }
+
+/* ------------------------------------------------------------------ *
+ * Status bar
+ *
+ * Seven items at ~80px each is 560px of content in a 360px bar, and nothing
+ * here wraps — the overflow was simply clipped off the right-hand edge, taking
+ * the character counter with it. The key and the mode are both in the header
+ * one row up, and the relay tier is not something you act on from a phone, so
+ * what is left is the three things that change: are we connected, who else is
+ * here, how much text is in the buffer.
+ * ------------------------------------------------------------------ */
+
+.statusbar {
+  padding:0 2px;
+  /* Belt and braces for a long "Reconnecting · …" detail string: it scrolls
+     instead of losing the counter off the end. */
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.statusbar::-webkit-scrollbar { display:none; }
+
+#sbKey, #sbMode, #sbTier { display:none; }
+.sitem { padding:0 7px; }
+
+/* ------------------------------------------------------------------ *
+ * Bottom tab bar
+ * ------------------------------------------------------------------ */
+
+.mnav {
+  display:flex;
+  flex:none;
+  background:var(--side);
+  border-top:1px solid var(--bd);
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+}
+
+.mnavbtn {
+  position:relative;
+  flex:1 1 0;
+  min-width:0;
+  min-height:52px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  padding:6px 2px;
+  border:0;
+  background:none;
+  color:var(--dim);
+  font:inherit;
+  font-size:10.5px;
+  font-weight:500;
+  cursor:pointer;
+}
+
+.mnavbtn svg {
+  width:20px; height:20px;
+  fill:none; stroke:currentColor; stroke-width:1.6;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+
+/* The active tab is marked by --bright text plus an accent rail, NOT by
+   colouring the label --blue: --blue on --side is 3.39:1, under AA for 10.5px
+   text, and the label is the part that has to be readable. The rail carries
+   the accent instead — it is non-text (SC 1.4.11 wants 3:1) and clears that on
+   both themes: 3.39 dark, 4.08 light. */
+.mnavbtn[aria-current="true"] { color:var(--bright); }
+.mnavbtn[aria-current="true"]::before {
+  content:"";
+  position:absolute;
+  top:0; left:0; right:0;
+  height:2px;
+  background:var(--blue);
+}
+
+.mnavbtn:focus-visible { outline-offset:-3px; }
+
+/* Attention marker — currently only the split-brain warning, which lives in a
+   pane the Text view does not show. */
+.mnavbtn .mdot {
+  position:absolute;
+  top:8px;
+  right:calc(50% - 19px);
+  width:7px; height:7px;
+  border-radius:99px;
+  background:var(--bad);
+  box-shadow:0 0 0 2px var(--side);
+}
+
+/* ------------------------------------------------------------------ *
+ * Overlays
+ * ------------------------------------------------------------------ */
+
+/* Clear of the status bar AND the tab bar, or the toast covers the tab you are
+   about to press. */
+.toast {
+  left:12px;
+  right:12px;
+  max-width:none;
+  bottom:calc(var(--statusbar-h) + 62px + env(safe-area-inset-bottom, 0px));
+  font-size:13px;
+}
+
+.qrmodal { padding:14px; }
+.ask { padding:14px; }
+
+}   /* end (max-width:900px) */
+
+
+/* ------------------------------------------------------------------ *
+ * Phone in landscape
+ *
+ * ~360px of height, of which the header, the status bar and the tab bar would
+ * otherwise take a third. The tab labels go beside their icons instead of under
+ * them, and the two things that are not the task at hand give up their rows.
+ * ------------------------------------------------------------------ */
+@media (max-width:900px) and (max-height:480px) {
+  .mnavbtn { flex-direction:row; gap:6px; min-height:42px; font-size:11px; }
+  .mnavbtn svg { width:16px; height:16px; }
+  .mnavbtn .mdot { top:6px; right:6px; }
+  .adslot { display:none; }
+  .keyhead { display:none; }
+  .paneh { height:36px; }
+  .row { min-height:42px; }
+}
