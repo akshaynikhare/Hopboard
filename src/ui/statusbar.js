@@ -1,6 +1,7 @@
 /** VS Code style status bar. Reflects state; owns none of it. */
 
 import { on, EV } from "../core/bus.js";
+import * as state from "../core/state.js";
 import { $ } from "./dom.js";
 
 const LABEL = {
@@ -23,6 +24,24 @@ export function init() {
   on(EV.TIER_CHANGED, ({ tier, note }) => {
     $("sbTier").textContent = note ? `${tier} · ${note}` : tier;
   });
+
+  // You can see everyone else's pointer; nothing was telling you they can see
+  // yours. A presence feature that only shows you what you gain, and never
+  // what you give up, is the asymmetry worth fixing before the toggle is.
+  const showBroadcast = () => {
+    const el = $("sbCursor");
+    if (!el) return;
+    const s = state.get();
+    const others = Math.max(0, (s.peers ?? 1) - 1);
+    const sharing = s.settings.cursors !== false && others > 0;
+    el.hidden = !sharing;
+    el.textContent = sharing
+      ? `Pointer visible to ${others} device${others === 1 ? "" : "s"}`
+      : "";
+  };
+  on(EV.PEERS_CHANGED, showBroadcast);
+  on(EV.SETTINGS_CHANGED, showBroadcast);
+  showBroadcast();
 
   on(EV.TRANSFER_PATH, ({ path }) => {
     $("sbP2P").textContent = path === "relay" ? "Relay fallback" : "P2P connected";

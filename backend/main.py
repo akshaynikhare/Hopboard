@@ -91,17 +91,24 @@ TARGETED = {
     "file-req", "file-accept", "file-deny",
     "file-chunk", "file-done", "file-cancel", "file-error",
 }
-ROOM_WIDE = {"file-meta"}
+ROOM_WIDE = {"file-meta", "cursor"}
 
 # Every forwarded frame is setup/teardown control traffic — bursty for a moment,
-# then silent — except file-chunk, which is the bulk path.
+# then silent — except file-chunk, which is the bulk path, and cursor, which is
+# a steady trickle.
 FRAME_CLASS = dict.fromkeys(TARGETED | ROOM_WIDE, "signal")
 FRAME_CLASS.update({
     "clip": "interactive",
     "ping": "interactive",
     "hello": "interactive",
     "file-chunk": "bulk",
+    # Live pointers. Its own class deliberately: the client throttles to ~10/s,
+    # but presence is a nicety and clipboard sync is the product. Sharing the
+    # interactive bucket would let a moving mouse starve the thing people came
+    # for. 20/s leaves the client room to jitter without ever competing.
+    "cursor": "cursor",
 })
+CLASS_LIMITS["cursor"] = 20
 
 app = FastAPI(title="Hopboard relay", version="0.2.0-m7")
 
@@ -111,6 +118,12 @@ class Peer:
     sock: WebSocket
     peer_id: str
     name: str = ""
+    # Two-letter country, read once from Cloudflare's header at connect time
+    # and kept only as a counter input for /stats. The address it was derived
+    # from is never stored, and this is never sent to any peer — a country code
+    # is coarse, but it is still more than anyone in a clipboard session needs
+    # to know about the others.
+    country: str = ""
 
 
 @dataclass
@@ -155,6 +168,40 @@ async def health():
         "uptime_s": round(time.time() - BOOTED_AT, 1),
         "rooms": len(rooms),
         "peers": sum(len(r.peers) for r in rooms.values()),
+    }
+
+
+@app.get("/stats")
+async def stats():
+    """Aggregate activity, for the live globe on the landing page.
+
+    Deliberately blunt about what it is NOT. This returns counts and country
+    codes and nothing else:
+
+      - no room hashes. A room hash is derived from the share key, so
+        publishing the set of live hashes would let anyone confirm whether a
+        guessed key is currently in use — an oracle for the one secret the
+        whole design rests on.
+      - no session contents, ever. The relay only holds ciphertext anyway.
+      - no IP addresses, and none are stored. The country is read from the
+        Cloudflare header already attached to the connection, counted, and the
+        header itself is discarded.
+
+    The counts are per-instance, which is honest given replicas are pinned to
+    one (OI-3), and they are live rather than cumulative — a device that closes
+    its tab stops being counted.
+    """
+    countries: dict[str, int] = {}
+    for room in rooms.values():
+        for peer in room.peers.values():
+            if peer.country:
+                countries[peer.country] = countries.get(peer.country, 0) + 1
+
+    return {
+        "rooms": len(rooms),
+        "devices": sum(len(r.peers) for r in rooms.values()),
+        "countries": countries,
+        "instance": INSTANCE_ID,
     }
 
 
@@ -314,7 +361,13 @@ async def ws(sock: WebSocket, room_hash: str):
     # Provisional id: welcome must go out immediately (a client is entitled to
     # sit silent and still be told the room state), and `hello` has not arrived
     # yet. It is replaced by the client's originId the moment hello lands.
-    me = Peer(sock=sock, peer_id=uuid.uuid4().hex[:8])
+    # Cloudflare fronts this service, so CF-IPCountry is already on the request.
+    # Read it here, count it in /stats, and never keep the address it came from.
+    country = (sock.headers.get("cf-ipcountry") or "").upper()
+    if len(country) != 2 or not country.isalpha():
+        country = ""
+
+    me = Peer(sock=sock, peer_id=uuid.uuid4().hex[:8], country=country)
     room.peers[sock] = me
 
     # `existing > 0` on an intent:"create" means the auto-generated key is taken,

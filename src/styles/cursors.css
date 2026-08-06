@@ -1,0 +1,121 @@
+/* Live peer cursors. ui/cursors.js mounts #cursorLayer into <body> and injects
+   this sheet itself, so styles/main.css needs no edit.
+
+   Colours come from tokens.css — see docs/ARCHITECTURE.md §3. There is not one
+   hex literal below, including the peer palette: the five identity colours are
+   existing semantic tokens re-pointed through --peer. */
+
+/* Marker so ui/cursors.js can tell this sheet is already loaded (via an
+   @import in main.css) and skip injecting a second <link> for it. */
+:root { --cursors-css:1; }
+
+/* ---------------------------------------------------------------- layer */
+
+.hb-cursors {
+  position:fixed;
+  inset:0;
+  /* Above the toast (50) so a pointer is never hidden behind a status message,
+     below modals and the QR overlay (60): a dialog is a dialog, and somebody
+     else's mouse has no business floating over it. */
+  z-index:55;
+  /* The whole point. Nothing in this layer may ever eat a click, a text
+     selection, or a drop — it is a picture of other people, not a control. */
+  pointer-events:none;
+  /* Isolate the layer's layout and paint from the app underneath. No size
+     containment: the layer must keep its inset:0 viewport size. */
+  contain:layout style;
+}
+
+/* ---------------------------------------------------------------- pointer */
+
+.hb-cursor {
+  position:absolute;
+  top:0;
+  left:0;
+  /* The glyph's tip is 1px in from its own top-left, so pull the box back by
+     the same amount and the visible point lands on the reported coordinate. */
+  margin:-1px 0 0 -1px;
+  pointer-events:none;
+  /* Placed before the element is in the document, then faded in by .live —
+     without that a new cursor animates in from the corner of the window. */
+  opacity:0;
+  will-change:transform, opacity;
+}
+
+/* Interpolation. The feed is ~10 frames a second; a 110 ms linear transform
+   transition (just longer than the send interval, so one glide runs into the
+   next) turns it into continuous motion, on the compositor, for no JavaScript
+   per frame. Opacity is a little slower so an arrival and a departure read as
+   deliberate rather than as a flicker. */
+.hb-cursor.live {
+  opacity:1;
+  transition:transform 110ms linear, opacity 400ms ease;
+}
+
+/* Gone quiet. Set by the sweep in cursors.js after ~10 s of silence; the
+   element is removed a couple of seconds later, once the fade has finished.
+   Declared after .live deliberately — same specificity, so this wins. */
+.hb-cursor.quiet { opacity:0; }
+
+.hb-cursor-arrow {
+  display:block;
+  width:14px;
+  height:22px;
+  fill:var(--peer);
+  /* Outlined in the page's own background colour so the glyph separates from
+     whatever it happens to be over — text, a file tile, the sidebar. */
+  stroke:var(--editor);
+  stroke-width:1.6;
+  stroke-linejoin:round;
+  paint-order:stroke fill;   /* or the outline would eat half the arrow */
+}
+
+/* ---------------------------------------------------------------- label */
+
+.hb-cursor-name {
+  display:block;
+  /* Clear of the arrow's tail, offset like a real cursor's tooltip. */
+  margin:-2px 0 0 13px;
+  padding:2px 6px;
+  max-width:180px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  border-radius:3px;
+  font:11.5px/1.35 var(--ui-font);
+  /* Solid peer colour with the page background as the text colour — the same
+     relationship the status bar already uses, and the only combination that
+     stays legible across every palette entry in BOTH themes. A tinted chip
+     (the .pill pattern) was tried first and failed: --blue text on a --blue
+     tint is under 3:1 on the dark theme. */
+  color:var(--editor);
+  background:var(--peer);
+  /* The peer colour can land close to the surface behind it in one theme or
+     the other; a hairline in the page colour keeps the chip's edge readable. */
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--editor) 55%, transparent);
+}
+
+/* ---------------------------------------------------------------- palette
+
+   Five identities, hashed from the peer id in cursors.js. All five are
+   existing tokens and all five stay legible against --editor in both themes.
+
+   --bad is deliberately NOT here. Red means "something has gone wrong"
+   everywhere else in this app, and another person is not an error. */
+
+.hb-cursor.c0 { --peer:var(--blue); }
+.hb-cursor.c1 { --peer:var(--ok); }
+.hb-cursor.c2 { --peer:var(--str); }
+.hb-cursor.c3 { --peer:var(--num); }
+.hb-cursor.c4 { --peer:var(--warn); }
+
+/* ---------------------------------------------------------------- motion */
+
+/* Reduced motion: place the cursor, do not glide it. A pointer sliding across
+   the screen is exactly the kind of unrequested movement this setting exists
+   to stop. The opacity fade stays — it is a state change, not motion, and
+   without it a peer's departure becomes a jump cut. */
+@media (prefers-reduced-motion: reduce) {
+  .hb-cursor.live { transition:opacity 400ms ease; }
+  .hb-cursor { will-change:opacity; }
+}

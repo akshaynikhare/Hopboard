@@ -15,7 +15,6 @@ export function init() {
   bind("sbKey", "click", copyLink);
   bind("bQr",   "click", () => emit("ui:qr", { text: keys.shareLink(state.get().key) }));
   bind("bLeave", "click", () => emit("session:leave"));
-  bind("bAbout", "click", showAbout);
 
   // Collapsible panes are handled by ui/panes.js, delegated from the sidebar.
   // They used to be bound here with a querySelectorAll snapshot, which only
@@ -33,7 +32,6 @@ export function init() {
     persist("poll", e.target.value);
     capture.startPolling();
   });
-  bind("direction", "change", e => persist("direction", e.target.value));
 
   on(EV.KEY_CHANGED, ({ key }) => renderKey(key));
   on(EV.PEERS_CHANGED, ({ count, list }) => renderPeers(count, list));
@@ -45,6 +43,7 @@ export function init() {
 function persist(name, value) {
   state.setSetting(name, value);
   storage.saveSettings(state.get().settings);
+  emit(EV.SETTINGS_CHANGED, { name, value });
 }
 
 function restoreSettings() {
@@ -52,9 +51,19 @@ function restoreSettings() {
   if (saved) Object.assign(state.get().settings, saved);
   const s = state.get().settings;
 
-  $$(".sw").forEach(sw => sw.setAttribute("aria-checked", String(Boolean(s[sw.dataset.k]))));
-  if (POLL_OPTIONS[s.poll] !== undefined) $("poll").value = s.poll;
-  $("direction").value = s.direction;
+  // `?? true` matters: settings added after a user's preferences were saved
+  // read back as undefined, and Boolean(undefined) would silently turn a
+  // default-on feature off for everyone who used an earlier build.
+  const DEFAULT_ON = new Set(["autowrite", "thumbs", "images", "cursors"]);
+  $$(".sw").forEach(sw => {
+    const key = sw.dataset.k;
+    const value = s[key] ?? DEFAULT_ON.has(key);
+    s[key] = value;
+    sw.setAttribute("aria-checked", String(Boolean(value)));
+  });
+
+  const poll = $("poll");
+  if (poll && POLL_OPTIONS[s.poll] !== undefined) poll.value = s.poll;
 }
 
 function renderKey(key) {
@@ -102,9 +111,3 @@ function warnSplitBrain({ from, to }) {
   el.classList.add("show");
 }
 
-function showAbout() {
-  const s = state.get();
-  emit(EV.TOAST,
-    `Hopboard · ${s.connection} · ${s.peers} device${s.peers === 1 ? "" : "s"} · `
-    + `capture ${s.tier} · relay ${s.instance || "—"}`);
-}

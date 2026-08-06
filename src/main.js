@@ -35,6 +35,7 @@ import * as statusbar from "./ui/statusbar.js";
 import * as resizer from "./ui/resizer.js";
 import * as syncMode from "./ui/syncMode.js";
 import * as hints from "./ui/hints.js";
+import * as cursors from "./ui/cursors.js";
 
 /* ------------------------------------------------------------------
    session key
@@ -91,6 +92,10 @@ async function onFrame(msg) {
     }
 
     default:
+      // Live pointers. x/y/name are sealed by encryptFrame(), so the relay
+      // only ever sees `t` and `originId` — it never learns where a mouse is.
+      if (cursors.FRAMES.includes(msg.t)) return cursors.onSignal(await decryptFrame(msg));
+
       // Signalling and file frames go to the files layer, which is kept
       // ignorant of the transport (docs/ARCHITECTURE.md §3).
       //
@@ -170,6 +175,14 @@ async function sendText(text) {
 ------------------------------------------------------------------- */
 function wire() {
   relay.setFrameHandler(onFrame);
+
+  cursors.setSignalSender(frame => {
+    if (!relay.isOpen()) return false;
+    encryptFrame(frame)
+      .then(sealed => relay.send(sealed))
+      .catch(err => console.error("[hopboard] could not send cursor frame", err));
+    return true;
+  });
 
   // Local capture -> encrypt -> wire.
   on(EV.TEXT_CAPTURED, ({ text }) => {
@@ -330,6 +343,7 @@ async function boot() {
   safeInit("resizers", resizer.init);
   safeInit("sync mode", syncMode.init);
   safeInit("hints", hints.init);
+  safeInit("peer cursors", cursors.init);
   safeInit("install prompt", install.init);
 
   await loadOptional();

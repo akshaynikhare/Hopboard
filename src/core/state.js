@@ -28,6 +28,7 @@ const state = {
     autoaccept: false,
     thumbs: true,
     images: true,
+    cursors: true,
     poll: "1s",
     direction: "Both",
   },

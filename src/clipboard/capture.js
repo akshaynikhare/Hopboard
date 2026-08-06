@@ -82,9 +82,17 @@ export function startPolling() {
   pollTimer = setInterval(() => { if (document.hasFocus()) tryRead(); }, ms);
 }
 
-/** Called when the mode changes so polling starts or stops immediately. */
+/**
+ * Called when the mode changes so polling starts or stops immediately.
+ *
+ * `autoread` is derived from the mode rather than set independently. It used
+ * to have its own toggle, which meant two controls governed one behaviour and
+ * could disagree — the kind of thing that produces a bug report saying the app
+ * ignores its own setting. Live mode IS auto-read.
+ */
 export function applyMode() {
   const live = state.get().settings.syncMode === SYNC_MODES.LIVE;
+  state.setSetting("autoread", live);
   if (live) startPolling();
   else stopPolling();
   emit(EV.SYNC_MODE, { mode: state.get().settings.syncMode });
