@@ -240,6 +240,10 @@ async function wireFiles() {
     filesFrames = new Set(transfer.FRAMES ?? []);
     filesSignalHandler = transfer.onSignal ?? null;
 
+    // Announcing local files and re-announcing to new peers is transfer.js's
+    // own business — it subscribes to the bus directly. Doing it from here is
+    // how the outbound half went missing in the first place.
+
     // The contract is synchronous — `false` means "not sent". Encryption is
     // async, so the check that actually matters (are we connected at all?) is
     // done up front; a failure after that point is reported by the relay's own
