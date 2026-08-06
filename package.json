@@ -5,14 +5,15 @@
   "type": "module",
   "description": "Live clipboard sharing. Static frontend, no build step — this file exists so Node treats src/*.js as ES modules when running tests. Nothing here is needed to deploy.",
   "scripts": {
-    "test": "node tests/static-check.mjs && node tests/files.mjs && node tests/e2e.mjs && node tests/boot.mjs",
+    "test": "node tests/static-check.mjs && node tests/files.mjs && node tests/e2e.mjs && node tests/boot.mjs && node tests/fallback.mjs",
     "test:static": "node tests/static-check.mjs",
     "test:e2e": "node tests/e2e.mjs",
     "test:boot": "node tests/boot.mjs",
+    "test:fallback": "node tests/fallback.mjs",
     "serve": "python -m http.server 8080"
   },
   "devDependencies": {
-    "jsdom": "^26.0.0"
+    "jsdom": "^26.1.0"
   },
-  "comment": "jsdom is only needed by tests/boot.mjs, which skips cleanly when it is absent. The app itself has zero dependencies and ships as-is."
+  "comment": "jsdom is only needed by tests/boot.mjs, which skips cleanly when it is absent. tests/fallback.mjs needs a relay on 127.0.0.1:8000 and skips cleanly without one. The app itself has zero dependencies and ships as-is."
 }

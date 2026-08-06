@@ -20,6 +20,21 @@ Two jobs:
      of these frames — `t`, `to`, and, from `hello`, the sender's id and
      nickname. `sdp`, `thumb`, `payload` and `data` are never touched.
 
+Two ways in, one room. A managed corporate network — the primary deployment
+context (PRD §5.4) — may run a TLS-inspecting proxy that refuses the HTTP
+Upgrade a WebSocket needs, or accepts the connection and then swallows it. So
+every room is reachable two ways:
+
+    WS  /ws/{room}     the default: one socket, both directions
+    GET /sse/{room}    downstream as text/event-stream    ┐ PRD §4.3 R3
+    POST /pub/{room}   upstream as plain POSTs            ┘ the fallback
+
+They are the same room, the same protocol (PRD §6) and the same peers — a
+WebSocket client and an SSE client in one room see each other and sync normally.
+Everything below `Connection` is written against a send-a-string interface for
+exactly that reason: the fan-out, roster and routing code never learns which
+transport it is talking to, so the fallback cannot drift from the main path.
+
 Addressing. Every connection owns a `peerId`. It is provisional (relay
 generated) until the client's `hello` arrives, at which point the client's own
 `originId` is adopted, so both ends agree on names — the client already labels
@@ -35,9 +50,11 @@ import json
 import os
 import time
 import uuid
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 
-from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse
 
 INSTANCE_ID = uuid.uuid4().hex[:8]
 BOOTED_AT = time.time()
@@ -53,6 +70,27 @@ MAX_PEERS = 8                 # PRD §6
 ROOM_TTL_SECONDS = 600        # PRD FR-3.4 — evict 10 min after the last peer leaves
 MAX_ID_CHARS = 64             # peerId / `to` — long enough for a uuid, bounded
 MAX_NAME_CHARS = 64           # nickname, e.g. "Chrome · Windows" (FR-5.7)
+
+# ---- SSE + POST fallback ------------------------------------------------
+#
+# A POST may carry several frames, one per line, because the fallback pays a
+# round trip per request and a client that is trickling ICE candidates or
+# pushing file chunks would otherwise make thirty of them. Each LINE is still
+# held to MAX_FRAME_BYTES and metered individually, so batching buys latency,
+# never allowance.
+MAX_BODY_BYTES = 24 * MAX_FRAME_BYTES
+
+# Idle streams must write something or nobody notices they are dead: a browser
+# tab that vanishes without closing TCP leaves a peer in the roster until a
+# write fails. It also beats the 60-120 s idle reaping common in corporate
+# proxies (PRD §5.4) — the same reason the client heartbeats at 30 s.
+SSE_KEEPALIVE_SECONDS = 15
+
+# A stream whose reader has stopped reading (suspended tab, dead TCP that has
+# not surfaced yet) must not grow without bound. 256 frames is far more than any
+# real burst and small enough to be irrelevant to memory; overflowing it means
+# the peer is gone, and it is dropped exactly as a failed socket write would.
+SSE_QUEUE_MAX = 256
 
 RATE_LIMIT_WINDOW = 1.0
 
@@ -74,8 +112,14 @@ RATE_LIMIT_WINDOW = 1.0
 #                       This is a runaway bound, not a fairness scheduler:
 #                       400 x 32 KB = 12.8 MB/s worst case from one connection,
 #                       and MAX_PEERS bounds how many can do that at once.
+#   http          60/s  POST *requests* on the fallback path, charged on top of
+#                       the frames inside them. The frame classes bound frame
+#                       volume; without this, empty POSTs are free. A client
+#                       coalesces everything queued while a request is in
+#                       flight, so it makes about one POST per round trip and
+#                       never comes near this.
 RATE_LIMIT_MSGS = 10          # kept as the documented PRD §6 number
-CLASS_LIMITS = {"interactive": RATE_LIMIT_MSGS, "signal": 60, "bulk": 400}
+CLASS_LIMITS = {"interactive": RATE_LIMIT_MSGS, "signal": 60, "bulk": 400, "http": 60}
 
 # Frames the relay forwards without looking inside them. Targeted frames name
 # one recipient in `to`; ROOM_WIDE frames fan out to everyone but the sender.
@@ -113,32 +157,6 @@ CLASS_LIMITS["cursor"] = 20
 app = FastAPI(title="Hopboard relay", version="0.2.0-m7")
 
 
-@dataclass
-class Peer:
-    sock: WebSocket
-    peer_id: str
-    name: str = ""
-    # Two-letter country, read once from Cloudflare's header at connect time
-    # and kept only as a counter input for /stats. The address it was derived
-    # from is never stored, and this is never sent to any peer — a country code
-    # is coarse, but it is still more than anyone in a clipboard session needs
-    # to know about the others.
-    country: str = ""
-
-
-@dataclass
-class Room:
-    # Keyed by socket: the socket is the identity that always exists, whereas a
-    # peerId only becomes meaningful once `hello` lands.
-    peers: dict[WebSocket, Peer] = field(default_factory=dict)
-    last: str | None = None       # last clip envelope, as a JSON string. Ciphertext.
-    seq: int = 0
-    evict_task: asyncio.Task | None = None
-
-
-rooms: dict[str, Room] = {}
-
-
 class RateBuckets:
     """Fixed-window counters, one per frame class, for a single connection."""
 
@@ -155,6 +173,97 @@ class RateBuckets:
             self.count[cls], self.start[cls] = 0, now
         self.count[cls] += 1
         return self.count[cls] <= CLASS_LIMITS[cls]
+
+
+class Connection:
+    """One client, whatever transport is carrying it.
+
+    The room logic needs exactly two things from a transport: something it can
+    push a text frame at, and an identity it can key a dict by (object identity,
+    which both subclasses get for free). Keeping the surface this small is what
+    makes the SSE fallback a peer of the WebSocket path rather than a parallel
+    implementation of it — there is nowhere for the two to diverge.
+    """
+
+    kind = "?"
+
+    async def send_text(self, text: str) -> None:
+        raise NotImplementedError
+
+
+class WsConnection(Connection):
+    kind = "ws"
+
+    __slots__ = ("sock",)
+
+    def __init__(self, sock: WebSocket) -> None:
+        self.sock = sock
+
+    async def send_text(self, text: str) -> None:
+        await self.sock.send_text(text)
+
+
+class SseConnection(Connection):
+    """Downstream half of the fallback: a queue drained by the event stream.
+
+    `sid` is the session token. The relay only ever trusts the connection a
+    frame arrived on (see `_forward`), and on this transport that connection is
+    the stream — a POST is a separate TCP request that could claim to be anyone.
+    The token is server-issued, handed out once on `welcome`, and is what ties
+    the two halves together.
+    """
+
+    kind = "sse"
+
+    __slots__ = ("sid", "queue")
+
+    def __init__(self) -> None:
+        self.sid = uuid.uuid4().hex
+        self.queue: asyncio.Queue[str | None] = asyncio.Queue(maxsize=SSE_QUEUE_MAX)
+
+    async def send_text(self, text: str) -> None:
+        # Never awaits: a fan-out must not block on one slow reader, and a full
+        # queue means this peer has stopped consuming. QueueFull propagates to
+        # the caller, which treats it exactly like a failed socket write and
+        # drops the peer.
+        self.queue.put_nowait(text)
+
+    def end(self) -> None:
+        """Sentinel that tells the streaming generator to finish."""
+        try:
+            self.queue.put_nowait(None)
+        except asyncio.QueueFull:
+            pass
+
+
+@dataclass
+class Peer:
+    conn: Connection
+    peer_id: str
+    name: str = ""
+    # Two-letter country, read once from Cloudflare's header at connect time
+    # and kept only as a counter input for /stats. The address it was derived
+    # from is never stored, and this is never sent to any peer — a country code
+    # is coarse, but it is still more than anyone in a clipboard session needs
+    # to know about the others.
+    country: str = ""
+    # Rate limiting belongs to the peer, not to the read loop: on the fallback
+    # transport there is no loop to hang it on — frames arrive on unrelated POST
+    # requests — and a limit that resets whenever a request ends is not a limit.
+    buckets: RateBuckets = field(default_factory=RateBuckets)
+
+
+@dataclass
+class Room:
+    # Keyed by connection: the connection is the identity that always exists,
+    # whereas a peerId only becomes meaningful once `hello` lands.
+    peers: dict[Connection, Peer] = field(default_factory=dict)
+    last: str | None = None       # last clip envelope, as a JSON string. Ciphertext.
+    seq: int = 0
+    evict_task: asyncio.Task | None = None
+
+
+rooms: dict[str, Room] = {}
 
 
 # ---------------------------------------------------------------- health
@@ -235,15 +344,15 @@ def _short(value, limit: int) -> str | None:
     return None
 
 
-async def _send(sock: WebSocket, obj: dict) -> bool:
+async def _send(conn: Connection, obj: dict) -> bool:
     try:
-        await sock.send_text(json.dumps(obj, separators=(",", ":")))
+        await conn.send_text(json.dumps(obj, separators=(",", ":")))
         return True
     except Exception:
         return False
 
 
-async def _broadcast(room: Room, frame: str, exclude: WebSocket | None = None) -> None:
+async def _broadcast(room: Room, frame: str, exclude: Connection | None = None) -> None:
     """Fan out a raw frame to every peer but the sender (PRD FR-3.2)."""
     dead = []
     for peer in list(room.peers):
@@ -277,7 +386,7 @@ def _find(room: Room, peer_id: str | None) -> Peer | None:
     return None
 
 
-async def _announce_peers(room: Room, exclude: WebSocket | None = None) -> None:
+async def _announce_peers(room: Room, exclude: Connection | None = None) -> None:
     """Presence frames report *changes*: who is here and what they are called.
 
     `count` is kept alongside `list` because existing clients read it (and the
@@ -298,15 +407,16 @@ async def _forward(room: Room, me: Peer, msg: dict) -> None:
     """Relay a signalling/file frame to the peer named in `to`.
 
     `from` is stamped by the relay and overwrites anything the sender put
-    there: the socket a frame arrived on is the one fact a client cannot lie
+    there: the connection a frame arrived on is the one fact a client cannot lie
     about, and the recipient needs it to address its reply (an rtc-offer with
-    no verified sender is unanswerable).
+    no verified sender is unanswerable). On the SSE fallback that connection is
+    the event stream the sid resolved to, never the POST itself.
     """
     target = _find(room, _short(msg.get("to"), MAX_ID_CHARS))
     if target is None:
         # Also covers a missing/blank/non-string `to`; the echoed value tells a
         # client which of the two it was without adding a second error code.
-        await _send(me.sock, {
+        await _send(me.conn, {
             "t": "error",
             "code": "NO_SUCH_PEER",
             "to": _short(msg.get("to"), MAX_ID_CHARS),
@@ -314,8 +424,8 @@ async def _forward(room: Room, me: Peer, msg: dict) -> None:
         return
 
     msg["from"] = me.peer_id
-    if not await _send(target.sock, msg):
-        room.peers.pop(target.sock, None)
+    if not await _send(target.conn, msg):
+        room.peers.pop(target.conn, None)
         await _announce_peers(room)
 
 
@@ -351,20 +461,32 @@ async def _evict_later(room_hash: str) -> None:
         rooms.pop(room_hash, None)
 
 
-# ---------------------------------------------------------------- websocket
+# ------------------------------------------------------- session, either way
 
-@app.websocket("/ws/{room_hash}")
-async def ws(sock: WebSocket, room_hash: str):
-    await sock.accept()
+def _country_of(headers) -> str:
+    """Two-letter country from Cloudflare's header, or "" if it is not sane.
 
+    Cloudflare fronts this service, so CF-IPCountry is already on the request.
+    Read once, counted in /stats, and the address it was derived from is never
+    stored.
+    """
+    country = (headers.get("cf-ipcountry") or "").upper()
+    return country if len(country) == 2 and country.isalpha() else ""
+
+
+async def _join(room_hash: str, conn: Connection, country: str, extra: dict | None = None):
+    """Put a connection in a room and welcome it. Returns (room, peer) or None.
+
+    None means the room is full and the caller must end the connection; the
+    error frame has already been sent.
+    """
     room = rooms.get(room_hash)
     if room is None:
         room = rooms[room_hash] = Room()
 
     if len(room.peers) >= MAX_PEERS:
-        await _send(sock, {"t": "error", "code": "ROOM_FULL"})
-        await sock.close(code=1013)
-        return
+        await _send(conn, {"t": "error", "code": "ROOM_FULL"})
+        return None
 
     # A room that was counting down to eviction is alive again.
     if room.evict_task and not room.evict_task.done():
@@ -376,18 +498,12 @@ async def ws(sock: WebSocket, room_hash: str):
     # Provisional id: welcome must go out immediately (a client is entitled to
     # sit silent and still be told the room state), and `hello` has not arrived
     # yet. It is replaced by the client's originId the moment hello lands.
-    # Cloudflare fronts this service, so CF-IPCountry is already on the request.
-    # Read it here, count it in /stats, and never keep the address it came from.
-    country = (sock.headers.get("cf-ipcountry") or "").upper()
-    if len(country) != 2 or not country.isalpha():
-        country = ""
-
-    me = Peer(sock=sock, peer_id=uuid.uuid4().hex[:8], country=country)
-    room.peers[sock] = me
+    me = Peer(conn=conn, peer_id=uuid.uuid4().hex[:8], country=country)
+    room.peers[conn] = me
 
     # `existing > 0` on an intent:"create" means the auto-generated key is taken,
     # and the client must regenerate rather than land in a stranger's room (OI-2).
-    await _send(sock, {
+    await _send(conn, {
         "t": "welcome",
         "instance": INSTANCE_ID,
         "existing": existing,
@@ -395,92 +511,270 @@ async def ws(sock: WebSocket, room_hash: str):
         "you": me.peer_id,
         "list": _roster(room),
         "last": json.loads(room.last) if room.last else None,
+        **(extra or {}),
     })
-    await _announce_peers(room, exclude=sock)
+    await _announce_peers(room, exclude=conn)
+    return room, me
 
-    buckets = RateBuckets()
+
+async def _after_departure(room_hash: str, room: Room) -> None:
+    """Tell whoever is left, or start the room's eviction clock."""
+    if room.peers:
+        await _announce_peers(room)
+    else:
+        room.evict_task = asyncio.create_task(_evict_later(room_hash))
+
+
+async def _depart(room_hash: str, room: Room, me: Peer) -> None:
+    """Remove a peer and either re-announce the roster or start the TTL clock."""
+    room.peers.pop(me.conn, None)
+    await _after_departure(room_hash, room)
+
+
+async def _handle_raw(room: Room, me: Peer, raw: str) -> None:
+    """Everything the relay does with one inbound frame, whatever carried it.
+
+    Both transports funnel through here, so size caps, rate limits and routing
+    cannot behave differently on the fallback path — a client that is forced
+    onto SSE gets the identical relay, not a lenient copy of it.
+    """
+    if len(raw.encode("utf-8")) > MAX_FRAME_BYTES:
+        # Charged to the interactive bucket. Before this, an oversize frame
+        # `continue`d past the rate check, so a flood of 33 KB frames bought an
+        # unmetered error echo for free.
+        code = "TOO_LARGE" if me.buckets.allow("interactive") else "RATE_LIMITED"
+        await _send(me.conn, {"t": "error", "code": code})
+        return
+
+    try:
+        msg = json.loads(raw)
+    except json.JSONDecodeError:
+        msg = None
+
+    # `[]`, `"x"` and `5` are all valid JSON and none of them is a frame.
+    # Rejecting them here keeps a stray frame from raising AttributeError deep
+    # in the loop and dropping the connection.
+    if not isinstance(msg, dict):
+        code = "BAD_JSON" if me.buckets.allow("interactive") else "RATE_LIMITED"
+        await _send(me.conn, {"t": "error", "code": code})
+        return
+
+    kind = msg.get("t")
+
+    if not me.buckets.allow(FRAME_CLASS.get(kind, "interactive")):
+        await _send(me.conn, {"t": "error", "code": "RATE_LIMITED"})
+        return
+
+    if kind == "ping":                      # heartbeat (PRD FR-3.6)
+        await _send(me.conn, {"t": "pong"})
+
+    elif kind == "hello":                   # intent already answered by welcome
+        changed, taken = _adopt_identity(room, me, msg)
+        if taken:
+            # Never silent: the client is addressable, just not under the name
+            # it asked for, and it needs to know which.
+            await _send(me.conn, {
+                "t": "error", "code": "PEER_ID_TAKEN", "you": me.peer_id,
+            })
+        if changed:
+            # Sender included: this is the frame that tells it which id and
+            # nickname the room actually knows it by.
+            await _announce_peers(room)
+
+    elif kind == "clip":
+        room.seq += 1
+        envelope = {
+            "t": "clip",
+            "payload": msg.get("payload"),
+            "iv": msg.get("iv"),
+            "originId": msg.get("originId"),
+            "seq": room.seq,
+        }
+        room.last = json.dumps(envelope, separators=(",", ":"))
+        await _broadcast(room, room.last, exclude=me.conn)
+
+    elif kind in ROOM_WIDE:                 # file-meta: thumbnails to the room
+        msg["from"] = me.peer_id
+        await _broadcast(
+            room, json.dumps(msg, separators=(",", ":")), exclude=me.conn
+        )
+
+    elif kind in TARGETED:                  # rtc-*, file-req, file-chunk
+        await _forward(room, me, msg)
+
+    else:
+        await _send(me.conn, {"t": "error", "code": "UNKNOWN_TYPE"})
+
+
+# ---------------------------------------------------------------- websocket
+
+@app.websocket("/ws/{room_hash}")
+async def ws(sock: WebSocket, room_hash: str):
+    await sock.accept()
+    conn = WsConnection(sock)
+
+    joined = await _join(room_hash, conn, _country_of(sock.headers))
+    if joined is None:
+        await sock.close(code=1013)
+        return
+    room, me = joined
 
     try:
         while True:
-            raw = await sock.receive_text()
-
-            if len(raw.encode("utf-8")) > MAX_FRAME_BYTES:
-                # Charged to the interactive bucket. Before this, an oversize
-                # frame `continue`d past the rate check, so a flood of 33 KB
-                # frames bought an unmetered error echo for free.
-                code = "TOO_LARGE" if buckets.allow("interactive") else "RATE_LIMITED"
-                await _send(sock, {"t": "error", "code": code})
-                continue
-
-            try:
-                msg = json.loads(raw)
-            except json.JSONDecodeError:
-                msg = None
-
-            # `[]`, `"x"` and `5` are all valid JSON and none of them is a
-            # frame. Rejecting them here keeps a stray frame from raising
-            # AttributeError deep in the loop and dropping the connection.
-            if not isinstance(msg, dict):
-                code = "BAD_JSON" if buckets.allow("interactive") else "RATE_LIMITED"
-                await _send(sock, {"t": "error", "code": code})
-                continue
-
-            kind = msg.get("t")
-
-            if not buckets.allow(FRAME_CLASS.get(kind, "interactive")):
-                await _send(sock, {"t": "error", "code": "RATE_LIMITED"})
-                continue
-
-            if kind == "ping":                      # heartbeat (PRD FR-3.6)
-                await _send(sock, {"t": "pong"})
-
-            elif kind == "hello":                   # intent already answered by welcome
-                changed, taken = _adopt_identity(room, me, msg)
-                if taken:
-                    # Never silent: the client is addressable, just not under
-                    # the name it asked for, and it needs to know which.
-                    await _send(sock, {
-                        "t": "error", "code": "PEER_ID_TAKEN", "you": me.peer_id,
-                    })
-                if changed:
-                    # Sender included: this is the frame that tells it which id
-                    # and nickname the room actually knows it by.
-                    await _announce_peers(room)
-
-            elif kind == "clip":
-                room.seq += 1
-                envelope = {
-                    "t": "clip",
-                    "payload": msg.get("payload"),
-                    "iv": msg.get("iv"),
-                    "originId": msg.get("originId"),
-                    "seq": room.seq,
-                }
-                room.last = json.dumps(envelope, separators=(",", ":"))
-                await _broadcast(room, room.last, exclude=sock)
-
-            elif kind in ROOM_WIDE:                 # file-meta: thumbnails to the room
-                msg["from"] = me.peer_id
-                await _broadcast(
-                    room, json.dumps(msg, separators=(",", ":")), exclude=sock
-                )
-
-            elif kind in TARGETED:                  # rtc-*, file-req, file-chunk
-                await _forward(room, me, msg)
-
-            else:
-                await _send(sock, {"t": "error", "code": "UNKNOWN_TYPE"})
-
+            await _handle_raw(room, me, await sock.receive_text())
     except WebSocketDisconnect:
         pass
     except Exception:
         pass
     finally:
-        room.peers.pop(sock, None)
-        if room.peers:
-            await _announce_peers(room)
-        else:
-            room.evict_task = asyncio.create_task(_evict_later(room_hash))
+        await _depart(room_hash, room, me)
+
+
+# ------------------------------------------------------- SSE + POST fallback
+#
+# The same room and the same protocol over two plain HTTP requests, for clients
+# whose network will not pass a WebSocket upgrade (PRD §4.3 R3, §5.4).
+
+# CORS matters here in a way it never did for WebSockets, which are exempt from
+# it: the site is served from github.io and this relay from another host, so an
+# EventSource and a fetch POST are both cross-origin. "*" because there are no
+# credentials anywhere in this design — the session key never leaves the browser
+# and the relay only ever holds ciphertext — and pinning an origin would break
+# local development, a future custom domain, and anyone self-hosting a copy.
+CORS = {"Access-Control-Allow-Origin": "*"}
+
+SSE_HEADERS = {
+    **CORS,
+    "Cache-Control": "no-cache, no-store, no-transform",
+    "Connection": "keep-alive",
+    # Ask intermediaries not to buffer. nginx and several corporate proxies
+    # honour this; a proxy that buffers anyway turns the stream into a response
+    # that arrives all at once at the end, which the client detects on its own
+    # (it gives every transport a fixed window to deliver the welcome frame).
+    "X-Accel-Buffering": "no",
+}
+
+
+def _event(data: str) -> bytes:
+    """One SSE message. The protocol frame is the payload, unchanged."""
+    return f"data: {data}\n\n".encode("utf-8")
+
+
+@app.get("/sse/{room_hash}")
+async def sse(room_hash: str, request: Request):
+    """Downstream half of the fallback: everything the room sends this peer."""
+    conn = SseConnection()
+
+    joined = await _join(room_hash, conn, _country_of(request.headers),
+                         extra={"sid": conn.sid})
+
+    async def stream() -> AsyncIterator[bytes]:
+        # 2 KB of comment before anything else. Some proxies (and one or two
+        # browsers) will not surface a response body until a few kilobytes have
+        # arrived, which would hold the welcome frame — and therefore the whole
+        # session — hostage behind the first clip. A comment line is ignored by
+        # every SSE parser.
+        yield b":" + b" " * 2048 + b"\n\n"
+
+        if joined is None:                     # room full; the error is queued
+            while not conn.queue.empty():
+                item = conn.queue.get_nowait()
+                if item is not None:
+                    yield _event(item)
+            return
+
+        room, me = joined
+        try:
+            while True:
+                try:
+                    item = await asyncio.wait_for(conn.queue.get(), SSE_KEEPALIVE_SECONDS)
+                except asyncio.TimeoutError:
+                    # Keepalive. Also how a dead client is discovered: writing
+                    # to a socket nobody is reading is what eventually raises.
+                    yield b": ka\n\n"
+                    continue
+                if item is None:
+                    break
+                yield _event(item)
+        finally:
+            # Runs on cancellation too, which is what a closed tab looks like.
+            #
+            # The removal is synchronous so the roster never briefly shows a
+            # ghost, but the announcement that follows is NOT awaited here: this
+            # `finally` usually runs because the generator is being closed, and
+            # an await that suspends at that point is a RuntimeError ("async
+            # generator ignored GeneratorExit") that would take the cleanup with
+            # it. Telling the other peers is a separate task.
+            room.peers.pop(me.conn, None)
+            try:
+                asyncio.create_task(_after_departure(room_hash, room))
+            except RuntimeError:
+                pass                    # the loop is going away; so is the room
+
+    return StreamingResponse(stream(), media_type="text/event-stream", headers=SSE_HEADERS)
+
+
+@app.options("/pub/{room_hash}")
+async def pub_preflight(room_hash: str) -> Response:
+    """The client sends text/plain to stay a "simple request", so this should
+    never be reached. It exists for any other client that does not."""
+    return Response(status_code=204, headers={
+        **CORS,
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Max-Age": "86400",
+    })
+
+
+@app.post("/pub/{room_hash}")
+async def pub(room_hash: str, request: Request, sid: str = "") -> Response:
+    """Upstream half of the fallback: one or more frames, one per line.
+
+    The sid names the *stream*, and the stream is the session — a peer that has
+    no live stream has nowhere to receive replies, so 404 here is the client's
+    signal to reopen rather than to keep posting into the void.
+    """
+    room = rooms.get(room_hash)
+    me = _by_sid(room, sid) if room else None
+    if me is None:
+        return _json(404, {"t": "error", "code": "NO_STREAM"})
+
+    # The request itself is metered, on top of the frames inside it: otherwise
+    # a flood of empty POSTs costs a client nothing.
+    if not me.buckets.allow("http"):
+        return _json(429, {"t": "error", "code": "RATE_LIMITED"})
+
+    body = await request.body()
+    if len(body) > MAX_BODY_BYTES:
+        return _json(413, {"t": "error", "code": "TOO_LARGE"})
+
+    for line in body.decode("utf-8", "replace").split("\n"):
+        line = line.strip()
+        if line:
+            await _handle_raw(room, me, line)
+
+    # Nothing to say in the response: every answer the relay has — pong, error,
+    # peers, a forwarded frame — goes down the stream, exactly as it would over
+    # a WebSocket.
+    return Response(status_code=204, headers=CORS)
+
+
+def _by_sid(room: Room, sid: str) -> Peer | None:
+    if not sid:
+        return None
+    for conn, peer in room.peers.items():
+        if isinstance(conn, SseConnection) and conn.sid == sid:
+            return peer
+    return None
+
+
+def _json(status: int, obj: dict) -> Response:
+    return Response(
+        content=json.dumps(obj, separators=(",", ":")),
+        status_code=status,
+        media_type="application/json",
+        headers=CORS,
+    )
 
 
 if __name__ == "__main__":

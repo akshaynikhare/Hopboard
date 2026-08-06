@@ -44,6 +44,7 @@ export const EV = {
 
   // transport
   CONN_STATE:      "conn:state",       // {state, detail}
+  TRANSPORT:       "conn:transport",   // {mode, label, blocked} — ws | sse, or nothing works
   PEERS_CHANGED:   "peers:changed",    // {count, list}
   INSTANCE_CHANGED:"conn:instance",    // {from, to} — split-brain warning (OI-3)
   KEY_COLLISION:   "session:collision",// generated key was taken (OI-2)

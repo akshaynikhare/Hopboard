@@ -132,12 +132,21 @@ ok("navigator.clipboard confined to clipboard/", bad.length === 0, bad.join(", "
 
 /* ---------- 8. UI modules do not import the transport ----------
    The boundary that let the transport stay swappable while everything else
-   was built. See docs/ARCHITECTURE.md §3. */
+   was built — and that later carried the whole SSE fallback in without one UI
+   file changing. See docs/ARCHITECTURE.md §3.
+
+   The channels count too, not just relay.js: the day someone reaches past the
+   facade for ws.js or sse.js, the app starts knowing which pipe it is on and
+   the swap stops being free.
+
+   protocol.js is deliberately exempt. It is frame *shapes* — transport-agnostic
+   by design and identical on both channels — and files/transfer.js reads its
+   type constants rather than hand-copying eleven string literals. */
 bad = jsFiles
   .filter(f => /[\\/](ui|files|clipboard)[\\/]/.test(f))
-  .filter(f => /from\s+"[^"]*transport\/relay\.js"/.test(read(f)))
+  .filter(f => /from\s+"[^"]*transport\/(relay|ws|sse)\.js"/.test(read(f)))
   .map(rel);
-ok("no UI/files/clipboard module imports transport/relay.js", bad.length === 0, bad.join(", "));
+ok("no UI/files/clipboard module imports a transport channel", bad.length === 0, bad.join(", "));
 
 /* ---------- 9. PWA assets present ---------- */
 bad = ["manifest.webmanifest", "sw.js", "icons/icon-192.png", "icons/icon-512.png",

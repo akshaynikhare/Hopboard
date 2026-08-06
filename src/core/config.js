@@ -21,6 +21,27 @@ export const RELAY_URL = IS_LOCAL
   ? "ws://127.0.0.1:8000"
   : "wss://hopboard.fastapicloud.dev";
 
+/**
+ * The same relay over plain HTTP, for the SSE+POST fallback and /stats.
+ *
+ * One hostname, two ways in — which is what makes the fallback worth having:
+ * IT allowlists a single domain (PRD §5.4) and both transports are covered by
+ * it. Derived rather than written twice so the two can never drift.
+ */
+export const RELAY_HTTP_URL = RELAY_URL.replace(/^ws/i, "http");
+
+/**
+ * How we talk to the relay.
+ *
+ *   ws   — WebSocket. Lower latency, one connection, the default.
+ *   sse  — Server-Sent Events downstream + fetch POST upstream (PRD §4.3 R3).
+ *          Plain HTTP with no Upgrade, so it survives the TLS-inspecting
+ *          proxies that eat WebSockets on corporate networks (§5.4).
+ *
+ * Both carry the identical envelopes from §6 — see transport/protocol.js.
+ */
+export const TRANSPORT = { WS: "ws", SSE: "sse" };
+
 export const TEXT = {
   MAX_CHARS: 50_000,          // PRD FR-2.8
   SUPPRESS_MS: 1500,          // loop-suppression window after applying a remote clip (FR-2.6)
@@ -63,6 +84,36 @@ export const NET = {
   BACKOFF_MIN_MS: 1_000,
   BACKOFF_MAX_MS: 30_000,
   ICE_TIMEOUT_MS: 5_000,      // then fall back to relay chunks (FR-7.6)
+
+  /**
+   * How long a transport gets to become usable before we give up on it.
+   *
+   * A blocked WebSocket frequently does NOT fail: an intercepting proxy accepts
+   * the TCP connection, swallows the Upgrade, and leaves the socket hanging
+   * with no open, no close and no error — forever. Without this timer the app
+   * sits on "Connecting…" indefinitely and never tries the fallback, which is
+   * the exact failure this whole path exists for.
+   *
+   * Generous enough to survive a scale-to-zero cold start (PRD R2), which is
+   * seconds rather than milliseconds.
+   */
+  PROBE_MS: 8_000,
+
+  /**
+   * Consecutive attempts that never became usable before switching transport.
+   *
+   * Two, not one: a single failure is far more often a cold start or a flaky
+   * moment than a policy, and switching on it would put users on the slower
+   * path for no reason. Two failures in a row is a proxy.
+   */
+  SWITCH_AFTER: 2,
+
+  /** Frames per upstream POST, and the byte budget for one (SSE path). */
+  POST_MAX_FRAMES: 16,
+  POST_MAX_BYTES: 256 * 1024,
+
+  /** How long the remembered transport choice is trusted. */
+  TRANSPORT_MEMORY_MS: 12 * 60 * 60 * 1000,
 };
 
 export const POLL_OPTIONS = { "Off": 0, "500ms": 500, "1s": 1000, "2s": 2000 };

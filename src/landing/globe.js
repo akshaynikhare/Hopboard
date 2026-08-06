@@ -25,12 +25,12 @@
  * learns more than that in the first place.
  */
 
-import { RELAY_URL } from "../core/config.js";
+import { RELAY_HTTP_URL } from "../core/config.js";
 
 /** Derived from the relay host so there is one host in the codebase, not two.
  *  wss:// → https://, and ws://127.0.0.1:8000 → http://127.0.0.1:8000 for local
  *  development, where a missing relay simply lands in the unavailable path. */
-const STATS_URL = RELAY_URL.replace(/^ws/i, "http") + "/stats";
+const STATS_URL = `${RELAY_HTTP_URL}/stats`;
 
 const POLL_MS      = 30_000;    // the floor the endpoint asked for
 const MAX_POLL_MS  = 300_000;   // backoff ceiling — it is a free tier
