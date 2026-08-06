@@ -115,13 +115,39 @@ const ESC_EXEMPT = {
   "src/ui/editor.js": "gutter interpolates a loop index integer, nothing else",
 };
 
+/* setHTML() as well as innerHTML: the Trusted Types work moved every write
+   through ui/dom.js, and a check that still only looked for `innerHTML =` would
+   have gone quietly vacuous — passing because the modules no longer contain the
+   pattern, not because they escape anything. */
 bad = [];
 for (const f of jsFiles.filter(f => /[\\/]ui[\\/]/.test(f))) {
-  if (ESC_EXEMPT[rel(f)]) continue;
+  // dom.js DEFINES esc() and owns the one sink, so it never calls either.
+  if (ESC_EXEMPT[rel(f)] || rel(f) === "src/ui/dom.js") continue;
   const src = stripComments(read(f));
-  if (/innerHTML\s*=/.test(src) && !/\besc\(/.test(src)) bad.push(rel(f));
+  if (/innerHTML\s*=|setHTML\(/.test(src) && !/\besc\(/.test(src)) bad.push(rel(f));
 }
-ok("UI modules writing innerHTML also use esc()", bad.length === 0, bad.join(", "));
+ok("UI modules writing HTML also use esc()", bad.length === 0, bad.join(", "));
+
+/* ---------- HTML is written in exactly one place ----------
+   docs/ARCHITECTURE.md §5 makes "peer content is escaped before entering
+   innerHTML" a security invariant, and an invariant enforced by 25 call sites
+   remembering to call esc() is a convention wearing an invariant's clothes.
+   ui/dom.js setHTML() is now the only sink, which is what lets the CSP's
+   Trusted Types directive make it a rule the browser enforces rather than one
+   a reviewer has to.
+
+   `= ""` stays legal: Trusted Types exempts the empty string, and "clear this
+   node" is not an injection risk. */
+/* Capture the assigned value and test it, rather than putting a lookahead after
+   `\s*` — `\s*` backtracks to zero width, which lets the lookahead pass and
+   reports every `= ""` as a violation. */
+bad = jsFiles
+  .filter(f => rel(f) !== "src/ui/dom.js")
+  .filter(f => [...stripComments(read(f)).matchAll(/\.innerHTML\s*=\s*([^;\n]*)/g)]
+    .some(m => m[1].trim() !== '""'))
+  .map(rel);
+ok("innerHTML is written only in ui/dom.js", bad.length === 0,
+   bad.length ? `${bad.join(", ")} — use setHTML()` : "");
 
 /* ---------- 7. only the clipboard module touches the clipboard ---------- */
 bad = jsFiles
@@ -182,6 +208,90 @@ ok(`precache list matches disk (${listed.size} entries)`,
    stale.length === 0 && unlisted.length === 0,
    [stale.length ? `stale: ${stale.join(" ")}` : "",
     unlisted.length ? `missing: ${unlisted.join(" ")}` : ""].filter(Boolean).join(" | "));
+
+/* ---------- 12. nobody resolves a path from import.meta.url ----------
+   `new URL("../../x", import.meta.url)` encodes how deep a module sits in the
+   tree. Six of them did, and the deploy bundle collapses src/ui/*.js into
+   src/main.js — which moves every one of those paths up a level at once, with
+   no error. install.js resolved the app root to the Pages root and silently
+   broke the service-worker scope and PWA installability (PRD OI-9).
+
+   core/paths.js resolves it from document.baseURI instead, which is the same
+   answer bundled or not. This keeps it that way. */
+bad = jsFiles
+  .filter(f => rel(f) !== "src/core/paths.js")
+  .filter(f => /new URL\([^)]*import\.meta\.url/.test(read(f)))
+  .map(rel);
+ok("no module resolves a path from import.meta.url", bad.length === 0,
+   bad.length ? `${bad.join(", ")} — use core/paths.js` : "");
+
+/* ---------- 13-15. the CSP holds ----------
+   Discovered the same way .github/workflows/pages.yml collects content pages —
+   any directory holding an index.html — so a page added later is covered here
+   without anyone remembering to add it. docs/SEO.md §2 plans a dozen more. */
+const IGNORED = new Set(["node_modules", ".git", ".github", ".shots", "_site", "backend"]);
+const pages = ["index.html", "app.html"].map(p => join(ROOT, p));
+for (const dir of readdirSync(ROOT)) {
+  if (IGNORED.has(dir) || !statSync(join(ROOT, dir)).isDirectory()) continue;
+  for (const f of walk(join(ROOT, dir))) if (f.endsWith("index.html")) pages.push(f);
+}
+
+bad = pages.filter(f => !/http-equiv="Content-Security-Policy"/.test(read(f))).map(rel);
+ok(`every page carries a CSP (${pages.length} pages)`, bad.length === 0, bad.join(", "));
+
+/* An inline <script> is what forces 'unsafe-inline' or a hash, and the whole
+   point of moving the landing page's fragment redirect into
+   src/landing/redirect.js was that there were then none left. JSON-LD is not
+   executable and script-src does not apply to it. */
+bad = pages.filter(f => [...read(f).matchAll(/<script(?![^>]*\bsrc=)([^>]*)>/g)]
+  .some(m => !/type="application\/ld\+json"/.test(m[1]))).map(rel);
+ok("no executable inline <script>", bad.length === 0,
+   bad.length ? `${bad.join(", ")} — would need 'unsafe-inline' or a hash` : "");
+
+/* The relay origin now lives in two places: RELAY_URL in core/config.js, and
+   connect-src in every page's CSP. Deriving one from the other is impossible
+   across a <meta> tag, so this asserts they agree instead — the same trade the
+   precache list above makes. Getting it wrong presents as "the app loads and
+   every connection is refused", which looks like an outage, not a typo. */
+const relayHost = read(join(ROOT, "src/core/config.js"))
+  .match(/DEFAULT_RELAY_URL\s*=\s*"wss:\/\/([^"]+)"/)?.[1];
+/* Read the meta tag's content attribute, not the first "connect-src" in the
+   file — the prose above the tag in app.html explains each directive by name,
+   and matching that instead reported a mismatch on a page that was correct. */
+bad = pages.filter(f => {
+  const csp = read(f)
+    .match(/http-equiv="Content-Security-Policy"\s+content="([^"]+)"/)?.[1] ?? "";
+  const connect = csp.match(/connect-src ([^;]+)/)?.[1] ?? "";
+  return !connect.includes(`wss://${relayHost}`)
+      || !connect.includes(`https://${relayHost}`);
+}).map(rel);
+ok(`CSP connect-src matches config.js relay (${relayHost})`,
+   Boolean(relayHost) && bad.length === 0,
+   !relayHost ? "could not read RELAY_URL from config.js" : bad.join(", "));
+
+/* ---------- 16. every module a page loads is a build entry point ----------
+   The deploy ships bundles, not the source tree. A module reachable only from
+   markup — named in a <script src> and imported by nothing — is invisible to
+   the bundler, so it never lands in _site and 404s on the single page that
+   needs it. Nothing else catches this: the file exists on disk, the import
+   graph is intact, and the page works perfectly in development. */
+const buildSrc = read(join(ROOT, "tools/build.mjs"));
+const entryNames = new Set([
+  ...[...buildSrc.matchAll(/entryPoints:\s*\[([^\]]*)\]/gs)]
+    .flatMap(m => [...m[1].matchAll(/"([^"]+)"/g)].map(x => x[1])),
+]);
+
+bad = [];
+for (const f of pages) {
+  for (const m of read(f).matchAll(/<script[^>]+type="module"[^>]+src="([^"]+)"/g)) {
+    const spec = m[1].replace(/^[./]*/, "");                    // src/landing/x.js
+    const base = spec.split("/").pop().replace(/\.js$/, "");     // x
+    const covered = [...entryNames].some(e => e === base || e.endsWith(spec) || e.includes(spec));
+    if (!covered) bad.push(`${rel(f)} -> ${spec}`);
+  }
+}
+ok("every module a page loads is a build entry point", bad.length === 0,
+   bad.length ? `${bad.join("; ")} — add it to tools/build.mjs` : "");
 
 console.log("\n" + "=".repeat(56));
 console.log(`STATIC: ${pass}/${pass + fail} passed`);
