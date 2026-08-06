@@ -2,8 +2,8 @@
  * QR code for the current room — PRD FR-1.5.
  *
  * ── BUS CONTRACT ───────────────────────────────────────────────────────────
- * Listens "ui:qr" {text} — open the modal for this payload.
- * Also exported directly as showQr(text) for ui/sessionPanel.js to call.
+ * Listens "ui:qr" {text, note} — open the modal for this payload.
+ * Also exported directly as showQr(text, note) for ui/sessionPanel.js to call.
  *
  * ── WHY A HAND-ROLLED ENCODER ──────────────────────────────────────────────
  * No libraries, no CDN. The deploy is a file copy (docs/ARCHITECTURE.md §1) and
@@ -433,7 +433,7 @@ let openModal = null;      // { el, restoreFocus, onKeydown, inerted }
 
 export function init() {
   ensureStyles();
-  on("ui:qr", ({ text } = {}) => showQr(text));
+  on("ui:qr", ({ text, note } = {}) => showQr(text, note));
 }
 
 /**
@@ -465,7 +465,14 @@ function setShellInert(on) {
 }
 
 /** Open the QR modal for `text` (the share link). Safe to call repeatedly. */
-export function showQr(text) {
+/**
+ * What the caller says the code discloses. Passed in rather than decided here:
+ * a locked session's code carries the key and NOT the PIN, and this module has
+ * no business knowing which kind of session it is drawing.
+ */
+const DEFAULT_NOTE = "The link contains the key. Anyone who scans it can read what you copy.";
+
+export function showQr(text, note = DEFAULT_NOTE) {
   const payload = String(text ?? "");
   if (!payload) return emit(EV.TOAST, "Nothing to encode");
 
@@ -509,7 +516,7 @@ export function showQr(text) {
       <div class="qrbody">
         ${body}
         <div class="qrlink" tabindex="0">${esc(payload)}</div>
-        <div class="qrnote" id="qrNote">The link contains the key. Anyone who scans it can read what you copy.</div>
+        <div class="qrnote" id="qrNote">${esc(note)}</div>
       </div>
     </div>`;
 

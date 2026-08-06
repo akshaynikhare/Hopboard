@@ -15,7 +15,7 @@
  * keys from the wrong alphabet is the kind of bug nobody notices for months.
  */
 
-import { generate, normalise } from "../core/keys.js";
+import { generate, parseFragment, fragment } from "../core/keys.js";
 
 const byId = id => document.getElementById(id);
 const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -48,9 +48,19 @@ start("key", function key() {
    * field, so middle-click, ⌘-click, "copy link address" and a browser with
    * JavaScript disabled all behave. Only the Enter key needs intercepting.
    */
+  /**
+   * Someone pasting a whole locked link — ".../app.html#!D75LV" — must arrive at
+   * a locked session. normalise() strips the "!" along with the rest of the URL
+   * furniture, which would have sent them to the UNLOCKED room of the same name:
+   * a real room, readable by anyone holding that link, reached by clicking a
+   * link that promised the opposite. So the marker is read before anything is
+   * stripped, and carried through to the href.
+   */
+  const parse = raw => parseFragment(String(raw).split("#").pop());
+
   const sync = () => {
-    const k = normalise(input.value);
-    const href = k ? "./app.html#" + k : "./app.html";
+    const { key: k, locked } = parse(input.value);
+    const href = k ? "./app.html#" + fragment(k, locked) : "./app.html";
     for (const b of buttons) b.href = href;
   };
 
@@ -66,16 +76,20 @@ start("key", function key() {
   input.addEventListener("input", sync);
   // Normalise on the way out rather than on every keystroke: rewriting the
   // value mid-word drops the caret to the end on every browser.
-  input.addEventListener("change", () => { input.value = normalise(input.value); sync(); });
+  input.addEventListener("change", () => {
+    const { key: k, locked } = parse(input.value);
+    input.value = k ? fragment(k, locked) : "";
+    sync();
+  });
   input.addEventListener("focus", () => input.select());
 
   regen?.addEventListener("click", () => { fresh(true); input.focus(); });
 
   form.addEventListener("submit", e => {
     e.preventDefault();
-    const k = normalise(input.value);
+    const { key: k, locked } = parse(input.value);
     if (k.length < 4) { input.focus(); return; }   // keys.isValid() floor
-    location.href = "./app.html#" + k;
+    location.href = "./app.html#" + fragment(k, locked);
   });
 
   fresh(false);
@@ -89,8 +103,17 @@ start("key", function key() {
  * changes and the path runs top-to-bottom below 620px, which is also the
  * breakpoint where the page drops to a single column.
  */
+/**
+ * `gap` is how far a caption sits from its node, and it is per-layout because
+ * the thing it has to clear is the travelling pill, which is centred on the
+ * path. In the wide layout the pill passes a node sideways and only needs the
+ * pill's half-height of clearance; in the tall one it stops ON the first and
+ * last node, so the caption has to clear the pill's half-WIDTH or the two
+ * overlap every time the loop restarts.
+ */
 const LAYOUTS = {
   wide: {
+    gap: 22,
     vb: "0 0 1200 360",
     text:  "M120 180 C 300 180 372 76 600 76 C 828 76 900 180 1080 180",
     files: "M120 204 C 400 350 800 350 1080 204",
@@ -102,6 +125,7 @@ const LAYOUTS = {
     ],
   },
   tall: {
+    gap: 46,
     vb: "0 0 420 660",
     text:  "M92 70 C 92 190 328 200 328 330 C 328 460 92 470 92 590",
     files: "M64 92 C 8 300 8 360 64 568",
@@ -163,11 +187,11 @@ start("flow", function flow() {
   }
 
   const OFFSETS = {
-    below: "translate(-50%, 14px)",
-    above: "translate(-50%, calc(-100% - 14px))",
-    right: "translate(20px, -50%)",
-    left:  "translate(calc(-100% - 20px), -50%)",
-    mid:   "translate(-50%, -50%)",
+    below: g => `translate(-50%, ${g}px)`,
+    above: g => `translate(-50%, calc(-100% - ${g}px))`,
+    right: g => `translate(${g}px, -50%)`,
+    left:  g => `translate(calc(-100% - ${g}px), -50%)`,
+    mid:   () => "translate(-50%, -50%)",
   };
 
   function build() {
@@ -224,13 +248,13 @@ start("flow", function flow() {
       const p = toPx(n.x, n.y);
       n.el.style.left = p.x + "px";
       n.el.style.top = p.y + "px";
-      n.el.style.transform = OFFSETS[n.place];
+      n.el.style.transform = OFFSETS[n.place](layout.gap);
     }
     const f = layout.filesLabel;
     const fp = toPx(f.x, f.y);
     f.el.style.left = fp.x + "px";
     f.el.style.top = fp.y + "px";
-    f.el.style.transform = OFFSETS[f.place];
+    f.el.style.transform = OFFSETS[f.place](layout.gap);
     place(reduced.matches ? 0.5 : 0);
   }
 

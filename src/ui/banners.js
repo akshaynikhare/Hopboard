@@ -9,6 +9,7 @@
 
 import { on, emit, EV } from "../core/bus.js";
 import { TRANSPORT } from "../core/config.js";
+import * as state from "../core/state.js";
 import * as capture from "../clipboard/capture.js";
 import { $, esc } from "./dom.js";
 
@@ -16,6 +17,17 @@ const banners = new Map();
 /** key -> a function that cancels that banner's auto-dismiss timer. */
 const timers = new Map();
 let mount;
+
+/**
+ * How long a locked session gets to prove itself before we say anything.
+ *
+ * Long enough that the ordinary case — you locked a session five seconds ago
+ * and your phone has not been picked up yet — never sees the banner, short
+ * enough that a mistyped PIN is caught before you have pasted a password into
+ * a room nobody is listening to.
+ */
+const LOCK_DOUBT_MS = 12_000;
+let lockDoubt = null;
 
 export function init() {
   mount = $("mount-banners");
@@ -78,15 +90,54 @@ export function init() {
   // is handed the key, the moment they arrive is the only moment it is
   // noticeable.
   on(EV.PEER_JOINED, ({ name }) => {
+    const who = name || "An unnamed device";
+    // In a locked session the arrival means more, not less: reaching this room
+    // at all required the PIN, so this device is not somebody who merely found
+    // the link. That is worth saying, because the open-session wording would
+    // otherwise raise an alarm about the feature working correctly.
+    const locked = state.get().locked;
     show("joined", {
       tone: "warn",
       title: "A device joined this session",
-      body: `${name || "An unnamed device"} can now read what you copy and `
+      body: locked
+        ? `${who} has the PIN as well as the link, and can now read what you `
+          + `copy and request your files. If that was not you, change the PIN.`
+        : `${who} can now read what you copy and `
           + `request your files. If that was not you, generate a new key.`,
-      action: { label: "New key", onClick: () => emit("session:rotate") },
+      action: locked
+        ? { label: "Change PIN", onClick: () => emit("session:repin") }
+        : { label: "New key", onClick: () => emit("session:rotate") },
       // Auto-dismissed, but only while nobody is reading it — see show().
       dismissAfter: 15000,
     });
+  });
+
+  /**
+   * A locked session that has not proved itself.
+   *
+   * Reaching an empty locked room is ambiguous by construction: you are either
+   * the first one here, or your PIN does not match the one that named the room
+   * everyone else is in. The app genuinely cannot tell, so it says so instead of
+   * picking the flattering interpretation — and offers the one action that
+   * resolves it either way.
+   *
+   * Only raised once peers have had a chance to appear; a banner that fires the
+   * instant a creator opens their own new session would be pure noise.
+   */
+  on(EV.LOCK_STATE, ({ locked, verified }) => {
+    if (!locked || verified) return dismiss("lock");
+    clearTimeout(lockDoubt);
+    lockDoubt = setTimeout(() => {
+      const s = state.get();
+      if (!s.locked || s.verified || s.connection !== "connected") return;
+      show("lock", {
+        tone: "warn",
+        title: "Nobody else is here yet",
+        body: "If someone should be, the PIN may not match theirs — a different "
+            + "PIN is a different session, so neither of you would see the other.",
+        action: { label: "Re-enter PIN", onClick: () => emit("session:relock") },
+      });
+    }, LOCK_DOUBT_MS);
   });
 
   // Which pipe the session is running down. Silence here would be the same

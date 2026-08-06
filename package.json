@@ -5,10 +5,11 @@
   "type": "module",
   "description": "Live clipboard sharing. Static frontend, no build step — this file exists so Node treats src/*.js as ES modules when running tests. Nothing here is needed to deploy.",
   "scripts": {
-    "test": "node tests/static-check.mjs && node tests/files.mjs && node tests/e2e.mjs && node tests/boot.mjs && node tests/fallback.mjs",
+    "test": "node tests/static-check.mjs && node tests/lock.mjs && node tests/dialog.mjs && node tests/files.mjs && node tests/e2e.mjs && node tests/boot.mjs && node tests/boot.mjs --locked && node tests/fallback.mjs",
     "test:static": "node tests/static-check.mjs",
+    "test:lock": "node tests/lock.mjs && node tests/dialog.mjs",
     "test:e2e": "node tests/e2e.mjs",
-    "test:boot": "node tests/boot.mjs",
+    "test:boot": "node tests/boot.mjs && node tests/boot.mjs --locked",
     "test:fallback": "node tests/fallback.mjs",
     "serve": "python -m http.server 8080"
   },

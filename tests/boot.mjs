@@ -9,7 +9,15 @@
  * ran, and the app silently never connected. Every isolated test passed. The
  * only symptom was "Not connected" in the status bar.
  *
- * Usage:  node tests/boot.mjs [ws_base]
+ *   node tests/boot.mjs [ws_base]            open session, must CONNECT
+ *   node tests/boot.mjs [ws_base] --locked    locked link, must NOT connect
+ *
+ * The --locked run guards the invariant that is easiest to lose and worst to
+ * lose silently: a link marked locked must not open a socket until the PIN has
+ * been given. If that ever regresses, the app quietly joins the UNLOCKED room
+ * of the same name — a real room, readable by anyone holding the link — while
+ * telling the user they are in a private session. Here the prompt is never
+ * answered, so "still idle" is the pass condition.
  */
 
 let JSDOM;
@@ -27,10 +35,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve } from "node:path";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const RELAY = process.argv[2] || "wss://hopboard.fastapicloud.dev";
+const LOCKED = process.argv.includes("--locked");
+const RELAY = process.argv.find(a => a.startsWith("ws")) || "wss://hopboard.fastapicloud.dev";
 
 const dom = new JSDOM(readFileSync(join(REPO, "app.html"), "utf8"), {
-  url: "https://akshaynikhare.github.io/Hopboard/app.html#BOOTTEST",
+  url: `https://akshaynikhare.github.io/Hopboard/app.html#${LOCKED ? "!" : ""}BOOTTEST`,
   pretendToBeVisual: true,
 });
 const { window } = dom;
@@ -84,11 +93,19 @@ await new Promise(r => setTimeout(r, 12000));
 const connected = states.includes("connected");
 const reachedEnd = log.some(([lvl, m]) => lvl === "info" && m.includes("booted"));
 
+// A locked link must never reach the relay unprompted, and must never quietly
+// derive an OPEN session for the same key as a fallback.
+const openedARoom = log.some(([lvl, m]) => lvl === "info" && m.includes("locked=false"));
+
 console.log("\n" + "=".repeat(60));
 console.log("  reached end of boot():  " + (reachedEnd ? "YES" : "NO"));
 console.log("  states:                 " + (states.join(" -> ") || "(none)"));
 console.log("  CONNECTED:              " + (connected ? "YES" : "NO") +
             "  (" + (Date.now() - started) + " ms)");
+if (LOCKED) {
+  console.log("  opened an open room:    " + (openedARoom ? "YES — DOWNGRADED" : "no"));
+  console.log("  expected:               idle, waiting for the PIN");
+}
 
 const problems = log.filter(([lvl]) => lvl === "warn" || lvl === "error");
 if (problems.length) {
@@ -97,4 +114,7 @@ if (problems.length) {
 }
 console.log("=".repeat(60));
 
-process.exit(connected && reachedEnd ? 0 : 1);
+const ok = LOCKED
+  ? (reachedEnd && !connected && !openedARoom)
+  : (reachedEnd && connected);
+process.exit(ok ? 0 : 1);

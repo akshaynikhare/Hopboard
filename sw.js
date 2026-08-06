@@ -21,7 +21,7 @@
  * new string, installs the new worker and the page shows the reload prompt.
  */
 
-const VERSION = "v2";
+const VERSION = "v4";
 const CACHE = `hopboard-shell-${VERSION}`;
 
 /** Hosts this worker must never touch, whatever the request looks like. */
@@ -61,6 +61,7 @@ const SHELL = [
   "./src/files/thumbs.js",
   "./src/files/transfer.js",
   "./src/landing/globe.js",
+  "./src/landing/land.js",
   "./src/landing/landing.js",
   "./src/main.js",
   "./src/transport/protocol.js",
@@ -77,6 +78,7 @@ const SHELL = [
   "./src/ui/hints.js",
   "./src/ui/historyPanel.js",
   "./src/ui/install.js",
+  "./src/ui/lockDialog.js",
   "./src/ui/mobileNav.js",
   "./src/ui/panes.js",
   "./src/ui/qr.js",
@@ -99,6 +101,7 @@ const SHELL = [
   "./src/styles/history.css",
   "./src/styles/install.css",
   "./src/styles/layout.css",
+  "./src/styles/lock.css",
   "./src/styles/main.css",
   "./src/styles/mobile.css",
   "./src/styles/qr.css",

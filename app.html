@@ -194,6 +194,11 @@
       <svg viewBox="0 0 24 24"><circle cx="7" cy="17" r="3"/><path d="M9.5 15L20 4.5M17 7l2 2M14 10l2 2"/></svg>
       <span id="sbKeyText">—</span>
     </div>
+    <!-- Locked sessions only, and it says which of two things it means: a
+         confirmed PIN, or a PIN nothing has yet proved. Hidden entirely when
+         the session is open, because a padlock with a "no" in it is read as a
+         warning about a session that is behaving exactly as designed. -->
+    <div class="sitem plain" id="sbLock" hidden></div>
     <!-- Buttons, not labels. Every item that reports something is also the
          control for it: the settings that used to be a sidebar pane live in
          slide-up menus built by ui/statusMenu.js into #mount-menus, below.

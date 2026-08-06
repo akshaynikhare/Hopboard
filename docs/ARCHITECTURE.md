@@ -64,6 +64,7 @@ src/
     panes.js            collapsible sidebar panes (delegated)
     resizer.js          draggable splitters
     qr.js               QR modal
+    lockDialog.js       the PIN prompt for locked sessions
     install.js          PWA install + service worker
     ads.js              the single ad placeholder
   styles/
@@ -148,6 +149,7 @@ were replaced tomorrow.
 | Add a UI panel | new `ui/*.js` + `styles/*.css`, register in `main.js` |
 | Change a colour | `styles/tokens.css` |
 | Add a setting | `state.js` defaults → a row in the right menu in `sessionPanel.js`. No markup in `app.html`: the menus render from state when opened |
+| Add a modal | Copy the `ui/qr.js` pattern — inert shell, tab ring, Escape, focus restore — and mount to `document.body`, **never** `#mount-modals`. `filesPanel.js` owns that node and rewrites its `innerHTML` on a 500 ms tick, which would delete a dialog out from under its own focus trap |
 
 ### Adding a feature, worked example
 
@@ -173,9 +175,14 @@ These are load-bearing. Breaking one is a vulnerability, not a bug.
 | A peer may retract only files it announced | `files/registry.js` `applyGone()` checks the relay-stamped `from` |
 | The share key is never transmitted — only `SHA-256(key)` and ciphertext | `core/crypto.js` |
 | Keys are normalised (uppercased) before hashing | `core/keys.js` |
+| A session PIN is never transmitted, never in the URL, never on disk, never logged — only PBKDF2+HKDF output derived from it | `core/crypto.js`, `core/storage.js` `saveLock()`, `main.js` `announce()` |
+| A locked link opens no connection until the PIN is given, and never falls back to the unlocked room of the same key | `main.js` `startSession()`; `tests/boot.mjs --locked` |
+| The lock marker is parsed **before** key normalisation | `core/keys.js` `parseFragment()` — normalising first turns `#!ABCDEF` into the different, valid key `ABCDEF` |
+| The lock beacon is planted only into a room with no retained clip | `main.js` on `EV.ROOM_STATE` — it is itself a clip, and would otherwise overwrite the last-clip replay of FR-3.3 |
+| A locked session claims "Private" only once something has actually decrypted | `state.setVerified()` → `ui/sessionPanel.js` `renderLock()` |
 | Peer content is escaped before entering `innerHTML` | `ui/dom.js` `esc()` |
 | `lastSent` and the suppression window are set *before* writing to the OS clipboard | `clipboard/capture.js` `apply()` |
-| The AES key is derived once per session, never per message | `core/crypto.js` cache |
+| The AES key is derived once per session, never per message — and is cleared on leave, rotate and rejoin | `core/crypto.js` cache + `clearCache()` |
 | Rejected files always report why | `files/registry.js` → `filesPanel.js` |
 | The transfer path (P2P vs relay) is always visible | `ui/filesPanel.js` `badge()` |
 

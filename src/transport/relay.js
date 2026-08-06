@@ -87,9 +87,15 @@ let epoch = 0;
 /** Which transport is live right now. For the UI and for debugging. */
 export const transport = () => mode;
 
-export function connect({ roomHash, intent = "join", url = RELAY_URL, name = "" }) {
+/**
+ * `auth` is a locked session's admission token (core/crypto.js `deriveLocked`).
+ * It is HKDF output, not the PIN and not the key — the relay can check that two
+ * peers agree without being able to reverse it into either. Absent for open
+ * sessions, and a relay that predates it ignores the parameter.
+ */
+export function connect({ roomHash, intent = "join", url = RELAY_URL, name = "", auth = null }) {
   channel?.close(1000);            // a second connect() replaces, never stacks
-  session = { roomHash, intent, url, name };
+  session = { roomHash, intent, url, name, auth };
   wantOpen = true;
   forced = storage.loadTransportChoice();
   failures = { [TRANSPORT.WS]: 0, [TRANSPORT.SSE]: 0 };
@@ -231,6 +237,7 @@ function start() {
   channel = CHANNELS[mode].create({
     url: session.url,
     roomHash: session.roomHash,
+    auth: session.auth,
     onOpen: current(up),
     onFrame: current(handle),
     onDown: current(down),
@@ -384,6 +391,14 @@ function handle(msg) {
       // A room's last clip is replayed to late joiners, so a device that
       // arrives mid-session is immediately in sync (FR-3.3).
       if (msg.last) onFrame(msg.last);
+
+      // What the room looked like at the moment we arrived. main.js needs both
+      // halves and can infer neither: a locked session plants its beacon only
+      // into a room that is empty AND has no retained clip, because the beacon
+      // is a clip and would otherwise overwrite the very thing the line above
+      // exists to deliver. Emitted after the replay so a listener that reacts
+      // to it cannot race the last clip.
+      emit(EV.ROOM_STATE, { existing: msg.existing ?? 0, hasLast: msg.last != null });
       break;
 
     case proto.T.PEERS:

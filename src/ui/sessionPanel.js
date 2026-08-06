@@ -46,7 +46,7 @@ export function init() {
   bind("bNew",  "click", e => { e.stopPropagation(); newKey(); });
   bind("bLink", "click", e => { e.stopPropagation(); copyLink(); });
   bind("sbKey", "click", copyLink);
-  bind("bQr",   "click", () => emit("ui:qr", { text: keys.shareLink(state.get().key) }));
+  bind("bQr",   "click", () => showQr());
 
   restoreSettings();
 
@@ -56,6 +56,9 @@ export function init() {
   menu.attach("sbGear",  { label: "Settings", render: gearMenu,   onEvent: onMenuEvent });
 
   on(EV.KEY_CHANGED, ({ key }) => renderKey(key));
+  // The padlock and the Security group both read `locked`/`verified`, and the
+  // second of those can flip at any moment — the first frame that decrypts.
+  on(EV.LOCK_STATE, () => { renderLock(); menu.refresh(); });
   on(EV.PEERS_CHANGED, ({ count, list }) => renderPeers(count, list));
   on(EV.SYNC_MODE, () => menu.refresh());
   on(EV.INSTANCE_CHANGED, ({ from, to }) => { splitBrain = { from, to }; menu.refresh(); });
@@ -117,10 +120,28 @@ function onMenuEvent(e, close) {
     syncMode.set(e.target.closest("[data-mode]").dataset.mode, true);
     return menu.refresh();
   }
-  if (action === "new")   { close(); return newKey(); }
-  if (action === "leave") { close(); return emit("session:leave"); }
-  if (action === "link")  { close(); return copyLink(); }
-  if (action === "qr")    { close(); return emit("ui:qr", { text: keys.shareLink(state.get().key) }); }
+  if (action === "new")    { close(); return newKey(); }
+  if (action === "leave")  { close(); return emit("session:leave"); }
+  if (action === "link")   { close(); return copyLink(); }
+  if (action === "lock")   { close(); return emit("session:lock"); }
+  if (action === "unlock") { close(); return emit("session:unlock"); }
+  if (action === "repin")  { close(); return emit("session:repin"); }
+  if (action === "qr")     { close(); return showQr(); }
+}
+
+/**
+ * The note travels with the payload so qr.js needs no opinion about sessions —
+ * and so the caption cannot claim the code carries the PIN when it does not,
+ * nor stay silent about it when that is the whole point.
+ */
+function showQr() {
+  const { key, locked } = state.get();
+  emit("ui:qr", {
+    text: keys.shareLink(key, locked),
+    note: locked
+      ? "The code carries the key, not the PIN. Whoever scans it still has to be told that separately."
+      : "The link contains the key. Anyone who scans it can read what you copy.",
+  });
 }
 
 /* ------------------------------------------------------------------
@@ -214,8 +235,47 @@ function filesMenu() {
 function gearMenu() {
   return group("Security")
     + swRow("longKeys", "Longer keys", keyStrength())
+    + lockRows()
     + group("Presence")
     + swRow("cursors", "Show other cursors", "See where the other devices are pointing");
+}
+
+/**
+ * Locking, as buttons rather than a switch.
+ *
+ * A switch says "an instant, local, reversible preference". This is none of
+ * those: the lock is part of the room's name, so turning it on moves you to a
+ * different session and leaves every device that was in the old one behind.
+ * Presenting that as a toggle would be a small lie with a large consequence,
+ * and the button label gets to say what actually happens.
+ */
+function lockRows() {
+  const { locked, verified } = state.get();
+
+  if (!locked) {
+    return `<div class="srow plain">
+        <div class="l"><b>Lock this session</b><span>Adds a PIN that is not in the
+        link. Starts a new session — your other devices need the new link and the
+        PIN.</span></div>
+      </div>
+      <div class="sacts">
+        <button class="btn ghost" type="button" data-act="lock" data-mi="lock">Lock session</button>
+      </div>`;
+  }
+
+  return `<div class="srow plain">
+      <div class="l"><b>Locked${verified ? "" : " · not yet confirmed"}</b><span>${
+        verified
+          ? "Another device in this session has proved it has the same PIN."
+          : "Nothing has been decrypted here yet, so the PIN is unconfirmed."
+      }</span></div>
+    </div>
+    <div class="sacts">
+      <button class="btn ghost" type="button" data-act="repin" data-mi="repin">Change PIN</button>
+      <button class="btn ghost" type="button" data-act="unlock" data-mi="unlock">Remove lock</button>
+    </div>
+    <div class="snote">A locked session hides what you copy, not that you are
+    here — the relay still sees a room with devices in it.</div>`;
 }
 
 /* ------------------------------------------------------------------
@@ -226,6 +286,32 @@ function renderKey(key) {
   // Two places since the breadcrumb went: the key in the app header and the
   // status bar's copy-the-link affordance.
   ["key", "sbKeyText"].forEach(id => { const el = $(id); if (el) el.textContent = key; });
+  renderLock();
+}
+
+/**
+ * The padlock, in three states rather than two.
+ *
+ * "Private" and "Private · unconfirmed" are genuinely different claims and the
+ * bar must not merge them. A locked session where nothing has decrypted yet
+ * might be a session whose other devices simply have not arrived — or it might
+ * be a mistyped PIN, which puts this device alone in a room of its own. Showing
+ * a confident padlock in the second case would be the app asserting something
+ * it has no evidence for, about the one property the feature exists to provide.
+ */
+function renderLock() {
+  const el = $("sbLock");
+  if (!el) return;
+
+  const { locked, verified } = state.get();
+  el.hidden = !locked;
+  if (!locked) return;
+
+  el.classList.toggle("unconfirmed", !verified);
+  el.textContent = verified ? "Private" : "Private · unconfirmed";
+  el.title = verified
+    ? "Locked with a PIN, and another device here has proved it has the same one"
+    : "Locked with a PIN. Nothing has decrypted yet, so no other device has been confirmed";
 }
 
 function renderPeers(count, list) {
@@ -241,7 +327,11 @@ function renderPeers(count, list) {
  * announces the intent — it does not own the transport.
  */
 function newKey() {
-  emit("session:rejoin", { key: keys.generate(keyLength()) });
+  // Stays locked if it was locked. "New key" answers "someone has my link", and
+  // whoever had only the link never had the PIN — so dropping the lock here
+  // would quietly downgrade a private session while the user was busy securing
+  // it. main.js reuses the existing PIN rather than asking again.
+  emit("session:rotate");
 }
 
 const keyLength = () =>
@@ -261,6 +351,13 @@ function keyStrength() {
 }
 
 async function copyLink() {
-  const link = keys.shareLink(state.get().key);
-  if (await os.write(link)) emit(EV.TOAST, "Link copied — it contains the key");
+  const { key, locked } = state.get();
+  const link = keys.shareLink(key, locked);
+  if (!await os.write(link)) return;
+  // The toast is the only moment the app can tell someone what they have just
+  // put on their clipboard. For a locked session the important half is what is
+  // NOT in it, and that the other half still has to be sent some other way.
+  emit(EV.TOAST, locked
+    ? "Link copied — the PIN is not in it. Send that separately"
+    : "Link copied — it contains the key");
 }

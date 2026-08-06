@@ -3,8 +3,17 @@
  *
  * Derived from the user agent, which is unreliable by design — this is a label
  * to help someone recognise their own laptop in a list of three, not an
- * identity. It is sent to peers inside the encrypted envelope, never to the
- * relay in the clear.
+ * identity.
+ *
+ * IT IS SENT IN THE CLEAR. This comment used to claim the opposite — "inside
+ * the encrypted envelope, never to the relay in the clear" — and the wire has
+ * never agreed with it: `protocol.hello()` puts `name` in a plaintext field,
+ * and the relay stores it and rebroadcasts it in every roster
+ * (backend/main.py `_adopt_identity`, `_roster`).
+ *
+ * So keep it a label. "Chrome · Windows" is fine; a name is not the place for
+ * anything you would mind the relay operator reading. This is one of the things
+ * a locked session does NOT hide — see PRD §7.5 and OI-20.
  */
 
 import { read, write } from "./storage.js";

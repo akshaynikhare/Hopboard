@@ -24,6 +24,28 @@
 .sitem:hover { background:rgba(255,255,255,.14); }
 .sitem.plain { cursor:default; }
 .sitem.plain:hover { background:none; }
+
+/*
+ * The locked-session padlock.
+ *
+ * Confirmed is --good, unconfirmed is --warn, and the gap between them is the
+ * point: the second state is not an error, it is the app declining to claim
+ * something it has not verified. --bad is wrong for it — a session waiting for
+ * its second device is working correctly.
+ */
+#sbLock {
+  font-weight: 600;
+  color: var(--ok);
+}
+
+#sbLock::before {
+  content: "🔒";
+  margin-right: 5px;
+  font-size: 10px;
+}
+
+#sbLock.unconfirmed { color: var(--warn); }
+#sbLock.unconfirmed::before { content: "🔒"; opacity: .65; }
 .sitem.over { color:var(--on-fixed-bad); font-weight:600; }
 
 .sspacer { flex:1; }

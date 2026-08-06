@@ -2,7 +2,7 @@
 
 G1-G9 exercise every M0 exit criterion. G10-G13 cover the M7 additions: peer
 identity, targeted forwarding of WebRTC signalling, and the relay-chunk file
-fallback (FR-7.6).
+fallback (FR-7.6). G14 covers the M8 locked-session admission token.
 Usage:  python test_relay.py [base_url]      e.g. ws://127.0.0.1:8000
 """
 
@@ -183,7 +183,57 @@ async def main():
     # A fresh room: the M0 connections above are deliberately left rate limited.
     await p2p(f"{BASE}/ws/{room}p2p")
 
+    # --- G14: locked-session admission (M8) --------------------------------
+    await admission(f"{BASE}/ws/{room}lock")
+
     return summarise()
+
+
+async def admission(url):
+    """The locked-session admission token (PRD §7.5, D11).
+
+    Worth being clear about what this gate is for, because the test would
+    otherwise look like it is proving more than it is. A locked room's NAME is
+    already derived from the PIN, so a client without it addresses a different
+    room and never arrives here to be refused. This check exists to catch a
+    client whose room derivation and key derivation disagree — a bug, which
+    would otherwise present as a session that connects and then reads nothing.
+    """
+    print("\nG14  Locked-session admission")
+
+    first = await websockets.connect(f"{url}?a=deadbeefcafe")
+    w = await recv(first)
+    check("a token-bearing peer is welcomed into an empty room",
+          w.get("t") == "welcome" and w.get("existing") == 0, json.dumps(w)[:100])
+
+    same = await websockets.connect(f"{url}?a=deadbeefcafe")
+    w2 = await recv(same)
+    check("a matching token joins the same room",
+          w2.get("t") == "welcome" and w2.get("existing") == 1, json.dumps(w2)[:100])
+
+    wrong = await websockets.connect(f"{url}?a=0000000000")
+    m = await recv(wrong)
+    check("a mismatched token is refused", m.get("code") == "AUTH_FAILED", json.dumps(m))
+    check("and the refusal says nothing about the right one",
+          "a" not in m and "auth" not in m, json.dumps(m))
+
+    none = await websockets.connect(url)
+    m2 = await recv(none)
+    check("so is no token at all, once the room has one",
+          m2.get("code") == "AUTH_FAILED", json.dumps(m2))
+
+    # The open-session path must be completely unaffected: no token in, none
+    # expected, and a second peer with no token joins normally.
+    plain = await websockets.connect(f"{url}open")
+    wp = await recv(plain)
+    plain2 = await websockets.connect(f"{url}open")
+    wp2 = await recv(plain2)
+    check("an untokened room still admits untokened peers",
+          wp.get("existing") == 0 and wp2.get("existing") == 1,
+          "open sessions are unchanged")
+
+    for sock in (first, same, wrong, none, plain, plain2):
+        await sock.close()
 
 
 async def p2p(url):
@@ -348,7 +398,7 @@ def summarise():
     print("\n" + "=" * 62)
     passed = sum(1 for _, ok, _ in results if ok)
     total = len(results)
-    print(f"RELAY GATE (M0 + M7): {passed}/{total} checks passed")
+    print(f"RELAY GATE (M0 + M7 + M8): {passed}/{total} checks passed")
     for name, ok, detail in results:
         if not ok:
             print(f"   FAILED: {name}  {detail}")

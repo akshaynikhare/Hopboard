@@ -13,6 +13,18 @@ const state = {
   key: null,
   roomHash: null,
   aesKey: null,
+  /**
+   * Locked session — a PIN outside the link (core/crypto.js).
+   *
+   * `verified` is a separate fact from `locked` and the difference is the whole
+   * honesty of the feature. A wrong PIN does not fail loudly: it derives a
+   * different, empty room, which looks exactly like being the first one to
+   * arrive. `verified` means something in this room actually decrypted, so we
+   * KNOW the PIN is right rather than assuming it.
+   */
+  locked: false,
+  verified: false,
+  authToken: null,           // proves PIN knowledge to the relay; not a secret
   originId: crypto.randomUUID().slice(0, 8),   // this tab, for loop suppression
   peerId: null,              // assigned by the relay in `welcome.you`
   connection: "idle",        // idle | connecting | connected | reconnecting | offline
@@ -35,11 +47,30 @@ const state = {
 
 export const get = () => state;
 
-export function setKey({ key, roomHash, aesKey }) {
+export function setKey({ key, roomHash, aesKey, locked = false, authToken = null }) {
   state.key = key;
   state.roomHash = roomHash ?? state.roomHash;
   state.aesKey = aesKey ?? state.aesKey;
-  emit(EV.KEY_CHANGED, { key });
+  state.locked = locked;
+  state.authToken = authToken;
+  // A new key is a new room: whatever we had proved about the old one does not
+  // carry over, and claiming otherwise would leave a stale padlock on screen.
+  state.verified = false;
+  emit(EV.KEY_CHANGED, { key, locked });
+  emit(EV.LOCK_STATE, { locked, verified: false });
+}
+
+/**
+ * Record that this device can actually read this room.
+ *
+ * Set from the first thing that decrypts — the beacon replayed in `welcome`, or
+ * any real frame. Only ever moves false -> true within a session; setKey resets
+ * it, because a different room is a different question.
+ */
+export function setVerified() {
+  if (!state.locked || state.verified) return;
+  state.verified = true;
+  emit(EV.LOCK_STATE, { locked: true, verified: true });
 }
 
 export function setConnection(connection, detail = "") {

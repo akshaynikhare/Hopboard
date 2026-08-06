@@ -25,8 +25,26 @@ export function remove(name) {
 
 export const loadSettings = () => read("settings", null);
 export const saveSettings = s => write("settings", s);
-export const loadLastKey  = () => read("lastKey", null);
-export const saveLastKey  = k => write("lastKey", k);
+
+/**
+ * The last room, so a relaunch can offer it back (FR-1.7, OI-10).
+ *
+ * Stores `{key, locked}` since locked sessions exist; it used to be a bare
+ * string and still reads one, because an upgrade must not strand somebody in
+ * "no room at all" on their first load of the new build.
+ *
+ * The lock FLAG is remembered here, in localStorage. The PIN is not, and never
+ * will be — see saveLock below.
+ */
+export function loadLastKey() {
+  const saved = read("lastKey", null);
+  if (!saved) return null;
+  return typeof saved === "string"
+    ? { key: saved, locked: false }
+    : { key: saved.key ?? null, locked: !!saved.locked };
+}
+
+export const saveLastKey = (key, locked = false) => write("lastKey", { key, locked });
 
 /**
  * Which transport last worked (see transport/relay.js).
@@ -92,3 +110,52 @@ export function saveAllowances(room, peers) {
     return true;
   } catch { return false; }
 }
+
+/* ------------------------------------------------------------------
+   The locked-session unlock, scoped to this tab
+
+   Two decisions here, both deliberate.
+
+   WHAT is stored is the PBKDF2 output, never the PIN. It unlocks exactly the
+   same room, so this is not a security improvement in itself — the point is
+   that a PIN is a human-chosen secret and humans reuse them. The string the
+   user typed should not be sitting in a browser store waiting to be read by
+   the next thing that gets to run in this origin. The derived value is useless
+   anywhere else, and reading it back skips 600k PBKDF2 iterations, so a refresh
+   is instant instead of a second of "Unlocking…".
+
+   WHERE is sessionStorage, for the same reason the file allowances above use
+   it: a refresh is the same session and must not re-prompt, but the tab closing
+   is the end of it. localStorage would put the unlock on disk next to the
+   plaintext key — at which point the link and the PIN are stored together and
+   the second secret has bought nothing.
+
+   Scoped to the share key, so rotating the key invalidates it automatically.
+------------------------------------------------------------------- */
+
+/**
+ * The remembered unlock for a share key, or null.
+ *
+ * Matched on the KEY rather than on the room, and that is not interchangeable.
+ * The room hash of a locked session is derived from the stretched PIN alone, so
+ * a record left behind by a previous key would still look perfectly
+ * self-consistent and would silently reconnect this tab to a room the current
+ * link does not name. The key is the thing that has to agree.
+ */
+export function loadLock(key) {
+  if (!key) return null;
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(PREFIX + "lock") || "null");
+    return saved && saved.key === key && saved.prk ? saved.prk : null;
+  } catch { return null; }
+}
+
+export function saveLock(key, prk) {
+  try {
+    if (!key || !prk) sessionStorage.removeItem(PREFIX + "lock");
+    else sessionStorage.setItem(PREFIX + "lock", JSON.stringify({ key, prk }));
+    return true;
+  } catch { return false; }
+}
+
+export const clearLock = () => saveLock(null, null);
