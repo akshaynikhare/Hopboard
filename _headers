@@ -1,0 +1,57 @@
+# HTTP response headers, served by Cloudflare Pages.
+#
+# This file is the reason the frontend left GitHub Pages. Pages could serve
+# files and nothing else — it has no mechanism for setting a response header at
+# all — so the Content-Security-Policy had to live in a <meta> tag, and
+# `frame-ancestors` and `Strict-Transport-Security` are both ignored there by
+# specification. For a tool whose entire pitch is that the server never sees
+# your plaintext, "we cannot send security headers" was a real gap rather than
+# a nitpick. Cloudflare Pages reads this file and sends them.
+#
+# The <meta> CSP in index.html and app.html is deliberately KEPT. Two policies
+# are intersected, not overridden, so the header cannot loosen the meta tag —
+# and the meta tag is what protects the pages when they are served by something
+# that is not Cloudflare: `npm run serve`, tools/csp-check.mjs, the Tauri
+# webview, and anyone self-hosting the static site behind their own proxy.
+#
+# !! The policy below must stay character-identical to the meta tag apart from
+# `frame-ancestors`. They intersect, so a directive that is stricter in only one
+# of them produces a policy that no single file in the repo describes, and the
+# violation shows up in a browser rather than in a check. tools/site-check.mjs
+# asserts the two agree. !!
+
+/*
+  Content-Security-Policy: default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types realtimeclipboard
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+  Cross-Origin-Opener-Policy: same-origin
+
+# The service worker is the update mechanism for everything else, so it is the
+# one file that must never be served from a cache. tools/build.mjs stamps
+# VERSION into it per deploy specifically so that a byte-different sw.js reaches
+# the browser and triggers the update; a cached sw.js turns that whole design
+# into a no-op and pins a returning visitor to a stale shell indefinitely.
+#
+# Note this is the BROWSER cache. Cloudflare Pages purges its own edge cache on
+# every deploy, so the edge is not the risk here — the risk is the 24 hours a
+# browser is allowed to reuse a worker script without asking.
+/sw.js
+  Cache-Control: no-cache
+
+# Read at runtime by src/ui/whatsNew.js, which compares it against the version
+# the user last saw. A stale copy means the release notes for the build they are
+# currently running do not exist yet as far as the app is concerned.
+/changelog.json
+  Cache-Control: no-cache
+/CHANGELOG.md
+  Cache-Control: no-cache
+
+# The HTML names the bundle paths, so a stale document points at assets from the
+# previous deploy. Revalidation is cheap — these are a few KB and almost always
+# answer 304.
+/*.html
+  Cache-Control: public, max-age=0, must-revalidate
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate

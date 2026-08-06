@@ -5,7 +5,7 @@ same five-character key, and whatever you copy on one is ready to paste on the
 other. No account, no install, no database. Files travel peer-to-peer and never
 touch the server.
 
-**[Try it → akshaynikhare.github.io/RealtimeClipboard](https://akshaynikhare.github.io/RealtimeClipboard/)**
+**[Try it → realtimeclipboard.com](https://realtimeclipboard.com/)**
 
 ```
   Machine A  ──┐                                  ┌──  Machine B
@@ -65,7 +65,7 @@ welcome — open an issue.
 
 | Layer | Choice |
 |---|---|
-| Frontend | Static HTML/JS on GitHub Pages, installable as a Chrome PWA |
+| Frontend | Static HTML/JS on Cloudflare Pages, installable as a Chrome PWA |
 | Relay | FastAPI on FastAPI Cloud — in-memory rooms, no database, no disk |
 | Text | WebSocket through the relay, AES-GCM encrypted in the browser |
 | Blocked networks | If a proxy eats the WebSocket, the client moves itself to SSE + POST on the same host and says so |

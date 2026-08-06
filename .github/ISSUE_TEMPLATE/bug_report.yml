@@ -21,7 +21,7 @@ body:
         > if it turns out we need one, we will ask you to make a throwaway
         > session.
 
-        Before filing: [clipboard sync is not working](https://akshaynikhare.github.io/RealtimeClipboard/help/clipboard-sync-not-working/)
+        Before filing: [clipboard sync is not working](https://realtimeclipboard.com/help/clipboard-sync-not-working/)
         covers the common causes — blocked WebSockets, clipboard permission, and
         a browser that will not read the clipboard in the background.
 
@@ -126,7 +126,7 @@ body:
     attributes:
       label: Where are you running it?
       options:
-        - The hosted app (akshaynikhare.github.io/RealtimeClipboard)
+        - The hosted app (realtimeclipboard.com)
         - Installed as an app (PWA)
         - My own copy, hosted somewhere else
         - Locally, from a checkout

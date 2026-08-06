@@ -115,7 +115,7 @@ catch {
 }
 
 const dom = new JSDOM(read("app.html"), {
-  url: "https://akshaynikhare.github.io/RealtimeClipboard/app.html#BUNDLE",
+  url: "https://realtimeclipboard.com/app.html#BUNDLE",
   pretendToBeVisual: true,
 });
 const { window } = dom;
@@ -135,6 +135,38 @@ if (!window.crypto?.subtle) {
   Object.defineProperty(window, "crypto", { value: globalThis.crypto, configurable: true });
 }
 Object.defineProperty(window.navigator, "clipboard", { value: undefined, configurable: true });
+
+/**
+ * Same-origin requests are served out of the build under test — for exactly the
+ * reason stated four lines below, which this file was not itself honouring.
+ *
+ * jsdom is told the page's URL is the production origin, so the app's relative
+ * fetch for changelog.json resolved to a PUBLIC address. "Waiting on a live
+ * socket here would make a build check need the network" was already the rule,
+ * and a live HTTP request breaks it the same way — it was merely quieter,
+ * because the request 404'd fast and whatsNew.js swallowed it.
+ *
+ * It stopped being quiet when the site moved to realtimeclipboard.com and DNS
+ * had not resolved yet: undici reports timings through a
+ * `performance.markResourceTiming` jsdom does not implement, and killed the
+ * process from inside Node's internals rather than rejecting.
+ *
+ * Serving from OUT rather than from REPO is the point. This test exists to
+ * check what tools/build.mjs produced; reading the source tree instead would
+ * reintroduce the very gap between `src/` and the deploy that the header of
+ * this file is about.
+ */
+const ORIGIN = window.location.origin;
+const netFetch = globalThis.fetch;
+put("fetch", (input, init) => {
+  const url = new URL(String(input?.url ?? input), ORIGIN);
+  if (url.origin !== ORIGIN) return netFetch(input, init);
+  const file = join(OUT, decodeURIComponent(url.pathname));
+  return Promise.resolve(existsSync(file)
+    ? new Response(readFileSync(file), { status: 200 })
+    : new Response("not found", { status: 404 }));
+});
+window.fetch = globalThis.fetch;
 
 // No relay, on purpose: this asks whether the bundle EVALUATES and reaches the
 // end of boot(). Whether the transport works is tests/e2e.mjs's job, and

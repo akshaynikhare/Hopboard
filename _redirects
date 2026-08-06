@@ -1,0 +1,19 @@
+# Cloudflare Pages redirects.
+#
+# Only one rule, and it exists for a shape of URL that people will keep typing
+# for years: the site lived at github.io/RealtimeClipboard/ for its whole life
+# before this domain, so the repo name is baked into every link that was ever
+# shared, every bookmark, and every search result. GitHub itself 301s those to
+# the apex with the prefix stripped — but only for as long as the old Pages site
+# exists, and it is a tombstone now (.github/workflows/tombstone.yml). This
+# catches anyone who reconstructs the old shape against the new host.
+#
+# :splat carries the rest of the path through, so /RealtimeClipboard/help/ lands
+# on /help/ rather than on the homepage. A redirect that drops the path is worse
+# than no redirect: it looks like it worked and silently loses the destination.
+/RealtimeClipboard/*  /:splat  301
+
+# NOT here: www -> apex. `_redirects` matches paths, not hostnames, so it cannot
+# express it. Both hostnames are attached to the same Pages project and would
+# otherwise serve the same content at two URLs. The redirect is a zone-level
+# Redirect Rule in the Cloudflare dashboard instead — see docs/SEO.md §7.

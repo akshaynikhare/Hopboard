@@ -8,7 +8,7 @@ blank_issues_enabled: true
 
 contact_links:
   - name: Clipboard sync is not working
-    url: https://akshaynikhare.github.io/RealtimeClipboard/help/clipboard-sync-not-working/
+    url: https://realtimeclipboard.com/help/clipboard-sync-not-working/
     about: The common causes first — blocked WebSockets, clipboard permission, and why a browser will not read the clipboard of an unfocused tab.
 
   - name: How it works, and what it deliberately does not do

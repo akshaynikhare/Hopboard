@@ -7,7 +7,7 @@
 | Date | 2026-08-05 |
 | Status | Draft — core decisions settled (§11.1), remainder open (§11.2) |
 | Platforms | Windows, macOS, Android — Chrome-first |
-| Stack | Static PWA on GitHub Pages + FastAPI relay on FastAPI Cloud (free), E2E encrypted. Text over the relay, files P2P |
+| Stack | Static PWA on Cloudflare Pages + FastAPI relay on FastAPI Cloud (free), E2E encrypted. Text over the relay, files P2P |
 | Reference | https://live-clipboard.netlify.app/D75LV |
 
 ---
@@ -27,7 +27,7 @@ A static web app. Open it on machine A, get a short share key (e.g. `D75LV`). En
 | G2 | Sync is multi-directional — every peer is both reader and writer, no host/client roles |
 | G3 | Installable as an app from Chrome (PWA), with its own window and icon |
 | G4 | Read from and write to the **system** clipboard, not just an in-page textarea |
-| G5 | Frontend is a static site hosted on GitHub Pages |
+| G5 | Frontend is a static site hosted on Cloudflare Pages (GitHub Pages until v0.2.1) |
 | G6 | Minimum backend: no database, no user accounts, all room state in memory |
 | G7 | Zero-friction: land on URL → working in under 10 seconds, no signup |
 | G8 | Cross-platform: Windows, macOS and Android, targeting Chrome on all three |
@@ -55,7 +55,7 @@ A static web app. Open it on machine A, get a short share key (e.g. `D75LV`). En
 **P3 — Support/pairing.** Two people on a call share a temporary key to pass tokens/snippets back and forth.
 
 ### Journey A — Create a room
-1. User opens `https://akshaynikhare.github.io/RealtimeClipboard/`
+1. User opens `https://realtimeclipboard.com/`
 2. App auto-generates key `D75LV` and shows it large, with a Copy-link button and a QR code
 3. URL becomes `.../RealtimeClipboard/#D75LV` (shareable, bookmarkable)
 4. Status pill shows `Connected · 1 device`
@@ -129,7 +129,7 @@ A static web app. Open it on machine A, get a short share key (e.g. `D75LV`). En
 |---|---|---|
 | FR-4.1 | `manifest.webmanifest` with `name`, `short_name`, `start_url`, `display: standalone`, `theme_color`, 192/512 px icons (incl. maskable) | Must |
 | FR-4.2 | Service worker caching the app shell so the UI loads offline (sync itself requires network) | Must |
-| FR-4.3 | Served over HTTPS — satisfied by GitHub Pages | Must |
+| FR-4.3 | Served over HTTPS — satisfied by Cloudflare Pages, and enforced by `Strict-Transport-Security` in `_headers` | Must |
 | FR-4.4 | Custom in-app "Install app" button driven by `beforeinstallprompt` | Should |
 | FR-4.5 | `start_url` must restore the last room from `localStorage` (fragments are not preserved by the manifest) | Must |
 | FR-4.6 | SW update flow: new version detected → non-blocking "Update available · Reload" toast | Should |
@@ -353,7 +353,7 @@ Hobby tier allowances, and what each means here:
 
 ### 4.4 Repo layout
 ```
-/                      → static site root (GitHub Pages)
+/                      → static site root (Cloudflare Pages)
   index.html           → app shell / layout
   app.js  ui.js  clipboard.js  crypto.js  transport.js
   manifest.webmanifest
@@ -372,7 +372,7 @@ Both halves live in one repo and deploy independently:
 
 | Half | Trigger | Target |
 |---|---|---|
-| Static site | GitHub Actions on push | GitHub Pages |
+| Static site | Cloudflare Pages build on push to `main` | Cloudflare Pages |
 | Relay | FastAPI Cloud watches the repo, builds on push to the **default branch** | FastAPI Cloud |
 
 The frontend reaches the relay through a single configurable `RELAY_URL` constant.
@@ -443,9 +443,10 @@ User-Agent or it will report a false outage.
 
 **Receiving is easier than sending.** `writeText()` works whenever the document is focused, so auto-apply on the receiving side is reliable; when the tab is unfocused the clip is queued and written on next focus, with a visible "1 pending clip" badge.
 
-### 5.2 GitHub Pages is static-only, and subpath-hosted
+### 5.2 The host is static-only
 - No server code, so no WebSocket endpoint — hence the separate relay in §4.
-- Project sites live at `/<repo>/`, and Pages has no SPA rewrite. Therefore **the room key lives in the URL fragment (`#D75LV`), not the path** — this also happens to be exactly what the E2E encryption design needs (§7.3). A path-style URL like the reference app's `/D75LV` would require a `404.html` redirect hack; we deliberately avoid it.
+- **The room key lives in the URL fragment (`#D75LV`), not the path.** Originally this was forced: GitHub Pages served project sites from `/<repo>/` with no SPA rewrite, so a path-style URL like the reference app's `/D75LV` would have needed a `404.html` redirect hack.
+- **That constraint is gone and the decision stands anyway.** Since the move to Cloudflare Pages at an apex domain, a path-style room key would be perfectly serveable. It is still wrong: a fragment is never transmitted to the server, which is exactly what the E2E encryption design requires (§7.3). The constraint and the security requirement happened to point the same way, and only the requirement was load-bearing.
 
 ### 5.3 Platform & browser support matrix
 
@@ -705,7 +706,7 @@ against the relay operator, who sees the room hash regardless.
 | # | Decision | Recommendation |
 |---|---|---|
 | D3 | Default key length | **6** chars for UX parity with the reference app, with a 10-char option in settings |
-| D4 | Frontend stack | **Vanilla JS, no build step** — keeps GitHub Pages deployment trivial; revisit if the UI grows |
+| D4 | Frontend stack | **Vanilla JS** — revisited at ~47 modules: `src/` is still plain ES modules, and `tools/build.mjs` bundles at *deploy* time only |
 | D5 | Custom domain? | **Worth it here.** Beyond a shorter URL, a stable custom hostname is much easier to get onto a corporate allowlist than a platform subdomain (§5.4) |
 | ~~D8~~ | ~~Keep-alive against scale-to-zero?~~ | ✅ **Resolved: do nothing.** Measured cold start is 973 ms including TLS — well under the ~2 s threshold where a keep-alive would earn its fair-use cost. Show "Connecting…" and move on |
 
