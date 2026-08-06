@@ -25,6 +25,7 @@
 import { createInterface } from "node:readline";
 import { stdin, stdout, stderr, argv, exit, env } from "node:process";
 import { hostname } from "node:os";
+import { readFileSync } from "node:fs";
 
 import * as keys from "../src/core/keys.js";
 import * as cryptoBox from "../src/core/crypto.js";
@@ -33,7 +34,23 @@ import * as proto from "../src/transport/protocol.js";
 import { on, EV } from "../src/core/bus.js";
 import { DEFAULT_RELAY_URL, normaliseRelay, TEXT, LOCK } from "../src/core/config.js";
 
-const VERSION = "0.1.0";
+/**
+ * Read from package.json rather than written here.
+ *
+ * It was a literal, and it was already wrong: the package said 0.2.1 while
+ * `--version` said 0.1.0. That is the failure this codebase avoids everywhere
+ * else by deriving — RELAY_HTTP_URL from RELAY_URL, LINKS from REPO, the
+ * service worker's precache list from disk — and a version number is the worst
+ * place to have it, because the whole point of the number is telling someone
+ * which code they are running when they report a bug.
+ *
+ * import.meta.url is correct HERE and banned in src/: this file is published as
+ * itself and never goes through the bundler, so its depth in the tree is fixed.
+ * npm always includes package.json in a tarball, so this resolves after install.
+ */
+const VERSION = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+).version;
 
 /* ------------------------------------------------------------------ args -- */
 
