@@ -11,16 +11,34 @@
 }
 .side.hidden { display:none; }
 
-.sidehead {
-  height:var(--titlebar-h);
-  display:flex;
-  align-items:center;
-  padding:0 20px;
+/* The key strip. Pinned at the top of the sidebar because reading the key off
+   one screen and typing it on another is the single most common thing anyone
+   does here — it should never require a scroll. */
+.keyhead {
   flex:none;
-  font-size:11px;
-  letter-spacing:.06em;
-  text-transform:uppercase;
-  color:var(--text);
+  padding:9px 10px 8px;
+  background:var(--tab-off);
+  border-bottom:1px solid var(--bd);
+}
+.keyhead-row { display:flex; align-items:center; gap:5px; }
+.keyhead .key {
+  flex:1;
+  font:700 19px/1 var(--mono);
+  letter-spacing:.18em;
+  color:var(--str);
+  background:var(--editor);
+  border:1px solid var(--bd2);
+  border-radius:3px;
+  padding:8px 10px;
+  text-align:center;
+  user-select:all;              /* one click selects the whole key */
+}
+.keyhead-warn {
+  margin-top:6px;
+  font-size:10.5px;
+  line-height:1.4;
+  color:var(--warn);
+  opacity:.85;
 }
 
 /* Every pane takes an equal share of the sidebar until the user drags a

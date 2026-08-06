@@ -98,7 +98,27 @@
 
     <!-- ============ sidebar ============ -->
     <aside class="side" id="side">
-      <div class="sidehead">Explorer</div>
+      <!-- The key is the one thing you need to read off the screen and type on
+           another device, so it sits at the top of the sidebar rather than
+           three panes down. The old "Explorer" label was decoration. -->
+      <div class="keyhead">
+        <div class="keyhead-row">
+          <div class="key" id="key">—</div>
+          <button class="ibtn" id="bQr" title="Show QR code">
+            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20h1"/></svg>
+          </button>
+          <button class="ibtn" id="bLink" title="Copy share link">
+            <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/></svg>
+          </button>
+          <button class="ibtn" id="bNew" title="Generate a new key and leave this session">
+            <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/></svg>
+          </button>
+        </div>
+        <div class="keyhead-warn">
+          Anyone with this key can read what you copy and request your files.
+        </div>
+      </div>
+      <div class="alert" id="splitWarn"></div>
 
       <!-- PANEL 2 — files -->
       <section class="pane grow" id="paneFiles">
@@ -129,69 +149,61 @@
       <!-- Feature modules mount additional panes here (history, transfers). -->
       <div id="mount-panes"></div>
 
-      <!-- PANEL 3 — session -->
+      <!-- PANEL 3 — devices and settings -->
       <section class="pane grow" id="paneSession">
         <div class="paneh" data-toggle>
-          <span class="chev">⌄</span> Session
+          <span class="chev">⌄</span> Devices
           <span class="spacer"></span>
-          <button class="ibtn" id="bNew" title="New key">
-            <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/></svg>
-          </button>
-          <button class="ibtn" id="bLink" title="Copy share link">
-            <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/></svg>
-          </button>
+          <span class="soft" id="peerN">1</span>
         </div>
         <div class="paneb">
-          <div class="grp">Share key</div>
-          <div class="keyrow">
-            <div class="key" id="key">—</div>
-            <button class="btn ghost" id="bQr">QR</button>
-          </div>
-          <div class="warn">
-            Anyone with this key can read what you copy and request your files.
-            The key <em>is</em> the password — it never reaches the server.
-          </div>
-          <div class="alert" id="splitWarn"></div>
-
-          <div class="grp">Devices — <span id="peerN">1</span></div>
           <div id="peers"></div>
 
-          <div class="grp">Clipboard</div>
+          <!-- Removed as redundant rather than reorganised:
+               · "Auto-read on focus" — that IS Live mode, now in the header.
+                 Two controls for one behaviour is how you get a bug report
+                 saying the app ignores its own setting.
+               · "Direction" — Live/Manual already governs sending and
+                 Auto-write governs receiving. A third overlapping axis made
+                 all three harder to reason about.
+               · "About" — it printed state the status bar already shows. -->
+          <div class="grp">Receiving</div>
           <div class="row">
-            <div class="l"><b>Auto-write incoming</b><span>Put received text on this machine's clipboard</span></div>
+            <div class="l"><b>Auto-write incoming</b><span>Put received text straight on this machine's clipboard</span></div>
             <button class="sw" role="switch" aria-checked="true" data-k="autowrite" aria-label="Auto-write incoming"></button>
           </div>
+
+          <div class="grp">Live mode</div>
           <div class="row">
-            <div class="l"><b>Auto-read on focus</b><span>Pick up copies when you switch back here</span></div>
-            <button class="sw" role="switch" aria-checked="true" data-k="autoread" aria-label="Auto-read on focus"></button>
-          </div>
-          <div class="row">
-            <div class="l"><b>Poll while focused</b><span>Catch copies without switching away</span></div>
-            <select id="poll" aria-label="Poll interval">
+            <div class="l"><b>Check clipboard every</b><span>Only applies while Live and this window is focused</span></div>
+            <select id="poll" aria-label="Clipboard poll interval">
               <option>Off</option><option selected>1s</option><option>500ms</option><option>2s</option>
             </select>
           </div>
+          <div class="row">
+            <div class="l"><b>Share copied images</b><span>Screenshots appear as previews on your other devices</span></div>
+            <button class="sw" role="switch" aria-checked="true" data-k="images" aria-label="Share copied images"></button>
+          </div>
 
-          <div class="grp">Transfer</div>
+          <div class="grp">Files</div>
           <div class="row">
-            <div class="l"><b>Auto-send my files</b><span>Let peers fetch your files without asking you first</span></div>
-            <button class="sw" role="switch" aria-checked="false" data-k="autoaccept" aria-label="Auto-accept files"></button>
+            <div class="l"><b>Let peers fetch without asking</b><span>Otherwise you approve each request</span></div>
+            <button class="sw" role="switch" aria-checked="false" data-k="autoaccept" aria-label="Let peers fetch without asking"></button>
           </div>
           <div class="row">
-            <div class="l"><b>Send thumbnails</b><span>Previews travel automatically — see OI-15</span></div>
-            <button class="sw" role="switch" aria-checked="true" data-k="thumbs" aria-label="Send thumbnails"></button>
+            <div class="l"><b>Send previews</b><span>Thumbnails travel automatically, before anyone asks</span></div>
+            <button class="sw" role="switch" aria-checked="true" data-k="thumbs" aria-label="Send previews"></button>
           </div>
+
+          <div class="grp">Presence</div>
           <div class="row">
-            <div class="l"><b>Direction</b><span>Whether this device sends, receives, or both</span></div>
-            <select id="direction" aria-label="Direction">
-              <option>Both</option><option>Send only</option><option>Receive only</option>
-            </select>
+            <div class="l"><b>Show other cursors</b><span>See where the other devices are pointing</span></div>
+            <button class="sw" role="switch" aria-checked="true" data-k="cursors" aria-label="Show other cursors"></button>
           </div>
 
           <div class="grp">&nbsp;</div>
           <div class="keyrow">
             <button class="btn ghost" id="bLeave">Leave session</button>
-            <button class="btn ghost" id="bAbout">About</button>
           </div>
         </div>
       </section>
@@ -207,6 +219,10 @@
     <div class="sitem plain" id="sbConn"><span class="dot"></span><span id="sbConnText">Not connected</span></div>
     <div class="sitem plain" id="sbPeers">1 device</div>
     <div class="sitem plain" id="sbMode">Live sync</div>
+    <!-- Peers can see this device's pointer, and until this existed there was
+         nothing telling you so. Broadcasting without an indicator is the part
+         of a presence feature that actually deserves the discomfort. -->
+    <div class="sitem plain" id="sbCursor" hidden></div>
     <div class="sitem plain optional" id="sbP2P">P2P idle</div>
     <div class="sspacer"></div>
     <div class="sitem plain" id="sbTier">checking…</div>

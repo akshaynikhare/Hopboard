@@ -56,4 +56,5 @@ export const EV = {
 
   // ui
   TOAST:           "ui:toast",         // string
+  SETTINGS_CHANGED:"ui:settings",      // {name, value} — a preference was toggled
 };

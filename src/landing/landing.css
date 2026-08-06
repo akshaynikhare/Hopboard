@@ -1,0 +1,636 @@
+/**
+ * Hopboard — landing page.
+ *
+ * Editorial structure, developer-tool skin. Two ideas do most of the work:
+ *
+ *   1. One set of vertical rules, fixed to the viewport and drawn once for the
+ *      whole document (.rules). Every content grid splits the SAME container
+ *      into the SAME number of equal columns, so section content lands on the
+ *      rules instead of floating over them. Change --cols in one place and both
+ *      follow.
+ *   2. Horizontal rules are pseudo-elements INSIDE the container (.sec > .in
+ *      ::before), not borders on the section. A border would run to the padding
+ *      edge and overshoot the vertical rules by the gutter; a block-level
+ *      pseudo-element is exactly the content-box width, so the grid closes.
+ *
+ * Colours are the VS Code Dark+/Light+ values from src/styles/tokens.css,
+ * restated here rather than @imported: an @import costs a second serialised
+ * round trip on the one page search engines actually fetch, and the app's
+ * sheet also sets `overflow:hidden` on body, which a scrolling page cannot
+ * have. If tokens.css changes, change these too.
+ */
+
+:root {
+  /* surfaces */
+  --bg:#1e1e1e;          /* --editor  */
+  --panel:#252526;       /* --side    */
+  --sunk:#1b1b1b;
+  --input:#3c3c3c;
+
+  /* lines */
+  --rule:#2b2b2b;        /* --bd  — the page grid */
+  --rule2:#3c3c3c;       /* --bd2 — component edges */
+
+  /* text */
+  --text:#cccccc;
+  --dim:#858585;
+  --bright:#e7e7e7;
+
+  /* accents */
+  --blue:#007acc;        /* VS Code's accent: backgrounds and marks, not body text */
+  --link:#3794ff;        /* VS Code Dark+ textLink.foreground — the readable one */
+  --key:#ce9178;         /* --str, the colour the app already prints the key in */
+  --ok:#4ec9b0;
+  --warn:#cca700;
+
+  /* type */
+  --ui:"Segoe UI",-apple-system,system-ui,Ubuntu,"Droid Sans",sans-serif;
+  --mono:"Cascadia Code","Consolas","SF Mono",Menlo,monospace;
+
+  /* grid */
+  --page:1180px;
+  --pad:clamp(18px,4vw,28px);
+  --cols:3;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg:#ffffff;
+    --panel:#f3f3f3;
+    --sunk:#fafafa;
+    --input:#ffffff;
+    --rule:#e7e7e7;
+    --rule2:#cecece;
+    --text:#333333;
+    --dim:#616161;
+    --bright:#000000;
+    --link:#006ab1;      /* VS Code Light+ textLink.foreground */
+    --key:#a31515;
+    --ok:#0f7b6c;
+    --warn:#8a6d00;
+  }
+}
+
+* { box-sizing:border-box; margin:0; padding:0; }
+
+html { scroll-behavior:smooth; }
+
+body {
+  background:var(--bg);
+  color:var(--text);
+  font:15.5px/1.65 var(--ui);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  overflow-x:hidden;             /* the rules are fixed; nothing may scroll sideways */
+}
+
+::selection { background:#264f78; color:#fff; }
+@media (prefers-color-scheme: light) { ::selection { background:#add6ff; color:#000; } }
+
+:focus-visible { outline:2px solid var(--link); outline-offset:2px; }
+
+a { color:var(--link); }
+
+code { font:0.92em/1 var(--mono); color:var(--key); }
+
+.sr-only {
+  position:absolute; width:1px; height:1px; overflow:hidden;
+  clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap;
+}
+
+/* ---------------------------------------------------------------- the grid */
+
+.in {
+  width:100%;
+  max-width:var(--page);
+  margin:0 auto;
+  padding:0 var(--pad);
+}
+
+.rules {
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  overflow:hidden;
+}
+.rules .in {
+  height:100%;
+  display:grid;
+  grid-template-columns:repeat(var(--cols),1fr);
+}
+/* The closing rule is put on the last VISIBLE span by each breakpoint rather
+   than on :last-child — a display:none span is still the last child, and the
+   right-hand rule would vanish below 980px. */
+.rules span { border-left:1px solid var(--rule); }
+.rules span:nth-child(3) { border-right:1px solid var(--rule); }
+
+/* Content sits above the rules. Sections are transparent, so the lines run
+   behind the type — which is the point. */
+.topbar, main, footer { position:relative; z-index:1; }
+
+.sec > .in::before {
+  content:"";
+  display:block;
+  height:1px;
+  background:var(--rule);
+}
+.hero > .in::before { background:none; }   /* nothing above the hero to divide */
+
+/* ------------------------------------------------------------------- type */
+
+h1 {
+  font-size:clamp(31px,5.1vw,53px);
+  line-height:1.05;
+  letter-spacing:-.03em;
+  font-weight:650;
+  color:var(--bright);
+  margin:0 0 18px;
+}
+h2 {
+  font-size:clamp(21px,2.4vw,29px);
+  line-height:1.18;
+  letter-spacing:-.022em;
+  font-weight:650;
+  color:var(--bright);
+}
+h3 {
+  font-size:15px;
+  font-weight:650;
+  color:var(--bright);
+  letter-spacing:-.005em;
+  margin-bottom:6px;
+}
+
+.lede { font-size:clamp(16px,1.7vw,18.5px); color:var(--dim); max-width:54ch; }
+
+.eyebrow {
+  font:11.5px/1.4 var(--mono);
+  text-transform:uppercase;
+  letter-spacing:.15em;
+  color:var(--dim);
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+.eyebrow::before {
+  content:"";
+  width:7px; height:7px;
+  background:var(--blue);
+  flex:none;
+}
+
+/* Square bullets. Discs are for prose; this is a spec sheet. */
+.sq-list { list-style:none; }
+.sq-list li {
+  position:relative;
+  padding-left:19px;
+  margin-bottom:9px;
+  color:var(--dim);
+}
+.sq-list li::before {
+  content:"";
+  position:absolute;
+  left:0; top:.62em;
+  width:6px; height:6px;
+  background:var(--blue);
+}
+.sq-list li:last-child { margin-bottom:0; }
+.sq-list b { color:var(--text); font-weight:650; }
+
+/* --------------------------------------------------------------- top bar */
+
+.topbar .in::after {
+  content:"";
+  display:block;
+  height:1px;
+  background:var(--rule);
+}
+.topbar .row {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  height:56px;
+}
+.brand {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  color:var(--text);
+  text-decoration:none;
+}
+.brand svg { width:19px; height:19px; color:var(--blue); }
+.brand b { font-size:15.5px; font-weight:650; letter-spacing:-.01em; }
+.tag {
+  font:10.5px/1 var(--mono);
+  text-transform:uppercase;
+  letter-spacing:.11em;
+  color:var(--warn);
+  border:1px solid currentColor;
+  padding:3px 6px;
+}
+.topbar .spacer { flex:1; }
+.tlink {
+  font-size:13.5px;
+  color:var(--dim);
+  text-decoration:none;
+}
+.tlink:hover { color:var(--text); }
+.tlink.strong { color:var(--text); }
+.tlink.strong:hover { color:var(--link); }
+
+/* ------------------------------------------------------------------- hero */
+
+.hero-grid {
+  display:grid;
+  grid-template-columns:repeat(var(--cols),1fr);
+  align-items:start;
+}
+.hero-copy {
+  grid-column:1 / span 2;
+  padding:clamp(46px,7vw,86px) clamp(20px,3vw,44px) 40px 0;
+}
+.hero-list { margin-top:26px; font-size:14.5px; }
+
+.keypanel {
+  grid-column:3 / span 1;
+  margin:clamp(46px,7vw,86px) 0 40px;
+  background:var(--panel);
+  border:1px solid var(--rule2);
+}
+.panelhead {
+  font:11px/1 var(--mono);
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  color:var(--text);
+  padding:9px 14px;
+  border-bottom:1px solid var(--rule2);
+  background:var(--sunk);
+}
+.panelbody { padding:16px 14px 15px; }
+
+.fieldlabel {
+  display:block;
+  font:10.5px/1 var(--mono);
+  text-transform:uppercase;
+  letter-spacing:.14em;
+  color:var(--dim);
+  margin-bottom:7px;
+}
+
+.keyfield { position:relative; }
+.keyin {
+  width:100%;
+  background:var(--bg);
+  border:1px solid var(--rule2);
+  border-radius:2px;
+  color:var(--key);
+  font:700 clamp(21px,2.5vw,26px)/1 var(--mono);
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  padding:14px 44px 14px 14px;
+  text-align:center;
+  text-indent:.18em;              /* letter-spacing pads the right; re-centre */
+}
+.keyin::placeholder { color:var(--dim); opacity:.5; }
+.keyin:focus { outline:1px solid var(--link); outline-offset:-1px; }
+
+.regen {
+  position:absolute;
+  top:50%; right:6px;
+  transform:translateY(-50%);
+  width:30px; height:30px;
+  display:grid; place-items:center;
+  border:0; border-radius:99px;
+  background:none;
+  color:var(--dim);
+  cursor:pointer;
+}
+.regen svg { width:15px; height:15px; }
+.regen:hover { color:var(--text); background:rgba(127,127,127,.18); }
+.regen:active svg { transform:rotate(-180deg); transition:transform .28s; }
+
+.btn {
+  display:block;
+  width:100%;
+  margin-top:11px;
+  padding:12px 18px;
+  background:var(--blue);
+  color:#fff;
+  border:1px solid transparent;
+  border-radius:2px;
+  font:600 15px/1.2 var(--ui);
+  text-align:center;
+  text-decoration:none;
+  cursor:pointer;
+}
+.btn:hover { filter:brightness(1.14); }
+
+.hint {
+  font-size:12.5px;
+  line-height:1.55;
+  color:var(--dim);
+  margin-top:11px;
+  max-width:52ch;
+}
+.note {
+  font-size:13px;
+  color:var(--dim);
+  padding:0 0 clamp(34px,5vw,52px);
+}
+
+/* ------------------------------------------------------- section headers */
+
+.shead {
+  display:grid;
+  grid-template-columns:repeat(var(--cols),1fr);
+  padding:clamp(38px,5vw,64px) 0 clamp(22px,3vw,34px);
+  gap:16px 0;
+}
+.shead .eyebrow { grid-column:1; padding-right:24px; padding-top:7px; }
+.shead .htext   { grid-column:2 / -1; padding-right:clamp(0px,4vw,60px); }
+.shead .htext p { color:var(--dim); margin-top:13px; max-width:58ch; font-size:15px; }
+
+/* ------------------------------------------------------------ dotted path */
+
+/* The bottom padding is not decoration: the node captions and the files label
+   are HTML positioned BELOW their point on the path, i.e. outside the SVG box. */
+.stage {
+  position:relative;
+  padding-bottom:clamp(46px,6vw,70px);
+}
+.flowsvg { display:block; width:100%; height:auto; overflow:visible; }
+
+.fpath {
+  stroke:var(--rule2);
+  stroke-width:1.6;
+  stroke-linecap:round;
+}
+.fpath.text  { stroke-dasharray:0.1 9; }
+.fpath.files { stroke-dasharray:6 8; stroke-width:1.2; opacity:.6; }
+.stage[data-ready] .fpath.text { animation:march 2.4s linear infinite; }
+@keyframes march { to { stroke-dashoffset:-18; } }
+
+.fnode { fill:var(--blue); }
+.fnode.relay { fill:none; stroke:var(--rule2); stroke-width:1.4; }
+
+/* Labels and the pill are HTML positioned over the SVG rather than <text>
+   inside it: the viewBox scales by a factor of three between a phone and a
+   desktop, and scaled type would be four pixels tall at the bottom of that
+   range. landing.js maps path coordinates to pixels with getScreenCTM(). */
+.flabels, .fpill { position:absolute; top:0; left:0; }
+.flabel {
+  position:absolute;
+  transform:translate(-50%,0);
+  white-space:nowrap;
+  font:11px/1.5 var(--mono);
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--dim);
+  text-align:center;
+}
+.flabel b { display:block; color:var(--text); font-weight:600; }
+
+.fpill {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 12px;
+  background:var(--panel);
+  border:1px solid var(--rule2);
+  border-radius:2px;
+  font:12.5px/1 var(--mono);
+  color:var(--text);
+  white-space:nowrap;
+  box-shadow:0 2px 14px rgba(0,0,0,.35);
+  opacity:0;
+  will-change:transform;
+}
+@media (prefers-color-scheme: light) { .fpill { box-shadow:0 2px 14px rgba(0,0,0,.10); } }
+.stage[data-ready] .fpill { opacity:1; }
+.fpill .sq { width:7px; height:7px; background:var(--ok); flex:none; }
+
+.flow-fallback { color:var(--dim); font-size:14.5px; max-width:66ch; padding-top:10px; }
+.stage[data-ready] .flow-fallback {
+  position:absolute; width:1px; height:1px; overflow:hidden;
+  clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; padding:0;
+}
+
+/* ------------------------------------------------------------------ steps */
+
+.steps {
+  list-style:none;
+  counter-reset:s;
+  display:grid;
+  grid-template-columns:repeat(var(--cols),1fr);
+  padding-bottom:clamp(40px,6vw,66px);
+}
+.steps li {
+  counter-increment:s;
+  position:relative;
+  padding:0 clamp(18px,2.4vw,30px) 0 0;
+  color:var(--dim);
+  font-size:14.5px;
+}
+.steps li + li { padding-left:clamp(18px,2.4vw,30px); }
+.steps li:nth-child(3n+1) { padding-left:0; }   /* first in a row hugs its rule */
+.steps li::before {
+  content:counter(s);
+  display:grid;
+  place-items:center;
+  width:24px; height:24px;
+  margin-bottom:13px;
+  border:1px solid var(--rule2);
+  font:600 11.5px/1 var(--mono);
+  color:var(--link);
+}
+/* Four steps in a three-column grid: the fourth wraps onto its own row and
+   would otherwise sit hard against the left rule with no lead-in. */
+.steps li:nth-child(4) { padding-top:26px; }
+
+/* ------------------------------------------------------------------ cards */
+
+.cards {
+  display:grid;
+  grid-template-columns:repeat(var(--cols),1fr);
+  padding-bottom:clamp(40px,6vw,66px);
+}
+.card {
+  padding:26px clamp(20px,2.4vw,30px) 26px 0;
+  border-top:1px solid var(--rule);
+}
+.card:nth-child(-n+3) { border-top:0; }
+.card + .card { padding-left:clamp(20px,2.4vw,30px); }
+.card:nth-child(3n+1) { padding-left:0; }
+.card p { color:var(--dim); font-size:14px; }
+
+/* ------------------------------------------------------------------- live */
+
+.livegrid {
+  display:grid;
+  grid-template-columns:repeat(var(--cols),1fr);
+  align-items:start;
+  padding-bottom:clamp(40px,6vw,66px);
+  gap:0;
+}
+.livereadout { grid-column:1 / span 2; padding-right:clamp(20px,3vw,44px); }
+.globewrap   { grid-column:3 / span 1; padding-left:clamp(20px,2.4vw,30px); }
+
+.stats { display:flex; flex-wrap:wrap; gap:10px 42px; }
+.stat { display:flex; flex-direction:column; gap:2px; }
+.statn {
+  font:650 clamp(30px,4vw,44px)/1 var(--mono);
+  letter-spacing:-.02em;
+  color:var(--bright);
+  font-variant-numeric:tabular-nums;
+}
+.statn.none { color:var(--dim); }
+.statl {
+  font:11px/1.4 var(--mono);
+  text-transform:uppercase;
+  letter-spacing:.12em;
+  color:var(--dim);
+}
+
+.livestate {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  margin-top:22px;
+  font:12px/1 var(--mono);
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--dim);
+}
+.livestate .dot { width:7px; height:7px; background:var(--dim); flex:none; }
+.livestate .dot.on { background:var(--ok); }
+
+.countrylist { margin-top:18px; font:12.5px/1.7 var(--mono); }
+.countrylist li { margin-bottom:4px; color:var(--dim); }
+.countrylist li::before { top:.58em; background:var(--ok); }
+.countrylist b { color:var(--text); font-weight:600; font-variant-numeric:tabular-nums; }
+
+.globewrap { margin:0; }
+#globe {
+  display:block;
+  width:100%;
+  max-width:320px;
+  height:auto;
+  aspect-ratio:1;
+  margin:0 auto;
+}
+.globewrap figcaption { text-align:center; margin-top:10px; }
+
+/* ----------------------------------------------------------------- honest */
+
+.honest {
+  background:var(--panel);
+  border:1px solid var(--rule2);
+  border-left:3px solid var(--warn);
+  padding:22px clamp(20px,2.6vw,30px);
+  margin-bottom:clamp(40px,6vw,66px);
+  max-width:none;
+}
+.honest h3 { color:var(--warn); margin-bottom:14px; }
+.honest .sq-list li { font-size:14.5px; }
+.honest .sq-list li::before { background:var(--warn); }
+
+/* ---------------------------------------------------------------- closing */
+
+.closing {
+  padding:clamp(46px,6vw,78px) 0 clamp(46px,6vw,78px);
+  display:grid;
+  grid-template-columns:repeat(var(--cols),1fr);
+  align-items:end;
+  gap:20px 0;
+}
+.closing h2 { grid-column:1 / span 2; padding-right:30px; }
+.closing p  { grid-column:1 / span 2; color:var(--dim); font-size:15px; margin-top:-8px; }
+.closing .btn { grid-column:3; margin-top:0; }
+.closing h2 + p { margin-top:10px; }
+
+/* ----------------------------------------------------------------- footer */
+
+.footgrid {
+  display:grid;
+  grid-template-columns:repeat(var(--cols),1fr);
+  gap:14px 0;
+  padding:26px 0 54px;
+  font-size:13px;
+  color:var(--dim);
+}
+.footgrid p:first-child { grid-column:1; padding-right:24px; }
+.footgrid p:last-child  { grid-column:2 / -1; max-width:60ch; }
+footer a { color:var(--dim); }
+footer a:hover { color:var(--link); }
+
+/* ------------------------------------------------------------ breakpoints */
+
+@media (max-width:980px) {
+  :root { --cols:2; }
+  .rules span:nth-child(3) { display:none; }
+  .rules span:nth-child(2) { border-right:1px solid var(--rule); }
+
+  .hero-copy  { grid-column:1 / -1; padding-right:0; padding-bottom:26px; }
+  .keypanel   { grid-column:1 / span 1; margin-top:0; }
+  .shead .eyebrow { grid-column:1 / -1; padding-top:0; }
+  .shead .htext   { grid-column:1 / -1; padding-right:0; }
+  .steps li:nth-child(3) { padding-top:26px; }
+  .steps li:nth-child(3n+1) { padding-left:clamp(18px,2.4vw,30px); }
+  .steps li:nth-child(odd)  { padding-left:0; }
+  .card:nth-child(-n+3) { border-top:1px solid var(--rule); }
+  .card:nth-child(-n+2) { border-top:0; }
+  .card:nth-child(3n+1) { padding-left:clamp(20px,2.4vw,30px); }
+  .card:nth-child(odd)  { padding-left:0; }
+  .livereadout { grid-column:1 / -1; padding-right:0; }
+  .globewrap   { grid-column:1 / -1; padding-left:0; padding-top:30px; }
+  .closing h2, .closing p, .closing .btn { grid-column:1 / -1; }
+  .closing .btn { width:auto; justify-self:start; padding-left:30px; padding-right:30px; }
+  .footgrid p:last-child { grid-column:1 / -1; }
+}
+
+@media (max-width:620px) {
+  :root { --cols:1; }
+  .rules span:nth-child(2) { display:none; }
+  .rules span:nth-child(1) { border-right:1px solid var(--rule); }
+
+  .hero-grid, .shead, .steps, .cards, .livegrid, .closing, .footgrid {
+    grid-template-columns:1fr;
+  }
+  .hero-copy { padding-top:38px; }
+  .keypanel  { grid-column:1; }
+  .steps li, .steps li + li { padding-left:0; padding-right:0; }
+  .steps li + li { margin-top:24px; }
+  .steps li:nth-child(3), .steps li:nth-child(4) { padding-top:0; }
+  .card, .card + .card, .card:nth-child(3n+1) { padding-left:0; padding-right:0; }
+  .card:nth-child(-n+3), .card:nth-child(-n+2) { border-top:1px solid var(--rule); }
+  .card:first-child { border-top:0; }
+  .stats { gap:18px 30px; }
+  .topbar .row { height:52px; gap:9px; }
+  .tag { display:none; }
+}
+
+/* Fine for a phone in landscape, but a 44px-tall dotted path is not worth the
+   frame budget — landing.js switches to the vertical layout at this width. */
+@media (max-width:620px) {
+  .flabel { font-size:10.5px; }
+  .fpill  { font-size:11.5px; padding:6px 10px; }
+}
+
+/* ------------------------------------------------------- reduced motion --
+   The pill stops travelling, the dots stop marching, the globe stops turning
+   (globe.js checks the same query) and in-page links stop scrolling. */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior:auto; }
+  .stage[data-ready] .fpath.text { animation:none; }
+  .regen:active svg { transition:none; }
+  * { animation-duration:.001ms !important; animation-iteration-count:1 !important; }
+}
+
+/* Windows high-contrast / forced colours: the rules and squares are decoration
+   drawn with backgrounds, which forced-colours mode drops. Give them borders
+   so the structure survives. */
+@media (forced-colors: active) {
+  .rules span { border-color:CanvasText; }
+  .sq-list li::before, .eyebrow::before, .fpill .sq { border:3px solid CanvasText; }
+}

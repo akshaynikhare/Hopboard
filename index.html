@@ -32,217 +32,306 @@
 }
 </script>
 
-<style>
-  :root {
-    --bg:#0f1116; --panel:#171a21; --line:#262b36; --text:#e8ebf2;
-    --dim:#9aa3b5; --faint:#6b7488; --blue:#4d9fff; --ok:#4ec9b0; --warn:#ffb454;
-    --mono:"Cascadia Code",Consolas,"SF Mono",Menlo,monospace;
-  }
-  @media (prefers-color-scheme: light) {
-    :root { --bg:#fbfcfe; --panel:#fff; --line:#e4e8ef; --text:#101420;
-            --dim:#5a6376; --faint:#8b93a3; --blue:#1d6fd6; }
-  }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  body {
-    background:var(--bg); color:var(--text);
-    font:16px/1.6 "Segoe UI",-apple-system,system-ui,Roboto,sans-serif;
-    -webkit-font-smoothing:antialiased;
-  }
-  .wrap { max-width:780px; margin:0 auto; padding:0 22px; }
-
-  header { padding:22px 0; display:flex; align-items:center; gap:9px; }
-  header svg { width:22px; height:22px; color:var(--blue); }
-  header b { font-size:17px; font-weight:650; letter-spacing:-.01em; }
-  header .sp { flex:1; }
-  header a { color:var(--dim); text-decoration:none; font-size:14px; }
-  header a:hover { color:var(--text); }
-
-  h1 { font-size:clamp(30px,5.5vw,46px); line-height:1.12; letter-spacing:-.025em;
-       font-weight:700; margin:38px 0 16px; }
-  .lede { font-size:18px; color:var(--dim); max-width:56ch; margin-bottom:30px; }
-
-  .cta { display:flex; gap:11px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
-  .btn {
-    display:inline-flex; align-items:center; gap:8px;
-    background:var(--blue); color:#fff; border:0; border-radius:8px;
-    padding:13px 22px; font:inherit; font-size:16px; font-weight:600;
-    cursor:pointer; text-decoration:none;
-  }
-  .btn:hover { filter:brightness(1.1); }
-  .btn.ghost { background:transparent; color:var(--text); border:1px solid var(--line); font-weight:500; }
-  .btn.ghost:hover { border-color:var(--blue); color:var(--blue); }
-  .note { font-size:13.5px; color:var(--faint); margin-bottom:46px; }
-
-  .join { display:flex; gap:8px; align-items:center; }
-  .join input {
-    width:150px; background:var(--panel); border:1px solid var(--line);
-    color:var(--text); border-radius:8px; padding:12px 14px;
-    font:600 16px/1 var(--mono); letter-spacing:.12em; text-transform:uppercase;
-  }
-  .join input:focus { outline:2px solid var(--blue); outline-offset:-1px; }
-
-  section { padding:34px 0; border-top:1px solid var(--line); }
-  h2 { font-size:21px; letter-spacing:-.015em; margin-bottom:16px; font-weight:650; }
-  h3 { font-size:15.5px; margin-bottom:5px; font-weight:600; }
-  p { color:var(--dim); margin-bottom:13px; max-width:64ch; }
-
-  .steps { display:grid; gap:18px; counter-reset:s; }
-  .step { display:flex; gap:14px; }
-  .step .n {
-    counter-increment:s; flex:none; width:27px; height:27px; border-radius:99px;
-    border:1px solid var(--line); color:var(--blue);
-    font:600 13px/25px var(--mono); text-align:center;
-  }
-  .step .n::before { content:counter(s); }
-  .step p { margin:0; font-size:14.5px; }
-
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:19px; }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:11px; padding:17px; }
-  .card p { font-size:14px; margin:0; }
-
-  .honest { background:var(--panel); border:1px solid var(--line);
-            border-left:3px solid var(--warn); border-radius:9px; padding:17px 19px; }
-  .honest h3 { color:var(--warn); }
-  .honest ul { margin:9px 0 0 19px; color:var(--dim); font-size:14.5px; }
-  .honest li { margin-bottom:7px; }
-
-  footer { padding:30px 0 46px; border-top:1px solid var(--line);
-           color:var(--faint); font-size:13.5px; }
-  footer a { color:var(--dim); }
-  code { font:13.5px var(--mono); color:var(--blue); }
-</style>
+<!-- Styling and behaviour live in src/landing/. Both are deferred by nature —
+     the stylesheet is small and the script is a module — so nothing here
+     competes with first paint. -->
+<link rel="stylesheet" href="./src/landing/landing.css">
+<script type="module" src="./src/landing/landing.js"></script>
 </head>
 <body>
 
-<div class="wrap">
-  <header>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-      <rect x="8" y="3" width="8" height="4" rx="1"/>
-      <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
-      <path d="M9 13l2 2 4-4"/>
-    </svg>
-    <b>Hopboard</b>
-    <span class="sp"></span>
-    <a href="https://github.com/akshaynikhare/Hopboard">GitHub</a>
-  </header>
+<!--
+  The page's vertical gridlines.
 
-  <h1>Your clipboard, on all your machines.</h1>
-  <p class="lede">
-    Copy something on your laptop and paste it on your desktop. Or your phone.
-    Type one five-character key on each device and they share a clipboard —
-    no account, no install, nothing stored on a server.
-  </p>
+  Fixed and drawn once for the whole document rather than per section, so a
+  single set of rules runs the full height and every section lands on the same
+  columns. It shares the .in container with the content, which is what keeps the
+  lines and the column edges on the same pixel. Purely decorative: aria-hidden
+  and pointer-events:none.
 
-  <div class="cta">
-    <a class="btn" href="./app.html" id="start">Start a new clipboard</a>
-    <form class="join" id="joinForm">
-      <input id="joinKey" placeholder="KEY" maxlength="12" spellcheck="false"
-             aria-label="Enter an existing share key" autocomplete="off">
-      <button class="btn ghost" type="submit">Join</button>
-    </form>
-  </div>
-  <p class="note">Free. Works in Chrome on Windows, macOS and Android.</p>
-
-  <section>
-    <h2>How it works</h2>
-    <div class="steps">
-      <div class="step"><span class="n"></span>
-        <p>Open Hopboard on the first machine. It generates a key like <code>D75LV</code>.</p></div>
-      <div class="step"><span class="n"></span>
-        <p>Type that key on your second machine, or scan the QR code.</p></div>
-      <div class="step"><span class="n"></span>
-        <p>Copy anything. Switch to Hopboard and it is already on the way.</p></div>
-      <div class="step"><span class="n"></span>
-        <p>On the other device it lands straight on the system clipboard. Just paste.</p></div>
-    </div>
-  </section>
-
-  <section>
-    <h2>What you get</h2>
-    <div class="grid">
-      <div class="card">
-        <h3>Text and images</h3>
-        <p>Copy a screenshot and it appears as a preview on your other devices.</p>
-      </div>
-      <div class="card">
-        <h3>Files, peer to peer</h3>
-        <p>Up to 5 MB each. Only the thumbnail crosses the server — the file itself goes
-           straight between your machines.</p>
-      </div>
-      <div class="card">
-        <h3>End-to-end encrypted</h3>
-        <p>The key never leaves your browser. The server sees a hash and ciphertext,
-           and stores neither.</p>
-      </div>
-      <div class="card">
-        <h3>Installs as an app</h3>
-        <p>Chrome will offer to install it. Own window, own icon, works offline.</p>
-      </div>
-      <div class="card">
-        <h3>No account</h3>
-        <p>No email, no password, no profile. Close the tab and the session is gone.</p>
-      </div>
-      <div class="card">
-        <h3>Live or manual</h3>
-        <p>Share everything you copy, or only what you paste in deliberately. One switch.</p>
-      </div>
-    </div>
-  </section>
-
-  <section>
-    <h2>Things worth knowing before you rely on it</h2>
-    <div class="honest">
-      <h3>This is pre-alpha, and the trade-offs are real</h3>
-      <ul>
-        <li><b>The key is the password.</b> Anyone who has it can read everything you
-            copy while the session is open, and request your files. Treat it like one.</li>
-        <li><b>It cannot watch your clipboard in the background.</b> No web app can, on
-            any browser — reading the clipboard requires the window to be focused. You
-            switch to Hopboard and it picks up what you copied.</li>
-        <li><b>Live mode shares everything you copy</b>, including passwords you copied
-            for some unrelated reason. Manual mode exists for exactly that reason.</li>
-        <li><b>Peer-to-peer file transfer often fails on corporate networks</b>, which
-            block the connections it needs. It falls back to the server, and tells you
-            when it does.</li>
-        <li><b>Chrome first.</b> Firefox and Safari can receive and can send what you
-            paste in, but cannot read the clipboard on their own.</li>
-      </ul>
-    </div>
-  </section>
-
-  <footer>
-    <p>Open source — <a href="https://github.com/akshaynikhare/Hopboard">github.com/akshaynikhare/Hopboard</a></p>
-    <p>Sessions are held in memory and never written to disk. Clipboard contents are
-       encrypted in your browser before they are sent.</p>
-  </footer>
+  Spans are hidden by the breakpoints — 3 columns, then 2, then just the two
+  outer rules on a phone.
+-->
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
 </div>
 
-<script>
-// Crockford-ish alphabet: no 0/O, no 1/I/L. It has to survive being read aloud.
-const ALPHABET = "23456789ABCDEFGHJKMNPQRSTVWXYZ";
-const newKey = () => Array.from(crypto.getRandomValues(new Uint8Array(6)))
-  .map(b => ALPHABET[b % ALPHABET.length]).join("");
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="./">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <rect x="8" y="3" width="8" height="4" rx="1"/>
+          <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
+          <path d="M9 13l2 2 4-4"/>
+        </svg>
+        <b>Hopboard</b>
+      </a>
+      <span class="tag">pre-alpha</span>
+      <span class="spacer"></span>
+      <a class="tlink" href="https://github.com/akshaynikhare/Hopboard">GitHub</a>
+      <a class="tlink strong" href="./app.html">Open the app</a>
+    </div>
+  </div>
+</header>
 
+<main>
+
+  <!-- ============ hero ============ -->
+  <section class="sec hero">
+    <div class="in">
+      <div class="hero-grid">
+
+        <div class="hero-copy">
+          <p class="eyebrow">Shared clipboard for your own devices</p>
+          <h1>Your clipboard, on all your machines.</h1>
+          <p class="lede">
+            Copy something on your laptop and paste it on your desktop. Or your phone.
+            Type one five-character key on each device and they share a clipboard —
+            no account, no install, nothing stored on a server.
+          </p>
+          <ul class="sq-list hero-list">
+            <li>Text, images and files</li>
+            <li>Encrypted in the browser, before anything is sent</li>
+            <li>Nothing is written to disk, on your machine or ours</li>
+          </ul>
+        </div>
+
+        <!--
+          The key panel.
+
+          The key is generated on load rather than on click, so the first thing
+          you can do is read it off this screen and type it into the phone in
+          your other hand. Regenerate is inside the field, where the app puts it
+          too. The button is a real <a href>: landing.js keeps its href in step
+          with the field, so middle-click, "open in new tab" and a browser with
+          no JavaScript all still do something sensible.
+        -->
+        <div class="keypanel">
+          <div class="panelhead">Session key</div>
+          <div class="panelbody">
+            <form id="keyForm" autocomplete="off">
+              <label class="fieldlabel" for="key">KEY</label>
+              <div class="keyfield">
+                <input id="key" class="keyin" name="key" value=""
+                       maxlength="12" spellcheck="false" autocomplete="off"
+                       autocapitalize="characters" autocorrect="off"
+                       inputmode="text" aria-describedby="keyHint"
+                       aria-label="Share key — generated for you, or type one you already have">
+                <button type="button" class="regen" id="regen"
+                        title="Generate a different key" aria-label="Generate a different key">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12a9 9 0 11-2.6-6.4M21 3v6h-6"/>
+                  </svg>
+                </button>
+              </div>
+              <a class="btn" id="start" href="./app.html">Start a new clipboard</a>
+            </form>
+            <p class="hint" id="keyHint">
+              Type this on your other device — or type a key someone gave you over
+              this one, and the same button joins it.
+            </p>
+            <p class="sr-only" id="keyStatus" role="status" aria-live="polite"></p>
+          </div>
+        </div>
+
+      </div>
+      <p class="note">Free. Works in Chrome on Windows, macOS and Android.</p>
+    </div>
+  </section>
+
+  <!-- ============ the dotted path ============ -->
+  <section class="sec">
+    <div class="in">
+      <header class="shead">
+        <p class="eyebrow">The path a copy takes</p>
+        <div class="htext">
+          <h2>What happens when you press Ctrl&#8209;C</h2>
+          <p>
+            Text is encrypted on the machine that copied it and decrypted on the one
+            that receives it. The relay in the middle only ever sees a room hash and
+            ciphertext, and keeps neither. Files skip it entirely.
+          </p>
+        </div>
+      </header>
+
+      <div class="stage" id="flowStage">
+        <svg id="flowSvg" class="flowsvg" viewBox="0 0 1200 360"
+             preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+          <path id="flowFiles" class="fpath files" fill="none"></path>
+          <path id="flowText"  class="fpath text"  fill="none"></path>
+          <g id="flowNodes"></g>
+        </svg>
+        <div class="flabels" id="flowLabels" aria-hidden="true"></div>
+        <div class="fpill" id="flowPill" aria-hidden="true">
+          <span class="sq"></span><span id="flowPillText">Copying…</span>
+        </div>
+        <p class="flow-fallback">
+          Your laptop encrypts the clip, the relay passes the ciphertext along, and your
+          desktop decrypts it and puts it on the system clipboard. Files take the lower
+          route: straight between the two machines, never through the relay.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ how it works ============ -->
+  <section class="sec">
+    <div class="in">
+      <header class="shead">
+        <p class="eyebrow">Getting started</p>
+        <div class="htext"><h2>How it works</h2></div>
+      </header>
+      <ol class="steps">
+        <li>Open Hopboard on the first machine. It generates a key like <code>D75LV</code>.</li>
+        <li>Type that key on your second machine, or scan the QR code.</li>
+        <li>Copy anything. Switch to Hopboard and it is already on the way.</li>
+        <li>On the other device it lands straight on the system clipboard. Just paste.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============ what you get ============ -->
+  <section class="sec">
+    <div class="in">
+      <header class="shead">
+        <p class="eyebrow">Capabilities</p>
+        <div class="htext"><h2>What you get</h2></div>
+      </header>
+      <div class="cards">
+        <div class="card">
+          <h3>Text and images</h3>
+          <p>Copy a screenshot and it appears as a preview on your other devices.</p>
+        </div>
+        <div class="card">
+          <h3>Files, peer to peer</h3>
+          <p>Up to 5 MB each. Only the thumbnail crosses the server — the file itself goes
+             straight between your machines.</p>
+        </div>
+        <div class="card">
+          <h3>End-to-end encrypted</h3>
+          <p>The key never leaves your browser. The server sees a hash and ciphertext,
+             and stores neither.</p>
+        </div>
+        <div class="card">
+          <h3>Installs as an app</h3>
+          <p>Chrome will offer to install it. Own window, own icon, works offline.</p>
+        </div>
+        <div class="card">
+          <h3>No account</h3>
+          <p>No email, no password, no profile. Close the tab and the session is gone.</p>
+        </div>
+        <div class="card">
+          <h3>Live or manual</h3>
+          <p>Share everything you copy, or only what you paste in deliberately. One switch.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ live sessions ============ -->
+  <section class="sec" id="live">
+    <div class="in">
+      <header class="shead">
+        <p class="eyebrow">Live</p>
+        <div class="htext"><h2>Sessions running right now</h2></div>
+      </header>
+
+      <div class="livegrid">
+        <div class="livereadout">
+          <div class="stats">
+            <div class="stat">
+              <span class="statn" id="statRooms">—</span>
+              <span class="statl">clipboards open</span>
+            </div>
+            <div class="stat">
+              <span class="statn" id="statDevices">—</span>
+              <span class="statl">devices connected</span>
+            </div>
+            <div class="stat">
+              <span class="statn" id="statCountries">—</span>
+              <span class="statl">countries</span>
+            </div>
+          </div>
+
+          <p class="livestate" id="liveState">
+            <span class="dot" id="liveDot"></span><span id="liveStateText">Sessions worldwide</span>
+          </p>
+
+          <ul class="countrylist sq-list" id="countryList"></ul>
+
+          <p class="hint">
+            Counts come from the relay, at most once every 30 seconds. It reports totals
+            only — no keys, no addresses, nothing you copied. This page sends it nothing.
+            If the number is small, that is because this is new.
+          </p>
+        </div>
+
+        <figure class="globewrap">
+          <canvas id="globe" width="640" height="640" role="img"
+                  aria-label="Rotating globe marking the countries with active sessions"></canvas>
+          <figcaption class="hint" id="globeCap">Sessions worldwide</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ the honest bit ============ -->
+  <section class="sec">
+    <div class="in">
+      <header class="shead">
+        <p class="eyebrow">Before you rely on it</p>
+        <div class="htext"><h2>Things worth knowing before you rely on it</h2></div>
+      </header>
+      <div class="honest">
+        <h3>This is pre-alpha, and the trade-offs are real</h3>
+        <ul class="sq-list">
+          <li><b>The key is the password.</b> Anyone who has it can read everything you
+              copy while the session is open, and request your files. Treat it like one.</li>
+          <li><b>It cannot watch your clipboard in the background.</b> No web app can, on
+              any browser — reading the clipboard requires the window to be focused. You
+              switch to Hopboard and it picks up what you copied.</li>
+          <li><b>Live mode shares everything you copy</b>, including passwords you copied
+              for some unrelated reason. Manual mode exists for exactly that reason.</li>
+          <li><b>Peer-to-peer file transfer often fails on corporate networks</b>, which
+              block the connections it needs. It falls back to the server, and tells you
+              when it does.</li>
+          <li><b>Chrome first.</b> Firefox and Safari can receive and can send what you
+              paste in, but cannot read the clipboard on their own.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ closing ============ -->
+  <section class="sec">
+    <div class="in">
+      <div class="closing">
+        <h2>Ready when you are.</h2>
+        <p>No sign-up, no download. The key above is already yours.</p>
+        <a class="btn" id="start2" href="./app.html">Start a new clipboard</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/Hopboard">github.com/akshaynikhare/Hopboard</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
 // A key in the fragment means someone followed a share link to the old app
 // URL. Send them on rather than showing marketing to someone who came to work.
-const shared = location.hash.slice(1).trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+var shared = location.hash.slice(1).trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
 if (shared.length >= 4) location.replace("./app.html#" + shared);
-
-document.getElementById("start").addEventListener("click", e => {
-  e.preventDefault();
-  location.href = "./app.html#" + newKey();
-});
-
-document.getElementById("joinForm").addEventListener("submit", e => {
-  e.preventDefault();
-  const key = document.getElementById("joinKey").value
-    .trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (key.length < 4) {
-    document.getElementById("joinKey").focus();
-    return;
-  }
-  location.href = "./app.html#" + key;
-});
 </script>
 </body>
 </html>
