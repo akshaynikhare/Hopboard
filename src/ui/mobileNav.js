@@ -37,8 +37,6 @@ const ICON = {
   text: '<path d="M4 6h16M4 11h16M4 16h10"/>',
   files: '<path d="M3 6a1 1 0 011-1h5l2 2h9a1 1 0 011 1v11a1 1 0 01-1 1H4a1 1 0 01-1-1z"/>',
   history: '<circle cx="12" cy="12" r="8"/><path d="M12 8v4.5l3 1.8"/>',
-  devices: '<rect x="2" y="4" width="13" height="10" rx="1"/><path d="M6 18h5"/>'
-         + '<rect x="17" y="8" width="5" height="12" rx="1"/>',
 };
 
 let shell, host, views = [], all = [], current = "text", mq = null;
@@ -61,7 +59,9 @@ export function init() {
     // says HISTORY, and a tab called "Clips" that opens "History" reads as two
     // different places.
     { id: "history", label: "History", icon: ICON.history, els: [side, $("paneHistory")] },
-    { id: "devices", label: "Devices", icon: ICON.devices, els: [side, $("paneSession")] },
+    // There was a fourth, Devices. Its pane is gone: the roster and every
+    // setting it held are now slide-up menus on the status bar, which is on
+    // screen in all three of these views instead of being one of four.
   ].filter(v => v.els.every(Boolean));
 
   if (views.length < 2) return;                 // nothing to switch between
@@ -93,7 +93,6 @@ export function init() {
   if (mq?.addEventListener) mq.addEventListener("change", onBreakpoint);
   else mq?.addListener?.(onBreakpoint);
 
-  watchSplitBrain();
   paint();
 }
 
@@ -125,34 +124,12 @@ function paint() {
   for (const btn of host.querySelectorAll(".mnavbtn")) {
     btn.setAttribute("aria-current", String(btn.dataset.view === active.id));
   }
-
-  refreshAlerts();
 }
 
-/* ------------------------------------------------------------------
-   Split-brain warning
-
-   sessionPanel.js writes it into #splitWarn, inside the sidebar's Devices
-   pane. On a phone that pane is one tab out of four, so the one message in the
-   app that means "sync has stopped working and nothing else will tell you"
-   could sit unread behind the editor. Mark the tab instead.
-------------------------------------------------------------------- */
-function watchSplitBrain() {
-  const warn = $("splitWarn");
-  if (!warn || typeof MutationObserver !== "function") return;
-  new MutationObserver(refreshAlerts)
-    .observe(warn, { attributes: true, attributeFilter: ["class"] });
-}
-
-function refreshAlerts() {
-  const warn = $("splitWarn");
-  // Only while you are somewhere else — on the Devices tab the warning itself
-  // is on screen, in full, and a dot beside it says nothing.
-  const flag = !!warn?.classList.contains("show") && current !== "devices";
-  const btn = host?.querySelector('[data-view="devices"]');
-  btn?.querySelector(".mdot")?.toggleAttribute("hidden", !flag);
-  btn?.querySelector("[data-alert]")?.toggleAttribute("hidden", !flag);
-}
+/* The split-brain warning used to be flagged here, with a dot on the Devices
+   tab, because the message lived in a pane that was one tab out of four. It now
+   lives in the status bar's device menu and is raised as a banner besides —
+   both visible from every view, so there is no tab left to mark. */
 
 /* ------------------------------------------------------------------
    On-screen keyboard

@@ -114,6 +114,13 @@ html, body {
 
 .appbar .key { font-size:13px; letter-spacing:.12em; padding:6px 7px 6px 11px; }
 
+/* The project links ride with the switch onto the second row rather than
+   claiming one of their own: they are the least urgent thing in the header,
+   and a phone that wrapped for them would push the editor down for a link
+   nobody opened. The separator rule goes — with the row this tight it reads as
+   clutter, and the wrap already groups them. */
+.applinks { margin-left:4px; padding-left:0; border-left:0; }
+
 /* ------------------------------------------------------------------ *
  * Touch targets
  *
@@ -128,6 +135,10 @@ html, body {
 .ibtn.danger { width:auto; min-width:34px; padding:0 10px; }
 
 .modebtn { padding:8px 12px; font-size:12px; }
+
+/* Icon-only by this width, so the target is the icon — 34px, same as .ibtn. */
+.alink { height:34px; min-width:34px; justify-content:center; border-radius:6px; }
+.alink svg { width:17px; height:17px; }
 
 .sw { width:42px; height:24px; }
 .sw::after { top:3px; left:3px; width:18px; height:18px; }
@@ -254,10 +265,18 @@ select { min-height:38px; font-size:16px; padding:7px 8px; }
  *
  * Seven items at ~80px each is 560px of content in a 360px bar, and nothing
  * here wraps — the overflow was simply clipped off the right-hand edge, taking
- * the character counter with it. The key and the mode are both in the header
- * one row up, and the relay tier is not something you act on from a phone, so
- * what is left is the three things that change: are we connected, who else is
- * here, how much text is in the buffer.
+ * the character counter with it. So the bar scrolls, and the items that are
+ * only a readout get dropped.
+ *
+ * That distinction is the whole rule now that the settings live here. An item
+ * carrying a menu is the only way to reach what is inside it, and hiding it
+ * would hide those settings on the device where the sidebar pane they came from
+ * was already the hardest to get at. #sbMode used to be dropped because the
+ * Live/Manual switch is in the header one row up — the switch is, but the
+ * polling interval, image sharing and auto-write are not, so it stays.
+ *
+ * Dropped: the key (the header shows it, and "Copy link" is in the device
+ * menu) and the relay tier (a readout, and not one you act on from a phone).
  * ------------------------------------------------------------------ */
 
 .statusbar {
@@ -269,7 +288,7 @@ select { min-height:38px; font-size:16px; padding:7px 8px; }
 }
 .statusbar::-webkit-scrollbar { display:none; }
 
-#sbKey, #sbMode, #sbTier { display:none; }
+#sbKey, #sbTier { display:none; }
 .sitem { padding:0 7px; }
 
 /* ------------------------------------------------------------------ *

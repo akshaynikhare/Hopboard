@@ -48,21 +48,23 @@ button.sitem {
 button.sitem:focus-visible { outline:1px solid var(--focus); outline-offset:-2px; }
 
 /* ------------------------------------------------------------------ *
- * Transport menu
+ * Status-bar menus
  *
- * Slides up out of the status bar item that opens it. Fixed rather than
- * absolute: the status bar is inside the pinned shell, and an absolutely
- * positioned menu would be clipped by the editor pane's own overflow. `left`
- * is set in statusbar.js from the button's own position, so it stays under
- * #sbConn wherever the items before it push it to.
+ * The app's settings surface. Slides up out of the item that opens it; fixed
+ * rather than absolute, because the status bar is inside the pinned shell and
+ * an absolutely positioned menu would be clipped by the editor pane's own
+ * overflow. Both offsets are overwritten by ui/statusMenu.js from the button's
+ * measured position — these are the fallback.
  * ------------------------------------------------------------------ */
-.tmenu {
+.smenu {
   position:fixed;
   left:8px;
   bottom:calc(var(--statusbar-h) + 6px);
   transform-origin:bottom left;
   z-index:62;
-  width:min(300px, calc(100vw - 16px));
+  width:min(320px, calc(100vw - 16px));
+  max-height:min(70vh, 560px);
+  overflow-y:auto;
   background:var(--side);
   border:1px solid var(--bd2);
   border-radius:4px;
@@ -70,7 +72,8 @@ button.sitem:focus-visible { outline:1px solid var(--focus); outline-offset:-2px
   box-shadow:0 8px 28px color-mix(in srgb, var(--activity) 80%, transparent);
 }
 
-.tmenuitem {
+/* A picked-from-a-list row: the transport options. */
+.smenuitem {
   width:100%;
   display:flex;
   align-items:flex-start;
@@ -84,22 +87,22 @@ button.sitem:focus-visible { outline:1px solid var(--focus); outline-offset:-2px
   text-align:left;
   cursor:pointer;
 }
-.tmenuitem:hover { background:var(--hover); }
-.tmenuitem:focus-visible { outline:1px solid var(--focus); outline-offset:-2px; }
+.smenuitem:hover { background:var(--hover); }
+.smenuitem:focus-visible { outline:1px solid var(--focus); outline-offset:-2px; }
 
-.tmenuitem .tick {
+.smenuitem .tick {
   width:11px;
   flex:none;
   color:var(--ok);
   font-size:11px;
   line-height:1.5;
 }
-.tmenuitem .tx { display:flex; flex-direction:column; gap:2px; min-width:0; }
-.tmenuitem .tx b { font-size:12px; color:var(--bright); font-weight:500; }
-.tmenuitem .tx span { font-size:10.5px; color:var(--dim); line-height:1.4; }
+.smenuitem .tx { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.smenuitem .tx b { font-size:12px; color:var(--bright); font-weight:500; }
+.smenuitem .tx span { font-size:10.5px; color:var(--dim); line-height:1.4; }
 
 /* On Automatic, which one the app actually settled on. */
-.tmenuitem .tnow {
+.smenuitem .tnow {
   margin-left:auto;
   align-self:center;
   flex:none;
@@ -109,18 +112,76 @@ button.sitem:focus-visible { outline:1px solid var(--focus); outline-offset:-2px
   color:var(--dim);
 }
 
+/* ---- settings rows, moved here from the sidebar pane ---- */
+
+.sgrp {
+  font-size:9.5px;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  color:var(--dim);
+  padding:8px 8px 4px;
+}
+.sgrp:first-child { padding-top:4px; }
+
+.smenu .srow {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:5px 8px;
+}
+.smenu .srow .l { display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
+.smenu .srow .l b { font-size:12px; color:var(--bright); font-weight:500; }
+.smenu .srow .l span { font-size:10.5px; color:var(--dim); line-height:1.4; }
+.smenu .srow select { max-width:92px; }
+
+.smenu .snote {
+  font-size:10.5px;
+  color:var(--dim);
+  line-height:1.45;
+  padding:2px 8px 8px;
+}
+
+/* Sync has a two-button segmented control; the session actions are pairs. */
+.smenu .sacts { display:flex; gap:6px; padding:2px 8px 6px; }
+.smenu .sacts .btn { flex:1; justify-content:center; }
+.smenu .sacts.seg .btn.on {
+  background:var(--accent);
+  color:var(--on-accent);
+  border-color:transparent;
+}
+
+/* The one message in the app that means "sync has silently stopped working". */
+.smenu .swarn {
+  font-size:10.5px;
+  line-height:1.45;
+  color:var(--bad);
+  background:color-mix(in srgb, var(--bad) 10%, transparent);
+  border-left:2px solid var(--bad);
+  padding:7px 8px;
+  margin:4px 8px 6px;
+}
+
 /* It rises out of the bar it belongs to — the same 6px lift and .13s as the QR
    dialog, so the two overlays in this app move the same way. Motion only for
    people who have not asked for less of it. */
 @media (prefers-reduced-motion: no-preference) {
-  .tmenu { animation:tmenu-up .13s ease-out; }
-  @keyframes tmenu-up {
+  .smenu { animation:smenu-up .13s ease-out; }
+  @keyframes smenu-up {
     from { opacity:0; transform:translateY(6px); }
     to   { opacity:1; transform:none; }
   }
 }
 
-/* Drop the least useful items first on narrow screens. */
+/* Drop the least useful items first on narrow screens.
+   Only items that carry no menu: since the settings moved in here, hiding an
+   item hides a setting, and it would be hidden on exactly the device where the
+   sidebar pane it replaced was already hard to reach. */
 @media (max-width:900px) {
-  #sbLnCol, .sitem.optional { display:none; }
+  .sitem.optional { display:none; }
+  /* What is left still has to fit. Scrolling beats truncating: every item is a
+     control now, so one falling off the end is a control nobody can press. */
+  .statusbar { overflow-x:auto; scrollbar-width:none; }
+  .statusbar::-webkit-scrollbar { display:none; }
+  .sitem { flex:none; }
+  .sspacer { flex:1 0 8px; }
 }

@@ -69,8 +69,37 @@
 
     <span class="tabspace"></span>
     <!-- Live / Manual. The single most consequential setting, so it lives
-         here rather than in the settings pane. -->
+         here rather than in the settings pane. It no longer sits hard right:
+         the project links took that corner, and the switch is the one control
+         here you press rather than read, so it keeps the roomier spot. -->
     <div id="mount-mode"></div>
+
+    <!-- Where the app asks for something back: a bug report, or money.
+         Anchors rather than buttons — they leave the app, so middle-click,
+         "copy link" and "open in new tab" all have to work. rel is spelled out
+         even though target=_blank implies noopener in current browsers; the
+         page is also meta referrer=no-referrer, so no key-bearing URL travels
+         with the click. -->
+    <nav class="applinks" aria-label="Project links">
+      <a class="alink" id="lIssue" target="_blank" rel="noopener noreferrer"
+         href="https://github.com/akshaynikhare/Hopboard/issues/new"
+         title="Report a problem on GitHub" aria-label="Report an issue on GitHub">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.2h.01"/></svg>
+        <span class="lbl">Report issue</span>
+      </a>
+      <a class="alink coffee" id="lCoffee" target="_blank" rel="noopener noreferrer"
+         href="https://www.buymeacoffee.com/akshaynikhare"
+         title="Support the relay bill — buy me a coffee" aria-label="Buy me a coffee">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13v5.5A4.5 4.5 0 0112.5 18h-4A4.5 4.5 0 014 13.5z"/><path d="M17 9.5h1.5a2.5 2.5 0 010 5H17"/><path d="M7.5 2.5v2.2M11 2.5v2.2M14.5 2.5v2.2"/></svg>
+        <span class="lbl">Buy me a coffee</span>
+      </a>
+      <a class="alink sponsor" id="lSponsor" target="_blank" rel="noopener noreferrer"
+         href="https://github.com/sponsors/akshaynikhare"
+         title="Sponsor this project on GitHub" aria-label="Sponsor this project on GitHub">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.2s-7.3-4.6-7.3-9.4A3.9 3.9 0 0112 8.4a3.9 3.9 0 017.3 2.4c0 4.8-7.3 9.4-7.3 9.4z"/></svg>
+        <span class="lbl">Sponsor</span>
+      </a>
+    </nav>
   </header>
 
   <div class="body">
@@ -140,7 +169,6 @@
           Anyone with the key in the title bar can read what you copy and request your files.
         </div>
       </div>
-      <div class="alert" id="splitWarn"></div>
 
       <!-- PANEL 2 — files -->
       <section class="pane grow" id="paneFiles">
@@ -174,70 +202,11 @@
       <!-- Feature modules mount additional panes here (history, transfers). -->
       <div id="mount-panes"></div>
 
-      <!-- PANEL 3 — devices and settings -->
-      <section class="pane grow" id="paneSession">
-        <div class="paneh" data-toggle>
-          <span class="chev">⌄</span> Devices
-          <span class="spacer"></span>
-          <span class="soft" id="peerN">1</span>
-        </div>
-        <div class="paneb">
-          <div id="peers"></div>
-
-          <!-- Removed as redundant rather than reorganised:
-               · "Auto-read on focus" — that IS Live mode, now in the header.
-                 Two controls for one behaviour is how you get a bug report
-                 saying the app ignores its own setting.
-               · "Direction" — Live/Manual already governs sending and
-                 Auto-write governs receiving. A third overlapping axis made
-                 all three harder to reason about.
-               · "About" — it printed state the status bar already shows. -->
-          <div class="grp">Receiving</div>
-          <div class="row">
-            <div class="l"><b>Auto-write incoming</b><span>Put received text straight on this machine's clipboard</span></div>
-            <button class="sw" role="switch" aria-checked="true" data-k="autowrite" aria-label="Auto-write incoming"></button>
-          </div>
-
-          <div class="grp">Live mode</div>
-          <div class="row">
-            <div class="l"><b>Check clipboard every</b><span>Only applies while Live and this window is focused</span></div>
-            <select id="poll" aria-label="Clipboard poll interval">
-              <option>Off</option><option selected>1s</option><option>500ms</option><option>2s</option>
-            </select>
-          </div>
-          <div class="row">
-            <div class="l"><b>Share copied images</b><span>Screenshots appear as previews on your other devices</span></div>
-            <button class="sw" role="switch" aria-checked="true" data-k="images" aria-label="Share copied images"></button>
-          </div>
-
-          <div class="grp">Files</div>
-          <div class="row">
-            <div class="l"><b>Let peers fetch without asking</b><span>Otherwise you approve each request</span></div>
-            <button class="sw" role="switch" aria-checked="false" data-k="autoaccept" aria-label="Let peers fetch without asking"></button>
-          </div>
-          <div class="row">
-            <div class="l"><b>Send previews</b><span>Thumbnails travel automatically, before anyone asks</span></div>
-            <button class="sw" role="switch" aria-checked="true" data-k="thumbs" aria-label="Send previews"></button>
-          </div>
-
-          <div class="grp">Security</div>
-          <div class="row">
-            <div class="l"><b>Longer keys</b><span id="keyBits">6 characters · ~29 bits</span></div>
-            <button class="sw" role="switch" aria-checked="false" data-k="longKeys" aria-label="Use longer keys"></button>
-          </div>
-
-          <div class="grp">Presence</div>
-          <div class="row">
-            <div class="l"><b>Show other cursors</b><span>See where the other devices are pointing</span></div>
-            <button class="sw" role="switch" aria-checked="true" data-k="cursors" aria-label="Show other cursors"></button>
-          </div>
-
-          <div class="grp">&nbsp;</div>
-          <div class="keyrow">
-            <button class="btn ghost" id="bLeave">Leave session</button>
-          </div>
-        </div>
-      </section>
+      <!-- PANEL 3 — devices and settings — is gone, on purpose.
+           Its six groups of switches and its device roster now live in the
+           status bar's slide-up menus (ui/statusMenu.js). A sidebar pane put
+           them one tab out of four behind the editor on a phone; the status bar
+           is on screen in every view, on every layout. -->
     </aside>
   </div>
 
@@ -247,25 +216,38 @@
       <svg viewBox="0 0 24 24"><circle cx="7" cy="17" r="3"/><path d="M9.5 15L20 4.5M17 7l2 2M14 10l2 2"/></svg>
       <span id="sbKeyText">—</span>
     </div>
-    <!-- A button, not a label: clicking it picks the transport. The menu is
-         built by ui/statusbar.js into #mount-transport, below. -->
-    <button class="sitem" id="sbConn" type="button" aria-haspopup="menu" aria-expanded="false"
+    <!-- Buttons, not labels. Every item that reports something is also the
+         control for it: the settings that used to be a sidebar pane live in
+         slide-up menus built by ui/statusMenu.js into #mount-menus, below.
+         `.optional` is for items that carry no menu — anything holding a
+         setting has to survive a narrow screen, or the setting is unreachable
+         on the device most likely to need it. -->
+    <button class="sitem" id="sbConn" type="button"
             title="Connection — click to choose how this device reaches the relay">
       <span class="dot"></span><span id="sbConnText">Not connected</span>
     </button>
-    <div class="sitem plain" id="sbPeers">1 device</div>
-    <div class="sitem plain" id="sbMode">Live sync</div>
+    <button class="sitem" id="sbPeers" type="button"
+            title="Devices in this session — click for the roster and session keys">1 device</button>
+    <button class="sitem" id="sbMode" type="button"
+            title="Sync — click for Live/Manual, clipboard polling and receiving">Live sync</button>
     <!-- Peers can see this device's pointer, and until this existed there was
          nothing telling you so. Broadcasting without an indicator is the part
          of a presence feature that actually deserves the discomfort. -->
     <div class="sitem plain" id="sbCursor" hidden></div>
-    <div class="sitem plain optional" id="sbP2P">P2P idle</div>
+    <button class="sitem" id="sbP2P" type="button"
+            title="File transfers — click for the file settings">P2P idle</button>
     <div class="sspacer"></div>
-    <div class="sitem plain" id="sbTier">checking…</div>
-    <div class="sitem plain" id="sbLnCol">Ln 1, Col 1</div>
-    <div class="sitem plain" id="sbChars">0 / 50,000</div>
+    <div class="sitem plain optional" id="sbTier">checking…</div>
+    <div class="sitem plain optional" id="sbLnCol">Ln 1, Col 1</div>
+    <div class="sitem plain optional" id="sbChars">0 / 50,000</div>
     <div class="sitem plain optional">UTF-8</div>
     <div class="sitem plain optional">Plain Text</div>
+    <button class="sitem" id="sbGear" type="button" title="Settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path
+        d="M19.4 13.5a7.6 7.6 0 000-3l1.7-1.3-1.8-3.1-2 .8a7.6 7.6 0 00-2.6-1.5L14.4 3h-3.6l-.3 2.4a7.6
+           7.6 0 00-2.6 1.5l-2-.8-1.8 3.1L5.8 10.5a7.6 7.6 0 000 3l-1.7 1.3 1.8 3.1 2-.8a7.6 7.6 0
+           002.6 1.5l.3 2.4h3.6l.3-2.4a7.6 7.6 0 002.6-1.5l2 .8 1.8-3.1z"/></svg>
+    </button>
   </div>
 
   <!-- ============ phone tab bar ============
@@ -279,7 +261,7 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- Dialogs and overlays mount here (QR, file-accept prompts, about). -->
-<div id="mount-transport"></div>
+<div id="mount-menus"></div>
 <div id="mount-modals"></div>
 </body>
 </html>
