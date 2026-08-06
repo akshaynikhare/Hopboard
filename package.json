@@ -34,13 +34,14 @@
     "node": ">=22"
   },
   "scripts": {
-    "verify": "node tests/static-check.mjs && node tests/relay-url.mjs && node tests/lock.mjs && node tests/dialog.mjs && node tests/whatsnew.mjs && node tests/files.mjs && node tests/clipsize.mjs",
+    "verify": "node tests/static-check.mjs && node tests/relay-url.mjs && node tests/lock.mjs && node tests/dialog.mjs && node tests/whatsnew.mjs && node tests/files.mjs && node tests/tiles.mjs && node tests/clipsize.mjs",
     "test": "npm run verify && node tests/bundle.mjs && node tests/e2e.mjs && node tests/boot.mjs && node tests/boot.mjs --locked && node tests/fallback.mjs",
     "test:static": "node tests/static-check.mjs",
     "test:lock": "node tests/lock.mjs && node tests/dialog.mjs",
     "test:e2e": "node tests/e2e.mjs",
     "test:boot": "node tests/boot.mjs && node tests/boot.mjs --locked",
     "test:bundle": "node tests/bundle.mjs",
+    "test:tiles": "node tests/tiles.mjs",
     "test:fallback": "node tests/fallback.mjs",
     "build": "node tools/build.mjs",
     "build:site": "node tools/build.mjs _site && node tools/site-check.mjs _site",
@@ -61,5 +62,5 @@
     "husky": "^9.1.7",
     "jsdom": "^26.1.0"
   },
-  "comment": "esbuild is used ONLY by tools/build.mjs, which assembles the deploy — src/ stays plain ES modules on disk, so `npm run serve` still needs no build and the .husky checks still run against real modules. jsdom is needed by tests/boot.mjs and tests/bundle.mjs, which skip cleanly when it is absent. tests/fallback.mjs needs a relay on 127.0.0.1:8000 and skips cleanly without one. The app itself still ships with zero RUNTIME dependencies."
+  "comment": "esbuild is used ONLY by tools/build.mjs, which assembles the deploy — src/ stays plain ES modules on disk, so `npm run serve` still needs no build and the .husky checks still run against real modules. jsdom is needed by tests/boot.mjs, tests/bundle.mjs and tests/tiles.mjs, which skip cleanly when it is absent — tiles.mjs is in `verify` rather than `test` because it touches no network and no build, so it can guard every commit. tests/fallback.mjs needs a relay on 127.0.0.1:8000 and skips cleanly without one. The app itself still ships with zero RUNTIME dependencies."
 }

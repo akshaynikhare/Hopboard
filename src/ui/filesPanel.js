@@ -210,6 +210,40 @@ function mountClearAll() {
  * Tiles
  * ------------------------------------------------------------------ */
 
+/**
+ * Everything about a tile EXCEPT its progress number.
+ *
+ * The omission is the whole point. registry.setProgress() emits FILES_CHANGED
+ * next to FILE_PROGRESS, and a 5 MB file moves in 32 KB chunks, so one transfer
+ * rebuilt the whole grid up to 101 times — once per whole percent. That is the
+ * same fault tickCountdowns() below was split out to fix, and it costs the same
+ * three things, because the tile being destroyed is the one being watched:
+ *
+ *   - keyboard focus is dropped mid-transfer. A tile is role="button"
+ *     tabindex="0", so it genuinely holds focus.
+ *   - :hover resets, and :hover is what reveals the remove button
+ *     (styles/files.css), so it disappears from under the pointer.
+ *   - `transition:width .2s` on .bar never fires. A replacement element has no
+ *     previous width to animate from, so the bar has always jumped. That
+ *     transition has not run once since it was written.
+ *
+ * Anything listed here changing means the markup really differs, and the grid
+ * is rebuilt. A change in progress alone routes to tickProgress() instead.
+ */
+function shape(f) {
+  // Unit separator rather than "": "a" of size 12 and "a1" of size 2 must not
+  // collide, or a rename would silently fail to redraw.
+  return [f.id, f.state, f.origin, f.path, f.error, f.name, f.size, f.thumb ? 1 : 0]
+    .join("\u001f");
+}
+
+/**
+ * Grid structure currently on screen. null rather than "", so the first render
+ * draws even when the session opens with no files. Named for the grid because
+ * drawPrompts() keeps a `drawn` of its own, for precisely this reason.
+ */
+let drawnGrid = null;
+
 function render() {
   const items = registry.all();
   $("fileN").textContent = items.length;
@@ -218,6 +252,10 @@ function render() {
   // A "clear all" that clears nothing is a control that can only disappoint.
   const clearBtn = $("bClearFiles");
   if (clearBtn) clearBtn.hidden = items.length === 0;
+
+  const signature = items.map(shape).join("\u001e");
+  if (signature === drawnGrid) return tickProgress(items);
+  drawnGrid = signature;
 
   // role/tabindex rather than a <button>: a tile CONTAINS buttons (cancel,
   // remove), and a button inside a button is invalid and unpredictable in
@@ -238,6 +276,39 @@ function render() {
       </div>
       <div class="bar${f.path === "relay" ? " viarelay" : ""}" style="width:${f.progress}%"></div>
     </div>`).join(""));
+}
+
+/**
+ * The progress-only path: no element is created, replaced or removed, so focus,
+ * :hover and the .bar transition all survive.
+ *
+ * Deliberately narrow. Only .bar's width, and the badge and subtitle of a tile
+ * that is actively moving bytes, quote f.progress — everything else on a tile
+ * is fixed by shape(), so writing it here would at best be a no-op. Skipping
+ * every other state is not cosmetic either: an errored tile's .sz holds
+ * f.error, and subtitle() would overwrite that message with the file size.
+ */
+function tickProgress(items) {
+  const grid = $("grid");
+  if (!grid) return;
+
+  for (const f of items) {
+    const tile = grid.querySelector(`.tile[data-id="${CSS.escape(f.id)}"]`);
+    if (!tile) continue;
+
+    const bar = tile.querySelector(".bar");
+    if (bar) bar.style.width = `${f.progress}%`;
+
+    if (f.state !== S.SENDING && f.state !== S.RECEIVING) continue;
+
+    // textContent, not setHTML: these are numbers we just formatted, so there
+    // is no reason for a second HTML sink to exist in this file.
+    const badgeEl = tile.querySelector(".badge");
+    if (badgeEl) badgeEl.textContent = `${f.progress}%`;
+
+    const sz = tile.querySelector(".sz");
+    if (sz) sz.textContent = subtitle(f);
+  }
 }
 
 function tileClass(f) {
