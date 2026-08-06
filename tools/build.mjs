@@ -155,6 +155,53 @@ for (const name of lazyCss) {
   copyFileSync(join(ROOT, "src/styles", name), join(OUT, "src/styles", name));
 }
 
+/* ------------------------------------------------------ pretty URLs ----- */
+
+/**
+ * The app is served at `/app`. The FILE is still `app.html`; only the
+ * references to it change, and only here.
+ *
+ * `_redirects` maps `/app` onto it explicitly rather than leaning on the host
+ * default, so the mapping is stated in the repository instead of inherited
+ * from a setting no file records.
+ *
+ * !! Rewritten in the deploy and NEVER on disk. Three things depend on the
+ * source tree continuing to say `app.html`, and two of them fail silently:
+ *
+ *   1. desktop/src-tauri/tauri.conf.json sets `frontendDist: "../../"` — the
+ *      desktop app ships this repository tree itself, served over `tauri://`,
+ *      which does no extension stripping. Every `./app` link would 404 there,
+ *      and nothing in the web build would show it.
+ *   2. `python -m http.server` does not strip extensions either, so rewriting
+ *      the source breaks the no-build dev loop the repo is organised around
+ *      (docs/ARCHITECTURE.md §1).
+ *   3. tests/static-check.mjs §11 pins the sw.js SHELL to files that exist on
+ *      disk, and `./app` is not one. That check stays honest because the
+ *      source keeps saying `./app.html`; the deploy's SHELL is generated
+ *      below, from this list, and says `./app`.
+ *
+ * Anchored on a quote so it can only ever match a URL. `app.html` is discussed
+ * in prose in README.md and robots.txt, both copied verbatim into the deploy,
+ * and neither should be touched. Anchored on the closing `"`, `'` or `#` so a
+ * hash link — `./app.html#KEY`, which is how src/landing/landing.js hands over
+ * a session — survives with its fragment intact. !!
+ */
+const PRETTY = /(["'])((?:\.{1,2}\/)*|https:\/\/realtimeclipboard\.com\/)app\.html(?=[#"'])/g;
+
+let prettied = [];
+for (const f of walk(OUT)) {
+  if (!/\.(html|js|webmanifest)$/.test(f)) continue;
+  const before = readFileSync(f, "utf8");
+  const after = before.replace(PRETTY, "$1$2app");
+  if (after === before) continue;
+  writeFileSync(f, after);
+  prettied.push(rel(f));
+}
+// The landing page alone carries three of these links, so zero matches means
+// the pattern stopped matching rather than that there was nothing to do.
+if (!prettied.length) die("the /app rewrite matched nothing — the link format changed");
+console.log(`  pretty URLs: ${prettied.length} files now point at /app`);
+
 /* --------------------------------------------------- service worker ----- */
 
 /**
@@ -192,7 +239,10 @@ const commit = (process.env.CF_PAGES_COMMIT_SHA || process.env.GITHUB_SHA || "")
 const stamp = commit ? `${version}+${commit}` : "dev";
 
 const shell = [
-  "./", "./index.html", "./app.html", "./manifest.webmanifest",
+  // "./app", not "./app.html": the pretty-URL pass above made /app the address
+  // every link in the deploy uses, and precaching the path nobody navigates to
+  // would leave the app itself uncached offline.
+  "./", "./index.html", "./app", "./manifest.webmanifest",
   "./changelog.json", "./CHANGELOG.md",
   ...walk(join(OUT, "src")).filter(f => /\.(js|css)$/.test(f)).map(f => "./" + rel(f)).sort(),
   ...walk(join(OUT, "icons")).map(f => "./" + rel(f)).sort(),

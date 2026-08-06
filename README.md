@@ -119,7 +119,8 @@ clipboard on their own.
 
 ```
 index.html              marketing landing page (indexable)
-app.html                the app itself (noindex)
+app.html                the app itself (noindex) — served at /app; the .html is
+                        rewritten out by tools/build.mjs, in the deploy only
 src/
   main.js               composition root — wires modules together
   core/                 bus, config, state, crypto, storage
@@ -157,6 +158,10 @@ The relay must be on **port 8000**: `src/core/config.js` points the app there
 automatically when the page is served from localhost, so nothing needs
 configuring — but nothing else will be found either. Open `app.html#DEVKEY` in
 two windows to watch a clip cross between them.
+
+`app.html` here, not `/app`: the clean URL is a deploy-time rewrite in
+`tools/build.mjs`, and `python -m http.server` does not strip extensions. The
+same is true of the desktop app, which ships this tree as it stands.
 
 With the relay running, `node tests/fallback.mjs ws://127.0.0.1:8000` exercises
 the client's WebSocket → SSE failover with WebSockets simulated as blocked.

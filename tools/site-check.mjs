@@ -122,6 +122,47 @@ try {
   fail(`manifest.webmanifest is not valid JSON: ${e.message}`);
 }
 
+/* --------------------------------------------------------- /app URLs ---- */
+
+/**
+ * Every reference to the app points at /app, and /app resolves to something.
+ *
+ * tools/build.mjs rewrites `app.html` to `app` in the deploy only — the source
+ * tree keeps the `.html` because the Tauri desktop app ships it directly over
+ * a protocol that does no extension stripping. That split is exactly the kind
+ * of arrangement that works until someone adds a link in a form the rewrite's
+ * pattern does not match, and then ships a 404 that no test on disk can see.
+ *
+ * Checked as a pair on purpose. A surviving `app.html` link is a needless
+ * redirect hop at best; a missing `_redirects` rule is a site that does not
+ * load at all, and the two failures have the same cause — the rewrite silently
+ * not happening.
+ */
+const appLinks = htmlPages()
+  .concat(["manifest.webmanifest", "src/landing/landing.js", "src/landing/redirect.js"])
+  .filter(f => existsSync(join(OUT, f)))
+  .filter(f => /(["'])((?:\.{1,2}\/)*|https:\/\/realtimeclipboard\.com\/)app\.html(?=[#"'])/.test(read(f)));
+
+appLinks.length
+  ? appLinks.forEach(f => fail(`${f} still links to app.html — the /app rewrite missed it`))
+  : pass("every reference to the app uses /app");
+
+/^\/app\s+\/app\.html\s+200\s*$/m.test(read("_redirects"))
+  ? pass("_redirects maps /app onto app.html")
+  : fail("_redirects has no `/app  /app.html  200` rule — /app would not resolve");
+
+// The slash is not cosmetic: src/core/paths.js resolves APP_ROOT with
+// `new URL(".", document.baseURI)`, so /app/ would move sw.js, the manifest
+// and every lazy stylesheet a directory down. PRD OI-9, again.
+/^\/app\/\s/m.test(read("_redirects"))
+  ? fail("_redirects maps /app/ with a trailing slash — that moves APP_ROOT to /app/")
+  : pass("/app is mapped without a trailing slash");
+
+const swShell = read("sw.js").match(/const SHELL = \[(.*?)\n\];/s)?.[1] ?? "";
+swShell.includes('"./app"')
+  ? pass("the service worker precaches ./app")
+  : fail("sw.js SHELL does not precache ./app — the app would not work offline");
+
 /* ------------------------------------------------------------ noindex --- */
 
 /**

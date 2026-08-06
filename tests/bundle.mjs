@@ -77,9 +77,23 @@ check("every chunk resolves", dangling.length === 0, dangling.join("; "));
 const sw = read("sw.js");
 const shell = [...(sw.match(/const SHELL = \[([\s\S]*?)\n\];/)?.[1] ?? "")
   .matchAll(/"\.\/([^"]*)"/g)].map(m => m[1]).filter(Boolean);
-const missing = shell.filter(p => !has(p));
+/**
+ * A SHELL entry is a URL, and one of them is not a filename.
+ *
+ * The app is precached as `./app`, which the host serves from `app.html` — the
+ * `_redirects` rewrite that tools/build.mjs's pretty-URL pass is built around.
+ * Resolving the literal path first and the `.html` form second is exactly the
+ * order the host resolves them in, so this stays true if a future entry is
+ * extensionless too, and still catches a genuinely dangling path.
+ */
+const servedBy = p => has(p) ? p : has(`${p}.html`) ? `${p}.html` : null;
+
+const missing = shell.filter(p => !servedBy(p));
 check(`precache list is complete (${shell.length} entries)`, missing.length === 0,
   missing.join(", "));
+check("the app is precached at its served URL",
+  shell.includes("app") && servedBy("app") === "app.html",
+  `./app -> ${servedBy("app")}`);
 check("service worker VERSION was stamped",
   !/const VERSION = "";/.test(sw) && /const VERSION = ".+";/.test(sw),
   sw.match(/const VERSION = "(.*?)";/)?.[1]);
@@ -114,8 +128,22 @@ catch {
   done();
 }
 
+/**
+ * Booted at `/app`, which is the URL the deploy actually serves — not at the
+ * `app.html` the file is still called.
+ *
+ * The distinction is the whole of PRD OI-9 restated. core/paths.js derives
+ * APP_ROOT from `new URL(".", document.baseURI)`, so the address the page was
+ * fetched from — not where the file sits — decides where the app looks for
+ * sw.js, the manifest and every lazily-loaded stylesheet. `/app` resolves it to
+ * `/`, which is right. `/app/` would resolve it to `/app/` and move all of them
+ * a directory down, and nothing would throw: the app would boot, register no
+ * service worker, fail the PWA install criteria, and render a QR panel with no
+ * styles. Testing against `app.html` would never see it, because that resolves
+ * to `/` too.
+ */
 const dom = new JSDOM(read("app.html"), {
-  url: "https://realtimeclipboard.com/app.html#BUNDLE",
+  url: "https://realtimeclipboard.com/app#BUNDLE",
   pretendToBeVisual: true,
 });
 const { window } = dom;
@@ -210,6 +238,19 @@ check("no errors during boot", errors.length === 0,
 const notLoaded = log.filter(([, m]) => m.includes("not loaded"));
 check("no optional feature failed to load", notLoaded.length === 0,
   notLoaded.map(([, m]) => m.slice(0, 160)).join(" | "));
+
+/* Served from /app, the app root is still the site root — asserted against the
+   module the whole codebase resolves its assets through, rather than inferred
+   from the URL above. This is the one assertion that would fail if /app ever
+   gained a trailing slash. */
+const paths = await import(pathToFileURL(join(REPO, "src/core/paths.js")).href);
+check("APP_ROOT resolves to the site root when served at /app",
+  paths.APP_ROOT.href === "https://realtimeclipboard.com/",
+  paths.APP_ROOT.href);
+check("assets beside the app resolve to the root, not under /app",
+  paths.atRoot("sw.js") === "https://realtimeclipboard.com/sw.js"
+    && paths.styleHref("qr.css") === "https://realtimeclipboard.com/src/styles/qr.css",
+  `${paths.atRoot("sw.js")} | ${paths.styleHref("qr.css")}`);
 
 done();
 
