@@ -44,3 +44,7 @@ dist/
 
 # npm pack output
 *.tgz
+
+# Rust build output (desktop/src-tauri/target). Gigabytes of intermediate
+# artifacts; Cargo.lock is what makes the build reproducible instead.
+target/

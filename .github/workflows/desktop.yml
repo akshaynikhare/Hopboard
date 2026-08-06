@@ -1,0 +1,79 @@
+name: Desktop build
+
+# Does the desktop app compile?
+#
+# Separate from release.yml on purpose. That one signs, bundles and publishes,
+# and only runs on a tag — which makes a tag the first moment anyone finds out
+# the Rust does not build. This answers the same question in five minutes, on
+# every platform, without producing anything anyone could install by accident.
+#
+# It matters more than usual here because the shell was written before a Rust
+# toolchain was available to check it, so the first green run of this workflow
+# is the first evidence that desktop/ is real rather than plausible.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "desktop/**"
+      - ".github/workflows/desktop.yml"
+  pull_request:
+    paths:
+      - "desktop/**"
+
+# A second push supersedes the first: nobody needs the compile result for a
+# commit that has already been replaced.
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false          # one platform's failure must not hide the others
+      matrix:
+        include:
+          - os: windows-latest
+            label: Windows
+          - os: macos-latest
+            label: macOS
+          - os: ubuntu-22.04
+            # 22.04, not latest: the oldest runner carrying webkit2gtk 4.1, which
+            # is the floor declared in Cargo.toml and on the download page.
+            # Building on a newer image silently raises the glibc requirement and
+            # the binary then refuses to start on the distributions we claim.
+            label: Linux
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Linux build dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev \
+                                  librsvg2-dev patchelf libssl-dev
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      # cargo build rather than a full `tauri build`: it exercises every line of
+      # Rust and the link step, which is where the unknowns are, without paying
+      # for bundling, code signing or a DMG. release.yml does the bundling once
+      # this is known to be green.
+      - name: Compile
+        working-directory: desktop/src-tauri
+        run: cargo build --locked --verbose
+
+      # Warnings are not failures here. The scaffold is new and a pedantic gate
+      # on day one would mean fixing style before it has ever run.
+      - name: Clippy (advisory)
+        working-directory: desktop/src-tauri
+        continue-on-error: true
+        run: |
+          rustup component add clippy
+          cargo clippy -- -W clippy::all
