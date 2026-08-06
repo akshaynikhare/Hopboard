@@ -13,16 +13,19 @@
  */
 
 import { emit, EV } from "../core/bus.js";
-import { $, esc } from "./dom.js";
+import { $, esc, setHTML, scriptURL } from "./dom.js";
 import { fromUrl, isValid, fragment } from "../core/keys.js";
 import { loadLastKey, read, write } from "../core/storage.js";
+import { APP_ROOT, atRoot, styleHref } from "../core/paths.js";
 
-/* URLs are resolved against this module's own location rather than the
-   document's, so they survive being loaded from any page in the app. */
-const APP_ROOT = new URL("../../", import.meta.url);   // .../Hopboard/
-const SW_URL = new URL("sw.js", APP_ROOT);
-const MANIFEST_URL = new URL("manifest.webmanifest", APP_ROOT);
-const CSS_URL = new URL("../styles/install.css", import.meta.url);
+/* Resolved through core/paths.js rather than from this module's own location.
+   These three URLs are the reason that file exists: computing them from
+   `import.meta.url` encoded how deep THIS file sits in the tree, so bundling
+   src/ui/*.js into src/main.js moved the app root up a level and pointed the
+   service-worker scope at the Pages root — PRD OI-9, silently, with no error. */
+const SW_URL = atRoot("sw.js");
+const MANIFEST_URL = atRoot("manifest.webmanifest");
+const CSS_URL = styleHref("install.css");
 
 const DISMISSED = "installDismissed";
 
@@ -80,7 +83,7 @@ function linkStylesheet() {
 
   const link = document.createElement("link");
   link.rel = "stylesheet";
-  link.href = CSS_URL.href;
+  link.href = CSS_URL;
   link.dataset.pwaCss = "";
   document.head.appendChild(link);
 }
@@ -89,7 +92,7 @@ function linkManifest() {
   if (document.querySelector('link[rel="manifest"]')) return;
   const link = document.createElement("link");
   link.rel = "manifest";
-  link.href = MANIFEST_URL.href;
+  link.href = MANIFEST_URL;
   document.head.appendChild(link);
 }
 
@@ -117,12 +120,11 @@ function banner({ id, kind, icon, message, action, onAction, onClose }) {
   el.id = id;
   el.className = `pwa ${kind}`;
   el.setAttribute("role", "status");
-  el.innerHTML =
-    `<svg class="pwa-ico" viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>` +
+  setHTML(el, `<svg class="pwa-ico" viewBox="0 0 24 24" aria-hidden="true">${icon}</svg>` +
     `<span class="pwa-msg">${esc(message)}</span>` +
     `<button class="btn" type="button" data-act>${esc(action)}</button>` +
     `<button class="ibtn pwa-x" type="button" aria-label="Dismiss">` +
-    `<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`;
+    `<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`);
 
   el.querySelector("[data-act]").addEventListener("click", onAction);
   el.querySelector(".pwa-x").addEventListener("click", () => {
@@ -187,7 +189,7 @@ async function registerSW() {
   try {
     // Relative script URL and relative scope: on Pages this registers
     // /Hopboard/sw.js scoped to /Hopboard/, and an absolute "/sw.js" would 404.
-    reg = await navigator.serviceWorker.register(SW_URL, { scope: APP_ROOT.href });
+    reg = await navigator.serviceWorker.register(scriptURL(SW_URL), { scope: APP_ROOT.href });
   } catch (err) {
     // No offline shell, but the app still works. Not worth a toast.
     console.warn("[pwa] service worker registration failed", err);
@@ -278,5 +280,49 @@ export function init() {
   window.matchMedia?.("(display-mode: standalone)")
     .addEventListener?.("change", event => { if (event.matches) drop("pwaInstall"); });
 
+  showDesktop();
   registerSW();
+}
+
+const DESKTOP_DISMISSED = "desktopDismissed";
+
+/**
+ * Offer the desktop app, from inside the browser version.
+ *
+ * The best place in the entire product to say this, because of WHEN it is
+ * being read. The person looking at this window has just switched to it to
+ * make a copy arrive — that switch is the browser's one unavoidable limitation
+ * (docs/CLIPBOARD-FLOW.md §5), and it is the exact thing the desktop app
+ * removes. Anywhere else, this is an advert; here it is an answer.
+ *
+ * Three things it must never do:
+ *   - appear inside the desktop app itself, which is what `__TAURI__` rules out;
+ *   - appear on a phone, where a native app could not watch the clipboard
+ *     either and the claim would simply be false;
+ *   - come back after it has been dismissed.
+ */
+function showDesktop() {
+  if (globalThis.__TAURI__) return;                    // already the real thing
+  if (read(DESKTOP_DISMISSED, false)) return;
+
+  // Coarse on purpose: this only decides whether a sentence is true. A pointer
+  // that can hover is a mouse, which is a desktop, which is a platform where
+  // background capture is actually possible.
+  const desktop = window.matchMedia?.("(hover: hover) and (pointer: fine)").matches
+    && !/android|iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (!desktop) return;
+
+  banner({
+    id: "pwaDesktop",
+    kind: "info",
+    icon: ICON.install,
+    message: "There is a desktop app. It picks up what you copy without you switching here.",
+    action: "See it",
+    onAction: () => {
+      drop("pwaDesktop");
+      write(DESKTOP_DISMISSED, true);        // they have seen it; do not re-ask
+      window.open(atRoot("download/"), "_blank", "noopener");
+    },
+    onClose: () => write(DESKTOP_DISMISSED, true),
+  });
 }

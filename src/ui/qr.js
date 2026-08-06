@@ -26,7 +26,8 @@
  */
 
 import { emit, on, EV } from "../core/bus.js";
-import { $, esc, on as bind } from "./dom.js";
+import { $, esc, on as bind, setHTML } from "./dom.js";
+import { styleHref } from "../core/paths.js";
 
 /* ════════════════════════════════════════════════════════════ spec tables ══ */
 
@@ -418,7 +419,7 @@ export const _tables = { EC_M, TOTAL_CODEWORDS, ALIGN_POS, MAX_VERSION, dataCode
 
 /* ═══════════════════════════════════════════════════════════════ the UI ══ */
 
-const STYLE_HREF = new URL("../styles/qr.css", import.meta.url).href;
+const STYLE_HREF = styleHref("qr.css");
 
 function ensureStyles() {
   if (document.querySelector('link[data-hb-style="qr"]')) return;
@@ -502,7 +503,7 @@ export function showQr(text, note = DEFAULT_NOTE) {
 
   const el = document.createElement("div");
   el.className = "qrmodal";
-  el.innerHTML = `
+  setHTML(el, `
     <div class="qrback" data-close></div>
     <div class="qrdlg" role="dialog" aria-modal="true" tabindex="-1"
          aria-labelledby="qrTitle" aria-describedby="qrNote">
@@ -518,7 +519,7 @@ export function showQr(text, note = DEFAULT_NOTE) {
         <div class="qrlink" tabindex="0">${esc(payload)}</div>
         <div class="qrnote" id="qrNote">${esc(note)}</div>
       </div>
-    </div>`;
+    </div>`);
 
   host.appendChild(el);
 

@@ -13,7 +13,7 @@
 
 import { on, EV } from "../core/bus.js";
 import * as state from "../core/state.js";
-import { $, esc } from "./dom.js";
+import { $, esc, setHTML } from "./dom.js";
 
 const FADE_AFTER_MS = 14000;
 
@@ -32,12 +32,12 @@ export function init() {
   const editor = $("editor");
   if (!host || !editor) return;
 
-  host.innerHTML = `
+  setHTML(host, `
     <div class="hints" id="hintBox">
       <ol>
         ${HINTS.map(h => `<li>${esc(h)}</li>`).join("")}
       </ol>
-    </div>`;
+    </div>`);
   node = $("hintBox");
 
   // Any input hides them at once — someone typing has stopped reading.

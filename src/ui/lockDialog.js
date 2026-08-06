@@ -26,11 +26,12 @@ import { LOCK } from "../core/config.js";
 import { pinEntropyBits } from "../core/keys.js";
 import * as modal from "./modal.js";
 import { esc } from "./dom.js";
+import { styleHref } from "../core/paths.js";
 
 /* Loaded on first use rather than from main.css: the dialog is rare and its
    stylesheet is dead weight on every session that never locks. Resolved against
    this module so it survives being served from a subpath. */
-const STYLE_HREF = new URL("../styles/lock.css", import.meta.url).href;
+const STYLE_HREF = styleHref("lock.css");
 
 function ensureStyles() {
   if (document.querySelector('link[data-hb-style="lock"]')) return;

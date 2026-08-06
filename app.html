@@ -3,6 +3,45 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Content Security Policy. A second line of defence behind ui/dom.js `esc()`,
+     which is the only thing standing between peer-controlled clip content and
+     innerHTML (docs/ARCHITECTURE.md §5). esc() is a convention; this is a rule
+     the browser enforces.
+
+     Delivered as <meta> because GitHub Pages cannot set response headers. That
+     costs `frame-ancestors`, `report-uri` and `sandbox`, which a meta policy
+     may not express — so there is NO clickjacking protection here, and there
+     cannot be until the site moves behind a host that can send headers
+     (docs/SEO.md §7 recommends that move on independent grounds).
+
+     Notes on the individual directives:
+       default-src 'self'  covers script-src and style-src. There is exactly
+                           one script origin and no inline script anywhere:
+                           the landing page's fragment redirect moved out to
+                           src/landing/redirect.js so this could hold with no
+                           hash and no 'unsafe-inline'.
+       img-src   data:     files/thumbs.js canvas thumbnails
+                 blob:     files/registry.js object URLs for received files
+       connect-src         the relay, both ways in — wss:// for the WebSocket
+                           and https:// for the SSE+POST fallback and /stats.
+                           127.0.0.1:8000 is the local dev relay; leaving it
+                           in costs nothing, since script-src already stops
+                           injected code from being here to use it.
+       form-action 'self'  #keyForm on the landing page is handled in JS. If
+                           that ever fails, a plain submit to the same page is
+                           harmless; anywhere else would not be.
+
+     !! WebRTC is NOT governed by connect-src. The STUN server in
+     files/transfer.js is unaffected by this policy in any current browser. !!
+
+     !! Self-hosting: change the relay origins below to match your own, or the
+     app will load and every connection will be refused. That the origin is
+     pinned here is deliberate — a corporate build that can physically reach
+     only its own relay is a feature, not an oversight. tests/static-check.mjs
+     asserts this list agrees with RELAY_URL in src/core/config.js. !! -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://hopboard.fastapicloud.dev wss://hopboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types hopboard">
+
 <title>Hopboard</title>
 <meta name="theme-color" content="#007acc">
 

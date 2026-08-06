@@ -17,7 +17,7 @@
  */
 
 import { LINKS } from "../core/config.js";
-import { $, esc } from "./dom.js";
+import { $, esc, setHTML } from "./dom.js";
 
 /**
  * Each icon is a single path set, drawn on the same 24-grid and stroke weight
@@ -62,7 +62,7 @@ export function init() {
   // rel is spelled out even though target=_blank implies noopener in current
   // browsers — the page is also meta referrer=no-referrer, so no URL carrying a
   // session key travels with the click.
-  host.innerHTML = `
+  setHTML(host, `
     <nav class="applinks" aria-label="Project links">
       ${ITEMS.map(i => `
         <a class="alink${i.cls ? ` ${esc(i.cls)}` : ""}" id="${esc(i.id)}"
@@ -71,5 +71,5 @@ export function init() {
           <svg viewBox="0 0 24 24" aria-hidden="true">${i.icon}</svg>
           <span class="lbl">${esc(i.label)}</span>
         </a>`).join("")}
-    </nav>`;
+    </nav>`);
 }

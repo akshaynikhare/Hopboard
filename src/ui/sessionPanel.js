@@ -21,7 +21,9 @@
  * they are shown.
  */
 
-import { POLL_OPTIONS, SYNC_MODES } from "../core/config.js";
+import {
+  POLL_OPTIONS, SYNC_MODES, RELAY_URL, DEFAULT_RELAY_URL, RELAY_IS_CUSTOM,
+} from "../core/config.js";
 import { emit, on, EV } from "../core/bus.js";
 import * as state from "../core/state.js";
 import * as keys from "../core/keys.js";
@@ -128,6 +130,8 @@ function onMenuEvent(e, close) {
   if (action === "repin")  { close(); return emit("session:repin"); }
   if (action === "whatsnew") { close(); return emit("ui:whatsnew"); }
   if (action === "qr")     { close(); return showQr(); }
+  if (action === "relay")       { close(); return changeRelay(); }
+  if (action === "relay-reset") { close(); return changeRelay(true); }
 }
 
 /**
@@ -239,10 +243,75 @@ function gearMenu() {
     + lockRows()
     + group("Presence")
     + swRow("cursors", "Show other cursors", "See where the other devices are pointing")
+    + group("Relay")
+    + relayRows()
     + group("About")
     + `<div class="sacts">
          <button class="btn ghost" type="button" data-act="whatsnew" data-mi="whatsnew">What's new</button>
        </div>`;
+}
+
+/**
+ * Which relay this device talks to.
+ *
+ * Here rather than buried in a config file because the whole point of a
+ * self-hostable relay is that somebody other than the author can choose it —
+ * and a setting you have to rebuild the app to change is not a setting.
+ *
+ * Text, not a switch: the value is an address, and there is no meaningful
+ * "default vs other" toggle when "other" needs typing. The host is shown rather
+ * than the full URL because the scheme is derived and the path is fixed.
+ */
+function relayRows() {
+  const host = RELAY_URL.replace(/^wss?:\/\//, "");
+  return `<div class="srow plain">
+      <div class="l"><b>${esc(host)}</b><span>${RELAY_IS_CUSTOM
+        ? "Self-hosted. Clipboard contents are encrypted before they are sent, "
+          + "whichever relay carries them."
+        : "The default relay. It only ever sees a room hash and ciphertext."}</span></div>
+    </div>
+    <div class="sacts">
+      <button class="btn ghost" type="button" data-act="relay" data-mi="relay">Change relay</button>
+      ${RELAY_IS_CUSTOM
+        ? `<button class="btn ghost" type="button" data-act="relay-reset" data-mi="relay-reset">Use default</button>`
+        : ""}
+    </div>`;
+}
+
+/**
+ * A prompt() rather than a field, deliberately.
+ *
+ * Changing the relay cannot take effect in place: RELAY_URL is resolved once at
+ * module evaluation, and every open socket, the room the app is in and the
+ * transport's own failover state were all built against the old one. Reloading
+ * is the honest implementation of "change relay", and a modal that ends in a
+ * reload does not need to be prettier than the browser's.
+ */
+function changeRelay(reset = false) {
+  if (reset) {
+    storage.saveRelayUrl(null);
+    location.reload();
+    return;
+  }
+
+  const raw = prompt(
+    "Relay address\n\n"
+    + "The server that carries encrypted clips between your devices. Leave blank "
+    + "to use the default.\n\n"
+    + `Default: ${DEFAULT_RELAY_URL.replace(/^wss?:\/\//, "")}`,
+    RELAY_URL.replace(/^wss?:\/\//, ""),
+  );
+  if (raw === null) return;                       // cancelled
+
+  const trimmed = raw.trim();
+  if (!trimmed) { storage.saveRelayUrl(null); location.reload(); return; }
+
+  // Bare hosts are what people paste, so assume the secure scheme rather than
+  // rejecting them. saveRelayUrl normalises and returns null if it is not a
+  // usable address at all.
+  const saved = storage.saveRelayUrl(/^[a-z]+:\/\//i.test(trimmed) ? trimmed : `wss://${trimmed}`);
+  if (!saved) { emit(EV.TOAST, "That is not a usable relay address"); return; }
+  location.reload();
 }
 
 /**
