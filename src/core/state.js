@@ -30,7 +30,6 @@ const state = {
     images: true,
     cursors: true,
     poll: "1s",
-    direction: "Both",
   },
 };
 
@@ -48,10 +47,40 @@ export function setConnection(connection, detail = "") {
   emit(EV.CONN_STATE, { state: connection, detail });
 }
 
+/**
+ * Peer roster.
+ *
+ * Diffed rather than just counted, so arrivals can be announced. The key is a
+ * bearer credential — a device appearing is the one observable moment that
+ * tells you someone else has it, and a count quietly going 2 → 3 is not
+ * something anyone notices.
+ *
+ * The first roster after connecting is not announced: those devices were
+ * already there, and greeting them as arrivals would cry wolf on every reload.
+ */
+let roster = null;
+
 export function setPeers(count, list = []) {
   state.peers = count;
+
+  if (roster === null) {
+    roster = new Map(list.map(p => [p.peerId, p.name]));
+  } else {
+    const now = new Map(list.map(p => [p.peerId, p.name]));
+    for (const [id, name] of now) {
+      if (!roster.has(id) && id !== state.peerId) emit(EV.PEER_JOINED, { name, id });
+    }
+    for (const [id, name] of roster) {
+      if (!now.has(id)) emit(EV.PEER_LEFT, { name, id });
+    }
+    roster = now;
+  }
+
   emit(EV.PEERS_CHANGED, { count, list });
 }
+
+/** Forget the roster so a reconnect does not report everyone as newly arrived. */
+export function resetRoster() { roster = null; }
 
 /**
  * The relay keeps rooms in process memory, so a changed instance id means we

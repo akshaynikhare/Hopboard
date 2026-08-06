@@ -32,7 +32,11 @@ jobs:
           set -euo pipefail          # no silent partial copies
           mkdir -p _site
           cp index.html app.html manifest.webmanifest sw.js robots.txt sitemap.xml README.md _site/
-          cp -r src icons docs _site/
+          # social/ holds the Open Graph card. It lives outside icons/ on
+          # purpose: icons/ is the PWA icon set and every file in it is
+          # precached by the service worker, and a share card that only
+          # crawlers ever fetch has no business in a user's offline cache.
+          cp -r src icons docs social _site/
           # Pages runs Jekyll by default, which ignores files starting with _.
           touch _site/.nojekyll
 
@@ -59,7 +63,8 @@ jobs:
                    robots.txt sitemap.xml \
                    src/main.js src/styles/main.css src/ui/install.js \
                    icons/icon-192.png icons/icon-512.png \
-                   icons/maskable-192.png icons/maskable-512.png; do
+                   icons/maskable-192.png icons/maskable-512.png \
+                   social/og-card.png; do
             test -f "_site/$f" || { echo "::error::missing $f"; exit 1; }
           done
           python3 -c "import json;json.load(open('_site/manifest.webmanifest'))"

@@ -521,6 +521,69 @@ h3 {
 }
 .globewrap figcaption { text-align:center; margin-top:10px; }
 
+/* ------------------------------------------------------------ comparison --
+   The table is wide by nature, so the SCROLLER is the wrapper, never the page.
+   overflow-x on .tablewrap plus a min-width on the table means the table keeps
+   its columns legible and slides under the finger, while <body> stays put. */
+
+.tablewrap {
+  overflow-x:auto;
+  margin-bottom:clamp(20px,3vw,30px);
+  border:1px solid var(--rule2);
+  background:var(--panel);
+  /* Tells a trackpad user there is more to the right before they try. */
+  overscroll-behavior-x:contain;
+}
+
+.cmp {
+  border-collapse:collapse;
+  width:100%;
+  min-width:760px;
+  font-size:13.5px;
+  line-height:1.5;
+}
+.cmp th, .cmp td {
+  padding:11px 14px;
+  text-align:left;
+  vertical-align:top;
+  border-bottom:1px solid var(--rule);
+  color:var(--dim);
+}
+.cmp thead th {
+  position:sticky;
+  top:0;
+  background:var(--sunk);
+  color:var(--bright);
+  font:11.5px/1.4 var(--mono);
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  white-space:nowrap;
+  border-bottom:1px solid var(--rule2);
+}
+.cmp tbody th { color:var(--text); font-weight:650; white-space:nowrap; }
+.cmp tbody tr:last-child th, .cmp tbody tr:last-child td { border-bottom:0; }
+
+/* Hopboard's own row. Marked with the accent rather than a "best" badge — the
+   table should still read as a comparison, not a scoreboard. */
+.cmp tr.me th, .cmp tr.me td { background:var(--sunk); color:var(--text); }
+.cmp tr.me th { color:var(--bright); box-shadow:inset 3px 0 0 var(--blue); }
+
+.cmp .y { color:var(--ok); }
+.cmp .n { color:var(--warn); }
+
+/* ------------------------------------------------------------------- faq --
+   Questions are h3 so they sit under the section's h2, and each answer is one
+   paragraph — the shape a snippet or an AI answer lifts cleanly. */
+
+.faq { max-width:74ch; }
+.faq h3 {
+  margin-top:clamp(26px,3.4vw,38px);
+  margin-bottom:8px;
+  font-size:clamp(16px,1.7vw,18px);
+}
+.faq h3:first-child { margin-top:0; }
+.faq p { color:var(--dim); font-size:14.5px; }
+
 /* ----------------------------------------------------------------- honest */
 
 .honest {
@@ -608,6 +671,9 @@ footer a:hover { color:var(--link); }
   .stats { gap:18px 30px; }
   .topbar .row { height:52px; gap:9px; }
   .tag { display:none; }
+  /* The sticky header needs a scroll container with a height to stick inside;
+     on a phone it just eats a row of screen, so drop it. */
+  .cmp thead th { position:static; }
 }
 
 /* Fine for a phone in landscape, but a 44px-tall dotted path is not worth the

@@ -19,8 +19,13 @@
      party a user's clipboard content might reference. -->
 <meta name="referrer" content="no-referrer">
 
-<!-- Anything crawled here should be credited to the public page, not this one. -->
-<link rel="canonical" href="https://akshaynikhare.github.io/Hopboard/">
+<!-- Self-referential, NOT pointing at the landing page.
+     noindex and a cross-URL canonical are contradictory instructions: one says
+     "drop this URL", the other says "fold it into that one". Google resolves
+     the conflict unpredictably, and the version that loses can end up dropping
+     the landing page instead. The noindex above is what we actually want, so
+     the canonical must not argue with it. -->
+<link rel="canonical" href="https://akshaynikhare.github.io/Hopboard/app.html">
 <!-- Static rather than injected by install.js: Chrome evaluates install
      criteria earlier this way, so beforeinstallprompt fires sooner. -->
 <link rel="manifest" href="./manifest.webmanifest">
@@ -90,6 +95,10 @@
           <div id="mount-hints" aria-hidden="true"></div>
         </div>
       </div>
+
+      <!-- The single ad slot. Below the editor, never beside the file or
+           session controls — see src/ui/ads.js for why. -->
+      <div id="mount-ad"></div>
     </main>
 
     <!-- Drag to widen or narrow the sidebar. -->
@@ -193,6 +202,12 @@
           <div class="row">
             <div class="l"><b>Send previews</b><span>Thumbnails travel automatically, before anyone asks</span></div>
             <button class="sw" role="switch" aria-checked="true" data-k="thumbs" aria-label="Send previews"></button>
+          </div>
+
+          <div class="grp">Security</div>
+          <div class="row">
+            <div class="l"><b>Longer keys</b><span id="keyBits">6 characters · ~29 bits</span></div>
+            <button class="sw" role="switch" aria-checked="false" data-k="longKeys" aria-label="Use longer keys"></button>
           </div>
 
           <div class="grp">Presence</div>

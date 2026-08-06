@@ -17,7 +17,12 @@
   position:absolute;
   inset:auto 16px 14px 0;
   pointer-events:none;          /* never intercept a click meant for the editor */
-  opacity:.45;
+  /* Was .45, which put the text at 1.94:1 — faint to the point of being
+     unreadable rather than unobtrusive. These are instructions, and a first-run
+     user with any visual impairment could not read them at all. .72 keeps them
+     clearly secondary while staying legible (4.83:1); they still fade to nothing
+     after 14 s and on the first keystroke. */
+  opacity:.78;
   transition:opacity 1.1s ease;
 }
 .hints.gone { opacity:0; }

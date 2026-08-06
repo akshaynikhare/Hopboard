@@ -1,0 +1,60 @@
+/* The ad slot below the editor. Quiet by construction: it borrows the editor's
+   background, states what it is, and never competes with the text above it. */
+
+.adslot {
+  flex:none;                    /* the editor absorbs the leftover height */
+  padding:10px 16px 12px 56px;  /* 56px lines the slot up with the editor text,
+                                   past the gutter */
+  border-top:1px solid var(--bd);
+  background:var(--editor);
+}
+
+.adslot-tag {
+  margin-bottom:6px;
+  color:var(--dim);
+  font:10px/1 var(--ui-font);
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  opacity:.7;
+}
+
+/* Dashed while it is a placeholder — a solid box reads as a broken ad. The
+   height is reserved now so nothing below it moves when a real unit loads. */
+.adslot-box {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:90px;
+  border:1px dashed var(--bd2);
+  border-radius:2px;
+}
+
+.adslot-ph {
+  color:var(--dim);
+  font:11px/1 var(--mono);
+  opacity:.55;
+}
+
+/* Deliberately at the bottom of the visual hierarchy: this is an explanation
+   for anyone who wonders, not a pitch. */
+.adslot-note {
+  max-width:78ch;
+  margin:7px 0 0;
+  color:var(--dim);
+  font:10.5px/1.5 var(--ui-font);
+  opacity:.62;
+}
+
+/* Stacked layout: no gutter to clear, and a mobile banner rather than a
+   leaderboard. */
+@media (max-width:900px) {
+  .adslot { padding:10px 14px 12px; }
+  .adslot-box { height:100px; }
+}
+
+/* On a short viewport the editor is the scarce thing. The slot shrinks to a
+   mobile banner and the explanation drops out — it is on the landing page too. */
+@media (max-height:620px) {
+  .adslot-box { height:60px; }
+  .adslot-note { display:none; }
+}

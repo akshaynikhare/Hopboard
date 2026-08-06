@@ -180,7 +180,10 @@ network, where TLS-inspecting proxies commonly reap idle connections at 60–120
 ## 6. Additional verification
 
 **Room-hash derivation is correct.** The browser derives the room name as
-`SHA-256("liveclip:" + KEY)` truncated to 16 bytes. Verified against an
+`SHA-256("liveclip:" + KEY)` truncated to 16 bytes. **The prefix was later
+renamed to `"hopboard:"` when the product was named, so the hashes below no
+longer reproduce against the shipped code — they are kept as the record of
+what was actually verified at M0.** Verified against an
 independent Python implementation:
 
 ```

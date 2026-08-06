@@ -59,6 +59,22 @@ function horizontal() {
   const files = $("paneFiles");
   if (!handle || !files) return;
 
+  // Its sibling splitter handles arrows and this one did not, so it took focus
+  // and then ignored every key — a tab stop that does nothing. It is also the
+  // only way to resize without dragging (WCAG 2.5.7).
+  handle.addEventListener("keydown", e => {
+    if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+    e.preventDefault();
+    const step = e.shiftKey ? 40 : 12;
+    const available = $("side").getBoundingClientRect().height;
+    const current = files.getBoundingClientRect().height;
+    const height = clamp(current + (e.key === "ArrowDown" ? step : -step),
+                         FILES_PANE.min, available * FILES_PANE.max);
+    files.style.flex = "none";
+    files.style.height = `${height}px`;
+    write(FILES_PANE.key, Math.round(height));
+  });
+
   drag(handle, {
     start: () => files.getBoundingClientRect().height,
     move: (startHeight, _dx, dy) => {

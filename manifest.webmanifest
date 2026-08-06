@@ -1,7 +1,7 @@
 {
   "name": "Hopboard",
   "short_name": "Hopboard",
-  "description": "Share clipboard text and files between your machines with a short key. No account, end-to-end encrypted, files sent peer-to-peer.",
+  "description": "Online clipboard that syncs text between your devices with a five-character key. No account, end-to-end encrypted, files sent peer-to-peer.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "./app.html",

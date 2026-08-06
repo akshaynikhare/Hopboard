@@ -96,6 +96,134 @@ ok("oversize file rejected", res.added === 0 && res.rejected.length === 1,
    res.rejected[0]?.reason ?? "");
 ok("and nothing was announced for it", sent.length === 0);
 
+/* ==================================================================== *
+ * Removal
+ *
+ * The other half of the same hole: adding a file worked and removing one was
+ * unreachable. registry.remove() and registry.clear() existed, were correct as
+ * far as they went, and were called from nothing — so the list only ever grew,
+ * up to twenty 5 MB Blobs pinned in a tab with no way to get any of it back.
+ *
+ * Both collaborators are injected here rather than mocked at module level,
+ * because that is exactly how the app wires them: filesPanel hands the registry
+ * transfer.cancel, and main.js hands it the same encrypt-and-send closure it
+ * gives transfer.js.
+ * ==================================================================== */
+
+registry.setSignalSender(frame => { sent.push(frame); return true; });
+
+/** Records what was cancelled, and whether the file was still listed at the
+ *  time — transfer.cancel() reads the name back out of the registry to tell the
+ *  user what stopped, so order is part of the contract, not an implementation
+ *  detail. */
+const cancelled = [];
+registry.setCanceller((id, reason) => {
+  cancelled.push({ id, reason, stillListed: Boolean(registry.get(id)) });
+  return true;
+});
+
+/* ---------- removing a local file drops it, frees it, and tells the room ---------- */
+sent.length = 0;
+const localId = entry.id;
+const bytes = entry.blob;                       // an outside reference, to prove one existed
+const dropped = registry.remove(localId);
+
+ok("remove() drops the file", dropped === true && registry.get(localId) === undefined);
+ok("remove() releases the bytes",
+   bytes?.size === 1024 && entry.blob === null && entry.thumb === null,
+   "splicing the array is not enough — a Blob lives as long as the entry pointing at it");
+
+const goneFrame = sent.find(f => f.t === registry.FRAME_GONE);
+ok("removing our own file retracts it to the room", Boolean(goneFrame),
+   goneFrame ? "" : "peers would keep a tile for a file that no longer exists");
+ok("the retraction names the file and nothing else",
+   goneFrame?.id === localId && !("blob" in (goneFrame ?? {})) && !("name" in (goneFrame ?? {})),
+   "the room already saw the name in the file-meta this retracts");
+ok("the retraction says which device it is from",
+   goneFrame?.originId === state.get().originId,
+   "the receiver only honours a retraction from the device that announced the file");
+
+ok("removing an id that is not here is a no-op", registry.remove("nosuchid") === false);
+
+/* ---------- removing someone else's file is local only ---------- */
+sent.length = 0;
+ok("removing a remote file drops it here", registry.remove("remote1") === true &&
+   registry.get("remote1") === undefined);
+ok("and retracts nothing to the room", sent.length === 0,
+   "hiding a tile here must not look like deleting the file off the device that holds it");
+
+/* ---------- removing mid-transfer cancels the transfer first ---------- */
+cancelled.length = 0;
+await registry.add([new File([new Uint8Array(2048)], "inflight.bin")], { makeThumbs: false });
+const inflight = registry.all().find(f => f.name === "inflight.bin");
+registry.setState(inflight.id, registry.STATE.SENDING);
+registry.setProgress(inflight.id, 40);
+ok("a file being sent is busy", registry.isBusy(inflight.id) === true);
+
+registry.remove(inflight.id);
+ok("removing mid-transfer cancels the transfer", cancelled.length === 1 &&
+   cancelled[0].id === inflight.id,
+   "otherwise the sender streams a file that is no longer in the list and the peer waits out an idle timeout");
+ok("the cancel runs while the file is still listed", cancelled[0]?.stillListed === true,
+   "transfer.cancel() names the file in the message it sends the peer");
+ok("and the file goes anyway", registry.get(inflight.id) === undefined,
+   "a cancel that fails must not strand the file — the user asked for it gone");
+ok("and its half-sent bytes are released", inflight.blob === null);
+
+/* ---------- clear() empties everything ---------- */
+sent.length = 0;
+cancelled.length = 0;
+await registry.add([new File([new Uint8Array(64)], "a.txt"),
+                    new File([new Uint8Array(64)], "b.txt")], { makeThumbs: false });
+registry.addRemote({ id: "remote2", name: "theirs2.pdf", size: 10,
+                     type: "application/pdf", thumb: null, originId: "peerX" });
+registry.setState("remote2", registry.STATE.RECEIVING);
+
+const held = [...registry.all()];
+const wiped = registry.clear();
+
+ok("clear() reports how many went", wiped === held.length, `${wiped} of ${held.length}`);
+ok("clear() empties the list", registry.count() === 0 && registry.all().length === 0);
+ok("clear() releases every blob it held", held.every(f => f.blob === null && f.thumb === null),
+   "twenty files is up to 100 MB, which is the whole reason this control exists");
+ok("clear() cancels a transfer that was running",
+   cancelled.some(c => c.id === "remote2"),
+   "a mid-transfer download must be stopped, not abandoned half-written");
+ok("clear() retracts only our own files",
+   sent.filter(f => f.t === registry.FRAME_GONE).length === 2,
+   "two local files, one remote — the remote one is not ours to retract");
+
+sent.length = 0;
+ok("clear() on an empty list is a silent no-op",
+   registry.clear() === 0 && sent.length === 0);
+
+/* ---------- an inbound retraction is honoured only from the owner ----------
+   File requests are authenticated by session membership alone (P2P-FILES §6),
+   so an unchecked retraction would let anyone holding the key empty everyone
+   else's file list. */
+registry.addRemote({ id: "remote3", name: "theirs3.pdf", size: 10,
+                     type: "application/pdf", thumb: null, originId: "peerX" });
+
+ok("a peer cannot retract a file it did not announce",
+   registry.applyGone({ t: registry.FRAME_GONE, id: "remote3", originId: "peerY" }) === false &&
+   Boolean(registry.get("remote3")));
+ok("a spoofed originId does not beat the relay's own stamp",
+   registry.applyGone({ t: registry.FRAME_GONE, id: "remote3", from: "peerY", originId: "peerX" }) === false &&
+   Boolean(registry.get("remote3")),
+   "`from` is set by the relay on the socket the frame arrived on; originId is whatever the sender typed");
+ok("the device that announced it can retract it",
+   registry.applyGone({ t: registry.FRAME_GONE, id: "remote3", originId: "peerX" }) === true &&
+   registry.get("remote3") === undefined);
+ok("a retraction for a file we never had changes nothing",
+   registry.applyGone({ t: registry.FRAME_GONE, id: "remote3", originId: "peerX" }) === false);
+
+await registry.add([new File([new Uint8Array(8)], "mine.txt")], { makeThumbs: false });
+const stillMine = registry.all().find(f => f.name === "mine.txt");
+ok("a peer cannot retract a file off this machine",
+   registry.applyGone({ t: registry.FRAME_GONE, id: stillMine.id, originId: "peerX" }) === false &&
+   Boolean(registry.get(stillMine.id)),
+   "the console warning above is the point of this check");
+
 console.log("\n" + "=".repeat(58));
 console.log(`FILES: ${pass}/${pass + fail} passed`);
 console.log("=".repeat(58));

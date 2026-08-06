@@ -42,10 +42,22 @@ export function init() {
 
 export function setText(value) {
   ta.value = value;
+  lastAppliedText = value;
   refresh();
 }
 
 export const getText = () => ta.value;
+
+/**
+ * Has the user typed something we have not sent or received?
+ *
+ * The editor used to be overwritten unconditionally by every incoming clip, so
+ * if the other machine copied something while you were mid-sentence here, your
+ * text simply vanished — no undo, no warning. With Live mode and a 1s poll on
+ * the far side, that is not a rare race; it is a matter of time.
+ */
+let lastAppliedText = "";
+export const isDirty = () => ta.value.trim() !== "" && ta.value !== lastAppliedText;
 
 function send() {
   const value = ta.value.trim();

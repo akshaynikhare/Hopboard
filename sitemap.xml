@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Only the public page. app.html is deliberately absent: it is noindex, and
-     listing a page you have asked crawlers to skip is a mixed signal. -->
+     listing a page you have asked crawlers to skip is a mixed signal.
+
+     lastmod is the one field here Google actually reads — changefreq and
+     priority are ignored, and are kept only because they cost nothing. Set it
+     honestly: a date that moves without the content moving gets learned and
+     then discounted. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://akshaynikhare.github.io/Hopboard/</loc>
+    <lastmod>2026-08-06</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>

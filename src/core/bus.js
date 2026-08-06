@@ -35,6 +35,9 @@ export const EV = {
   TEXT_RECEIVED:   "text:received",    // {text, from} — arrived from a peer
   TIER_CHANGED:    "clipboard:tier",   // {tier, note}
   PENDING_CLIP:    "clipboard:pending",// {pending, text} — arrived while unfocused
+  CLIP_OFFERED:    "clipboard:offered",// {text} — arrived, but the editor has unsent work
+  PEER_JOINED:     "peers:joined",     // {name} — a device entered the session
+  PEER_LEFT:       "peers:left",       // {name}
   PERMISSION:      "clipboard:permission", // {state} granted|prompt|denied
   IMAGE_CAPTURED:  "clipboard:image",  // {blob, name} — an image was copied or pasted
   SYNC_MODE:       "clipboard:mode",   // {mode} live|manual

@@ -23,6 +23,7 @@
 import { emit, on, EV } from "../core/bus.js";
 import * as history from "../core/history.js";
 import { write as writeClipboard } from "../clipboard/os.js";
+import { upgrade as upgradeHeader, sync as syncHeader } from "./panes.js";
 import { $, esc, on as bind } from "./dom.js";
 
 const PREVIEW_CHARS = 70;
@@ -51,6 +52,13 @@ export function init() {
   bind("histList", "click", onListClick);
   bind("histList", "keydown", e => {
     if (e.key !== "Enter" && e.key !== " ") return;
+    // A row is role="button" and contains a real <button> (Copy). Without this
+    // guard, Enter on Copy fired BOTH: the button's native activation copied
+    // the clip, and this handler also restored it into the editor — one
+    // keystroke, two unrelated effects, one of them destructive to whatever
+    // was being typed. The pointer path never hit it because onListClick
+    // stops propagation; the keyboard path had no equivalent.
+    if (e.target.closest?.("button")) return;
     const row = e.target.closest?.(".hrow");
     if (!row) return;
     e.preventDefault();
@@ -90,9 +98,9 @@ function mount() {
     <div class="paneh" id="histHead">
       <span class="chev">⌄</span> History
       <span class="spacer"></span>
-      <span class="soft" id="histCount">0</span>
-      <button class="ibtn" id="histClear" title="Clear history" aria-label="Clear history">
-        <svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/></svg>
+      <span class="soft"><span id="histCount">0</span><span class="vh"> clips</span></span>
+      <button class="ibtn" type="button" id="histClear" title="Clear history" aria-label="Clear history">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13a1 1 0 001 1h8a1 1 0 001-1l1-13M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3"/></svg>
       </button>
     </div>
     <div class="paneb">
@@ -104,7 +112,18 @@ function mount() {
     </div>`;
 
   host.appendChild(pane);
-  bind("histHead", "click", () => pane.classList.toggle("collapsed"));
+
+  // The header keeps its own click handler for the reason above, but the
+  // keyboard and screen-reader half of a disclosure is not worth restating in
+  // two places — ui/panes.js wraps the chevron and label in a real <button>
+  // and owns aria-expanded/aria-controls. Enter and Space then come from the
+  // platform, and the click bubbles to the handler below exactly once.
+  const head = $("histHead");
+  upgradeHeader(head);
+  bind(head, "click", () => {
+    pane.classList.toggle("collapsed");
+    syncHeader(head);
+  });
 }
 
 /* ------------------------------------------------------------------ render */
@@ -123,16 +142,32 @@ function render() {
   // esc() on every interpolation below. id and time are generated locally, text
   // is hostile; escaping all three keeps the rule "everything is escaped here"
   // checkable by eye instead of case by case.
-  list.innerHTML = items.map(c => `
+  //
+  // The row carries an explicit aria-label. Left to its contents it announced
+  // as "RECV <preview> 14:32 Copy this clip button" — the direction as a
+  // four-letter code nobody says out loud, and the row's own action never
+  // named. The label says what activating the row does, which is the only
+  // thing a button's name is for. Each copy button is named with its clip too,
+  // because twenty buttons all called "Copy this clip" is a list you cannot
+  // navigate by name.
+  list.innerHTML = items.map(c => {
+    const sent = c.direction === "sent";
+    const at = hhmm(c.at);
+    const gist = preview(c.text);
+    const said = `${sent ? "sent" : "received"} at ${at}: ${gist}`;
+    return `
     <div class="row hrow" data-id="${esc(c.id)}" role="button" tabindex="0"
+         aria-label="Load into the editor — clip ${esc(said)}"
          title="${esc(clamp(c.text, TITLE_CHARS))}">
-      <span class="pill ${c.direction === "sent" ? "sent" : "recv"}">${c.direction === "sent" ? "SENT" : "RECV"}</span>
-      <div class="l"><b class="hprev">${esc(preview(c.text))}</b></div>
-      <span class="htime">${esc(hhmm(c.at))}</span>
-      <button class="ibtn hcopy" title="Copy this clip" aria-label="Copy this clip">
-        <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
+      <span class="pill ${sent ? "sent" : "recv"}" aria-hidden="true">${sent ? "SENT" : "RECV"}</span>
+      <div class="l"><b class="hprev">${esc(gist)}</b></div>
+      <span class="htime" aria-hidden="true">${esc(at)}</span>
+      <button class="ibtn hcopy" type="button" title="Copy this clip"
+              aria-label="Copy clip ${esc(said)}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
       </button>
-    </div>`).join("");
+    </div>`;
+  }).join("");
 }
 
 /** One line, no runs of whitespace, ellipsised — a clip is often a stack trace. */

@@ -1,17 +1,43 @@
 # Hopboard
 #
-# The marketing page is meant to be found. The app is not.
+# ---------------------------------------------------------------------------
+# HEADS UP: on GitHub Pages this file does nothing.
+# ---------------------------------------------------------------------------
 #
-# A session key lives in the URL fragment, which is never sent to a server and
-# is not treated as a distinct URL by crawlers — so a key cannot leak through
-# the address itself. What could leak is the RENDERED app: crawlers execute
-# JavaScript, and by then the key, the clipboard contents and the history list
-# are all in the DOM. app.html carries a noindex meta tag; this file keeps
-# well-behaved crawlers from fetching it at all.
+# robots.txt is only read at the root of an origin. This project deploys to
+# https://akshaynikhare.github.io/Hopboard/ , so this file lands in a
+# subdirectory and no crawler will ever fetch it. The file that actually
+# governs this origin lives in the akshaynikhare/akshaynikhare.github.io
+# repository and is served from https://akshaynikhare.github.io/robots.txt .
+#
+# The sitemap therefore has to be declared THERE, not here. Add this line to
+# that repo's robots.txt, next to the career-compass one already in it:
+#
+#     Sitemap: https://akshaynikhare.github.io/Hopboard/sitemap.xml
+#
+# Until that happens, nothing has told a crawler this sitemap exists.
+#
+# This file is kept so it is ready the day Hopboard moves to its own domain, at
+# which point it becomes the real thing and the lines below take effect.
+#
+# ---------------------------------------------------------------------------
+# Why there is no longer a Disallow for app.html
+# ---------------------------------------------------------------------------
+#
+# The previous version blocked app.html, and the reasoning was backwards. A page
+# blocked by robots.txt is never fetched, so its noindex is never read, and
+# Google stays free to list the bare URL on the strength of the links pointing
+# at it. index.html links to app.html three times. Blocking is how you get the
+# app indexed as a naked URL, not how you keep it out.
+#
+# app.html carries `noindex, nofollow, noarchive, nosnippet, noimageindex`.
+# Letting crawlers fetch it is exactly what makes that tag work.
+#
+# There is also nothing there to protect. The session key lives in the URL
+# fragment, which is never sent to a server and is not a distinct URL to a
+# crawler. Googlebot rendering app.html gets an empty app with no key in it.
 
 User-agent: *
-Allow: /Hopboard/$
-Allow: /Hopboard/index.html
-Disallow: /Hopboard/app.html
+Allow: /
 
 Sitemap: https://akshaynikhare.github.io/Hopboard/sitemap.xml

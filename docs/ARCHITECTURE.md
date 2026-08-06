@@ -50,12 +50,21 @@ src/
     transfer.js         P2P transfer (M7)
   ui/
     dom.js              $, $$, esc, bind
-    toast.js            transient messages
-    editor.js           panel 1
-    filesPanel.js       panel 2
-    sessionPanel.js     panel 3
+    toast.js            queued announcements (the app's only aria-live channel)
+    banners.js          inline notices: permission, pending clip, peer joined
+    editor.js           the main panel
+    filesPanel.js       files and images
+    sessionPanel.js     devices and settings
+    historyPanel.js     session clip history
     statusbar.js        bottom bar
-    activitybar.js      left rail
+    syncMode.js         Live / Manual switch
+    cursors.js          live peer pointers
+    hints.js            getting-started overlay
+    panes.js            collapsible sidebar panes (delegated)
+    resizer.js          draggable splitters
+    qr.js               QR modal
+    install.js          PWA install + service worker
+    ads.js              the single ad placeholder
   styles/
     main.css            @imports the rest
     tokens.css          every colour and metric
@@ -126,6 +135,10 @@ These are load-bearing. Breaking one is a vulnerability, not a bug.
 
 | Invariant | Enforced in |
 |---|---|
+| An incoming clip never destroys unsent editor text | `main.js` checks `editor.isDirty()` before overwriting; otherwise it offers |
+| A device joining the session is announced, not silent | `state.setPeers()` diffs the roster → `ui/banners.js` |
+| Signalling and cursor frames are sealed like clips | `main.js` `encryptFrame()`; only routing fields stay clear |
+| A peer may retract only files it announced | `files/registry.js` `applyGone()` checks the relay-stamped `from` |
 | The share key is never transmitted — only `SHA-256(key)` and ciphertext | `core/crypto.js` |
 | Keys are normalised (uppercased) before hashing | `core/keys.js` |
 | Peer content is escaped before entering `innerHTML` | `ui/dom.js` `esc()` |

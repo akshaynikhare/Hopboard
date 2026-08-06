@@ -330,6 +330,44 @@ export function onSignal(frame) {
 /** id -> { el, name, x, y, seenAt }. Every entry owns exactly one element. */
 const peers = new Map();
 
+/* ------------------------------------------------------------------ *
+ * Motion
+ *
+ * styles/cursors.css already drops the 110 ms transform transition inside a
+ * `@media (prefers-reduced-motion: reduce)` block, and that remains the primary
+ * mechanism. This is the JavaScript half of the same decision, and it does two
+ * things the stylesheet cannot:
+ *
+ *   1. It skips the one-frame deferral of `.live`. That deferral exists only to
+ *      stop a new cursor sliding in from the corner of the window on its first
+ *      update — with no transform transition there is nothing to slide, so the
+ *      cursor is simply placed, which is what the setting asks for.
+ *
+ *   2. It sets transition-property on the element itself. The sheet is injected
+ *      as a <link> at init(), so there is a window in which it has not applied
+ *      yet — and if it fails to load at all, the CSS guard never runs. Only the
+ *      PROPERTY is set here: duration and easing stay in CSS, so the opacity
+ *      fade that cursors.css deliberately keeps (a state change, not motion —
+ *      without it a peer's departure is a jump cut) survives untouched.
+ *
+ * The query is live, so someone turning the OS setting on mid-session gets it
+ * applied to the cursors already on screen.
+ * ------------------------------------------------------------------ */
+
+const motionQuery = typeof matchMedia === "function"
+  ? matchMedia("(prefers-reduced-motion: reduce)")
+  : null;
+
+export const reducedMotion = () => motionQuery?.matches === true;
+
+function applyMotion(el) {
+  el.style.transitionProperty = reducedMotion() ? "opacity" : "";
+}
+
+function onMotionChange() {
+  for (const c of peers.values()) applyMotion(c.el);
+}
+
 /**
  * The pointer glyph. Static markup with nothing interpolated into it — the one
  * peer-supplied value, the device name, goes through setName() and esc().
@@ -383,11 +421,15 @@ function upsert(id, x, y, name) {
     c = { el, name: null, x, y, seenAt: 0 };
     peers.set(id, c);
     place(c, x, y);                       // position BEFORE the transition exists
+    applyMotion(el);
     layer().appendChild(el);
     // The transition and the fade-in are enabled a frame later. Enabled from
     // the start, a new cursor would slide in from the top-left corner of the
     // window on its first update instead of simply being where it is.
-    raf(() => el.classList.add("live"));
+    // Under reduced motion there is no transform transition to defer past, so
+    // the wait would only delay the cursor appearing.
+    if (reducedMotion()) el.classList.add("live");
+    else raf(() => el.classList.add("live"));
     ensureSweep();
   }
 
@@ -485,6 +527,10 @@ export function init() {
   ensureStyles();
 
   focused = typeof document.hasFocus === "function" ? document.hasFocus() : true;
+
+  // Someone can turn "reduce motion" on while the app is open; the cursors
+  // already on screen follow it rather than waiting for a reload.
+  motionQuery?.addEventListener?.("change", onMotionChange);
 
   window.addEventListener("pointermove", onPointerMove, { passive: true });
 

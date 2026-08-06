@@ -91,7 +91,7 @@ TARGETED = {
     "file-req", "file-accept", "file-deny",
     "file-chunk", "file-done", "file-cancel", "file-error",
 }
-ROOM_WIDE = {"file-meta", "cursor"}
+ROOM_WIDE = {"file-meta", "file-gone", "cursor"}
 
 # Every forwarded frame is setup/teardown control traffic — bursty for a moment,
 # then silent — except file-chunk, which is the bulk path, and cursor, which is

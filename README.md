@@ -1,10 +1,11 @@
-# Hopboard
+# Hopboard — an end-to-end encrypted online clipboard that syncs text between devices
 
-**Live clipboard sharing / syncing.**
+Hopboard is a free, open-source online clipboard: open it on two devices, type the
+same five-character key, and whatever you copy on one is ready to paste on the
+other. No account, no install, no database. Files travel peer-to-peer and never
+touch the server.
 
-Open it on two devices, type the same short key, and text copied on one is
-available on the other. Files ride peer-to-peer. No account, no install, no
-database.
+**[Try it → akshaynikhare.github.io/Hopboard](https://akshaynikhare.github.io/Hopboard/)**
 
 ```
   Machine A  ──┐                                  ┌──  Machine B
@@ -21,11 +22,42 @@ preview with the OS clipboard wired up and the network stubbed. See
 
 ---
 
+## What it does
+
+- **Sync clipboard text between devices** — Windows, macOS, Android, ChromeOS and Linux
+- **Works across different networks**, not just the same Wi-Fi, and not just the same LAN
+- **No account, no sign-up, no email** — a five-character key is the whole identity of a session
+- **End-to-end encrypted** in the browser with AES-GCM; `PBKDF2` derives the key, `SHA-256` routes the room
+- **Peer-to-peer file transfer** over a WebRTC data channel, 5 MB per file
+- **Copy and paste images** — a screenshot copied on one machine previews on the other
+- **Installable progressive web app** — own window, own icon, works offline
+- **Nothing written to disk**, on your machine or the server
+- **Self-hostable relay** — it is one small FastAPI service
+
 ## Why
 
 Moving a snippet between a work laptop, a desktop and a phone is
 disproportionately annoying. The alternatives want an account, an install with
 admin rights, or an email to yourself. This wants a five-character key.
+
+## How Hopboard compares to Snapdrop, PairDrop, LocalSend and AirDrop
+
+The nearby tools are mostly *file droppers*: you pick a device and push a file at
+it. Hopboard is a clipboard — what you copy shows up ready to paste, without
+picking anything.
+
+| Tool | Account | Install | Across networks | Lands on system clipboard | Files |
+|---|---|---|---|---|---|
+| **Hopboard** | None | None — browser | Yes | **Yes** | P2P, 5 MB |
+| PairDrop | None | None — browser | Yes, via a 6-digit code | No — you send a message | P2P |
+| Snapdrop | Optional since the LimeWire acquisition | None — browser | Same network only | No | P2P |
+| LocalSend | None | Native app on both ends | Same network only | No | Unlimited, LAN |
+| AirDrop | None | Built in | Nearby devices only | No | Unlimited |
+| KDE Connect | None | App on both ends | Same network only | Yes | Yes |
+| Pushbullet | Required | App or extension | Yes | Paid tier | Paid above a small cap |
+
+Checked against each project's own documentation in August 2026. Corrections
+welcome — open an issue.
 
 ## How it works
 
@@ -39,6 +71,46 @@ admin rights, or an email to yourself. This wants a five-character key.
 
 The relay only ever sees a room hash and ciphertext. It cannot decrypt anything,
 and it stores nothing beyond the last message in RAM.
+
+## Frequently asked questions
+
+### What is an online clipboard?
+
+An online clipboard is a web page that holds what you copy on one device so you
+can paste it on another. Both devices open the same page, identify themselves
+with a short key, and share a single clipboard between them.
+
+### How do I sync my clipboard between my phone and my PC?
+
+Open Hopboard on both, type the same five-character key on each, and copy
+something. It arrives on the other device ready to paste. Nothing to install, so
+it works on a machine where you do not have admin rights.
+
+### Does it work if the two devices are on different networks?
+
+Yes. Text goes through a relay, so a laptop on home Wi-Fi and a phone on mobile
+data share a clipboard fine. This is the main difference from Snapdrop, LocalSend
+and AirDrop, which need both devices on the same network. Files are the
+exception — they go directly between machines, and that is the part corporate
+firewalls sometimes block.
+
+### Is an online clipboard safe?
+
+It depends on whether the server can read what you copy, and here it cannot. Text
+is encrypted in the browser before it is sent; the server sees a room hash and
+ciphertext and keeps neither. The honest caveat is that the key is a bearer
+credential — anyone who learns it can read that session while it is open.
+
+### Can it read my clipboard in the background?
+
+No, and neither can any other web app on any browser. `readText()` requires
+window focus. You switch to the Hopboard tab and it picks up what you copied.
+
+### Which browsers work?
+
+Chromium browsers get the full experience. Firefox and Safari can receive
+everything and can send anything you paste in by hand, but cannot read the
+clipboard on their own.
 
 ## Repo layout
 
@@ -88,6 +160,7 @@ replica-pinning step that must not be skipped.**
 | [CLIPBOARD-FLOW.md](docs/CLIPBOARD-FLOW.md) | How the browser reaches the OS clipboard, and why background capture is impossible |
 | [P2P-FILES.md](docs/P2P-FILES.md) | Thumbnails over the relay, bytes over WebRTC, and the corporate-network problem |
 | [M0-RESULTS.md](docs/M0-RESULTS.md) | Transport gate results |
+| [SEO.md](docs/SEO.md) | Search, answer-engine and distribution strategy |
 
 ## Known limitations
 
@@ -99,3 +172,7 @@ replica-pinning step that must not be skipped.**
 - **The share key is a bearer credential.** Anyone holding it can read the session.
 - Chromium-first. Firefox and Safari can receive and can send via paste, but
   cannot silently read the clipboard.
+
+## Licence
+
+[MIT](LICENSE).

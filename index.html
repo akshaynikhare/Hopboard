@@ -4,8 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Hopboard — shared clipboard for your own devices</title>
-<meta name="description" content="Copy on one machine, paste on another. Hopboard syncs your clipboard between Windows, macOS and Android with a five-character key. No account, no install, end-to-end encrypted, files sent peer-to-peer.">
+<!--
+  Title and description target "online clipboard" and "clipboard sync", which is
+  what people actually type. The earlier wording led with "shared clipboard" —
+  that phrase belongs to VirtualBox and RDP, and would have brought the wrong
+  audience even if it had ranked.
+-->
+<title>Online Clipboard — Sync Text Between Devices, No Login | Hopboard</title>
+<meta name="description" content="Free online clipboard that syncs text between Windows, macOS, Android and ChromeOS. Type one five-character key on each device — no account, no install, end-to-end encrypted, files sent peer-to-peer.">
 <link rel="canonical" href="https://akshaynikhare.github.io/Hopboard/">
 <meta name="theme-color" content="#007acc">
 <link rel="manifest" href="./manifest.webmanifest">
@@ -13,22 +19,85 @@
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Hopboard">
-<meta property="og:title" content="Hopboard — shared clipboard for your own devices">
-<meta property="og:description" content="Copy on one machine, paste on another. A five-character key, no account, end-to-end encrypted.">
+<meta property="og:title" content="Online Clipboard — Sync Text Between Devices, No Login">
+<meta property="og:description" content="Copy on one machine, paste on another. A five-character key, no account, end-to-end encrypted. Works across different networks, not just the same Wi-Fi.">
 <meta property="og:url" content="https://akshaynikhare.github.io/Hopboard/">
-<meta property="og:image" content="https://akshaynikhare.github.io/Hopboard/icons/icon-512.png">
-<meta name="twitter:card" content="summary">
+<meta property="og:image" content="https://akshaynikhare.github.io/Hopboard/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Hopboard — an online clipboard shared between a laptop and a phone with a five-character key.">
+<meta name="twitter:card" content="summary_large_image">
 
+<!--
+  One @graph rather than four separate blocks, so the nodes can reference each
+  other by @id — the WebPage says which WebSite it belongs to, and the app says
+  who publishes it. Deliberately absent: FAQPage and HowTo (Google dropped both
+  rich results), SearchAction (removed 2024), and aggregateRating — a rating
+  supplied by the thing being rated is against Google's review policy.
+-->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "name": "Hopboard",
-  "applicationCategory": "UtilitiesApplication",
-  "operatingSystem": "Windows, macOS, Android, ChromeOS",
-  "description": "Shared clipboard for your own devices. Copy on one machine, paste on another, using a short key. End-to-end encrypted, no account required.",
-  "url": "https://akshaynikhare.github.io/Hopboard/",
-  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://akshaynikhare.github.io/Hopboard/#org",
+      "name": "Hopboard",
+      "url": "https://akshaynikhare.github.io/Hopboard/",
+      "logo": "https://akshaynikhare.github.io/Hopboard/icons/icon-512.png",
+      "description": "Hopboard builds a free, end-to-end encrypted online clipboard that syncs text between devices and sends files peer-to-peer.",
+      "sameAs": [
+        "https://github.com/akshaynikhare/Hopboard"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://akshaynikhare.github.io/Hopboard/#website",
+      "name": "Hopboard",
+      "url": "https://akshaynikhare.github.io/Hopboard/",
+      "publisher": { "@id": "https://akshaynikhare.github.io/Hopboard/#org" },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "WebPage",
+      "@id": "https://akshaynikhare.github.io/Hopboard/#webpage",
+      "url": "https://akshaynikhare.github.io/Hopboard/",
+      "name": "Online Clipboard — Sync Text Between Devices, No Login",
+      "description": "Free online clipboard that syncs text between Windows, macOS, Android and ChromeOS with a five-character key. No account, end-to-end encrypted.",
+      "isPartOf": { "@id": "https://akshaynikhare.github.io/Hopboard/#website" },
+      "about": { "@id": "https://akshaynikhare.github.io/Hopboard/#app" },
+      "inLanguage": "en",
+      "datePublished": "2026-08-05",
+      "dateModified": "2026-08-06"
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://akshaynikhare.github.io/Hopboard/#app",
+      "name": "Hopboard",
+      "applicationCategory": "UtilitiesApplication",
+      "applicationSubCategory": "Online clipboard",
+      "operatingSystem": "Windows, macOS, Android, ChromeOS, Linux",
+      "browserRequirements": "Requires a Chromium-based browser for automatic clipboard capture. Firefox and Safari can send and receive pasted content.",
+      "url": "https://akshaynikhare.github.io/Hopboard/",
+      "installUrl": "https://akshaynikhare.github.io/Hopboard/app.html",
+      "description": "Online clipboard that syncs text between your own devices with a five-character key. End-to-end encrypted in the browser, no account, no install, and files travel peer-to-peer without touching the server.",
+      "isAccessibleForFree": true,
+      "license": "https://github.com/akshaynikhare/Hopboard/blob/main/LICENSE",
+      "softwareVersion": "0.1.0",
+      "publisher": { "@id": "https://akshaynikhare.github.io/Hopboard/#org" },
+      "featureList": [
+        "Sync clipboard text between devices with a five-character key",
+        "Works across different networks — not limited to one Wi-Fi",
+        "End-to-end encrypted in the browser with AES-GCM",
+        "No account, no sign-up, no email",
+        "Peer-to-peer file transfer over WebRTC",
+        "Copy and paste images and screenshots",
+        "Installable as a progressive web app",
+        "Nothing written to disk on the server"
+      ],
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    }
+  ]
 }
 </script>
 
@@ -83,15 +152,16 @@
       <div class="hero-grid">
 
         <div class="hero-copy">
-          <p class="eyebrow">Shared clipboard for your own devices</p>
-          <h1>Your clipboard, on all your machines.</h1>
+          <p class="eyebrow">Free online clipboard — no login</p>
+          <h1>An online clipboard for every machine you own.</h1>
           <p class="lede">
             Copy something on your laptop and paste it on your desktop. Or your phone.
             Type one five-character key on each device and they share a clipboard —
-            no account, no install, nothing stored on a server.
+            no account, no install, nothing stored on a server. It works between
+            devices on different networks, not just the same Wi-Fi.
           </p>
           <ul class="sq-list hero-list">
-            <li>Text, images and files</li>
+            <li>Sync text, images and files between Windows, macOS, Android and ChromeOS</li>
             <li>Encrypted in the browser, before anything is sent</li>
             <li>Nothing is written to disk, on your machine or ours</li>
           </ul>
@@ -147,7 +217,7 @@
       <header class="shead">
         <p class="eyebrow">The path a copy takes</p>
         <div class="htext">
-          <h2>What happens when you press Ctrl&#8209;C</h2>
+          <h2>How your clipboard gets from one device to the other</h2>
           <p>
             Text is encrypted on the machine that copied it and decrypted on the one
             that receives it. The relay in the middle only ever sees a room hash and
@@ -181,7 +251,14 @@
     <div class="in">
       <header class="shead">
         <p class="eyebrow">Getting started</p>
-        <div class="htext"><h2>How it works</h2></div>
+        <div class="htext">
+          <h2>How to sync your clipboard between two devices</h2>
+          <p>
+            Open this page on both devices and type the same key. There is nothing
+            to download and no account to make, so the whole thing takes about
+            fifteen seconds.
+          </p>
+        </div>
       </header>
       <ol class="steps">
         <li>Open Hopboard on the first machine. It generates a key like <code>D75LV</code>.</li>
@@ -197,7 +274,7 @@
     <div class="in">
       <header class="shead">
         <p class="eyebrow">Capabilities</p>
-        <div class="htext"><h2>What you get</h2></div>
+        <div class="htext"><h2>What this online clipboard can do</h2></div>
       </header>
       <div class="cards">
         <div class="card">
@@ -227,6 +304,124 @@
           <p>Share everything you copy, or only what you paste in deliberately. One switch.</p>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ============ comparison ============
+
+    A real <table>, not a grid of divs. Two reasons: a screen reader can
+    associate every cell with its row and column header, and the tools that
+    convert this page to text for an answer engine keep a table as a table and
+    turn a div grid into soup.
+
+    Every claim here was checked against the vendor's own page. PairDrop in
+    particular is NOT LAN-only — it pairs across networks with a 6-digit code —
+    and saying otherwise would be both wrong and easy to disprove.
+  -->
+  <section class="sec" id="compare">
+    <div class="in">
+      <header class="shead">
+        <p class="eyebrow">Where this fits</p>
+        <div class="htext">
+          <h2>Hopboard vs Snapdrop, PairDrop, LocalSend and AirDrop</h2>
+          <p>
+            The nearby tools are mostly <em>file droppers</em>: you pick a device and
+            push a file at it. Hopboard is a clipboard — what you copy shows up ready
+            to paste on the other machine, without picking anything.
+          </p>
+        </div>
+      </header>
+
+      <div class="tablewrap">
+        <table class="cmp">
+          <caption class="sr-only">
+            Hopboard compared with Snapdrop, PairDrop, LocalSend, AirDrop, KDE Connect
+            and Pushbullet, by account, install, network, clipboard and encryption.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Tool</th>
+              <th scope="col">Account</th>
+              <th scope="col">Install</th>
+              <th scope="col">Across networks</th>
+              <th scope="col">Lands on system clipboard</th>
+              <th scope="col">Files</th>
+              <th scope="col">Platforms</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="me">
+              <th scope="row">Hopboard</th>
+              <td class="y">None</td>
+              <td class="y">None — browser</td>
+              <td class="y">Yes</td>
+              <td class="y">Yes</td>
+              <td>P2P, 5&nbsp;MB</td>
+              <td>Windows, macOS, Android, ChromeOS, Linux</td>
+            </tr>
+            <tr>
+              <th scope="row">PairDrop</th>
+              <td class="y">None</td>
+              <td class="y">None — browser</td>
+              <td class="y">Yes, via a 6-digit pairing code</td>
+              <td class="n">No — you send a message</td>
+              <td>P2P</td>
+              <td>Any browser</td>
+            </tr>
+            <tr>
+              <th scope="row">Snapdrop</th>
+              <td>Optional since the LimeWire acquisition</td>
+              <td class="y">None — browser</td>
+              <td class="n">Same network only</td>
+              <td class="n">No</td>
+              <td>P2P</td>
+              <td>Any browser</td>
+            </tr>
+            <tr>
+              <th scope="row">LocalSend</th>
+              <td class="y">None</td>
+              <td class="n">Native app on both ends</td>
+              <td class="n">Same network only</td>
+              <td class="n">No</td>
+              <td>Unlimited, LAN</td>
+              <td>Windows, macOS, Linux, Android, iOS</td>
+            </tr>
+            <tr>
+              <th scope="row">AirDrop</th>
+              <td class="y">None</td>
+              <td class="y">Built in</td>
+              <td class="n">Nearby devices only</td>
+              <td class="n">No</td>
+              <td>Unlimited</td>
+              <td class="n">Apple devices only</td>
+            </tr>
+            <tr>
+              <th scope="row">KDE Connect</th>
+              <td class="y">None</td>
+              <td class="n">App on both ends</td>
+              <td class="n">Same network only</td>
+              <td class="y">Yes</td>
+              <td>Yes</td>
+              <td>Linux, Windows, Android</td>
+            </tr>
+            <tr>
+              <th scope="row">Pushbullet</th>
+              <td class="n">Required</td>
+              <td class="n">App or extension</td>
+              <td class="y">Yes</td>
+              <td>Yes, on the paid tier</td>
+              <td>Paid above a small cap</td>
+              <td>Windows, Android, browsers</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="hint">
+        Checked against each project's own documentation in August 2026. If something
+        here has gone out of date, <a href="https://github.com/akshaynikhare/Hopboard/issues">open
+        an issue</a> and it will be corrected.
+      </p>
     </div>
   </section>
 
@@ -300,6 +495,111 @@
           <li><b>Chrome first.</b> Firefox and Safari can receive and can send what you
               paste in, but cannot read the clipboard on their own.</li>
         </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============
+
+    Headings are phrased the way people type the question, and each answer opens
+    with a sentence that stands on its own if it is lifted out of the page —
+    which is exactly what an AI answer or a featured snippet does to it.
+
+    No FAQPage JSON-LD on purpose. Google stopped showing FAQ rich results in
+    May 2026 and removed the documentation; the markup would be dead weight.
+    Visible text is what still counts.
+  -->
+  <section class="sec" id="faq">
+    <div class="in">
+      <header class="shead">
+        <p class="eyebrow">Questions</p>
+        <div class="htext"><h2>Online clipboard questions, answered</h2></div>
+      </header>
+
+      <div class="faq">
+        <h3>What is an online clipboard?</h3>
+        <p>
+          An online clipboard is a web page that holds what you copy on one device so
+          you can paste it on another. Instead of emailing yourself a link or plugging
+          in a cable, both devices open the same page, identify themselves with a short
+          key, and share a single clipboard between them.
+        </p>
+
+        <h3>How do I sync my clipboard between my phone and my PC?</h3>
+        <p>
+          Open Hopboard on both, type the same five-character key on each, and copy
+          something. It arrives on the other device ready to paste. There is no account
+          to make and nothing to install, so it works on a machine where you do not have
+          admin rights.
+        </p>
+
+        <h3>Can I share a clipboard between Windows and Android without an account?</h3>
+        <p>
+          Yes. Hopboard needs no email, no password and no sign-in — the five-character
+          key is the whole identity of a session. When you close the tab the session is
+          gone, and nothing about it was ever written to disk.
+        </p>
+
+        <h3>Does it work if the two devices are on different networks?</h3>
+        <p>
+          Yes. Text goes through a relay, so a laptop on home Wi-Fi and a phone on mobile
+          data share a clipboard perfectly well. This is the main difference from
+          Snapdrop, LocalSend and AirDrop, which need both devices on the same network.
+          Files are the exception: they go directly between the two machines, and that
+          direct connection is the part corporate firewalls sometimes block.
+        </p>
+
+        <h3>Is an online clipboard safe to use?</h3>
+        <p>
+          It depends entirely on whether the server can read what you copy — and with
+          Hopboard it cannot. Text is encrypted in your browser with AES-GCM before it is
+          sent, and the key never leaves your device: the server only sees a hash that
+          tells it which room to route to, and ciphertext it has no way to open. It keeps
+          neither. The honest caveat is that the key is a bearer credential — anyone who
+          learns it can read that session while it is open.
+        </p>
+
+        <h3>Is this a real-time clipboard?</h3>
+        <p>
+          Yes. Hopboard is a live clipboard: the moment a copy is captured it is
+          encrypted and pushed over an open WebSocket, so it lands on the other
+          device in well under a second on a normal connection. There is no polling
+          and no refresh button — the other device already has it by the time you
+          look at it.
+        </p>
+
+        <h3>Where is my clipboard data stored?</h3>
+        <p>
+          Nowhere. There is no database and nothing is written to disk. The relay holds
+          the last message for a room in memory and drops it; files never reach the
+          server at all, because they travel peer-to-peer between your two devices.
+        </p>
+
+        <h3>Can it watch my clipboard in the background?</h3>
+        <p>
+          No, and neither can any other web app on any browser — reading the clipboard
+          requires the window to have focus, which is a deliberate browser security rule.
+          You switch to the Hopboard tab and it picks up whatever you copied. A native
+          app can do this; a web page cannot, and anything claiming otherwise on the web
+          is worth a second look.
+        </p>
+
+        <h3>Which browsers does it work in?</h3>
+        <p>
+          Chromium browsers get the full experience — Chrome, Edge, Brave and Chrome on
+          Android can read the clipboard directly. Firefox and Safari can receive
+          everything and can send anything you paste in by hand, but cannot read the
+          clipboard on their own, because they have not implemented that part of the
+          Clipboard API.
+        </p>
+
+        <h3>Is Hopboard free?</h3>
+        <p>
+          Yes, free and open source under the MIT licence, with no paid tier and no
+          account. The relay is a small FastAPI service you can also
+          <a href="https://github.com/akshaynikhare/Hopboard">run yourself</a> if you
+          would rather not use someone else's.
+        </p>
       </div>
     </div>
   </section>

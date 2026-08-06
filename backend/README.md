@@ -1,4 +1,4 @@
-# LiveClip relay
+# Hopboard relay
 
 In-memory WebSocket fan-out. No database, no disk, no Redis. ~170 lines.
 

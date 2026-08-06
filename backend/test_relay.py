@@ -1,4 +1,4 @@
-"""Protocol gate harness for the LiveClip relay.
+"""Protocol gate harness for the Hopboard relay.
 
 G1-G9 exercise every M0 exit criterion. G10-G13 cover the M7 additions: peer
 identity, targeted forwarding of WebRTC signalling, and the relay-chunk file

@@ -1,8 +1,8 @@
-# LiveClip — Product Requirements Document
+# Hopboard — Product Requirements Document
 
 | Field | Value |
 |---|---|
-| Product | LiveClip — realtime multi-directional clipboard sync |
+| Product | Hopboard — realtime multi-directional clipboard sync |
 | Version | 0.2 (draft) |
 | Date | 2026-08-05 |
 | Status | Draft — core decisions settled (§11.1), remainder open (§11.2) |
@@ -55,9 +55,9 @@ A static web app. Open it on machine A, get a short share key (e.g. `D75LV`). En
 **P3 — Support/pairing.** Two people on a call share a temporary key to pass tokens/snippets back and forth.
 
 ### Journey A — Create a room
-1. User opens `https://<user>.github.io/liveclip/`
+1. User opens `https://akshaynikhare.github.io/Hopboard/`
 2. App auto-generates key `D75LV` and shows it large, with a Copy-link button and a QR code
-3. URL becomes `.../liveclip/#D75LV` (shareable, bookmarkable)
+3. URL becomes `.../Hopboard/#D75LV` (shareable, bookmarkable)
 4. Status pill shows `Connected · 1 device`
 
 ### Journey B — Join from second machine
@@ -67,13 +67,13 @@ A static web app. Open it on machine A, get a short share key (e.g. `D75LV`). En
 
 ### Journey C — Sync a copy
 1. User copies text on machine A (Ctrl+C anywhere in the OS)
-2. Machine A's LiveClip tab detects it (see §5.1 capture modes) and broadcasts
+2. Machine A's Hopboard tab detects it (see §5.1 capture modes) and broadcasts
 3. Machine B receives it; per its mode setting, either writes it to the system clipboard automatically or shows a "New clip — Paste" card with one-click copy
 4. Both devices show the entry at the top of the session list
 
 ### Journey D — Install as app
 1. Chrome shows the install icon in the address bar (PWA criteria met)
-2. User installs; LiveClip opens in a standalone window with icon, remembering the last key
+2. User installs; Hopboard opens in a standalone window with icon, remembering the last key
 
 ---
 
@@ -301,7 +301,7 @@ The relay doubles as the WebRTC signalling channel, so P2P costs no extra infras
 
 Hobby tier allowances, and what each means here:
 
-| Allowance | Impact on LiveClip |
+| Allowance | Impact on Hopboard |
 |---|---|
 | 3 apps, 1 custom domain | Fine — we need one app |
 | 0.1 vCPU / 512 MB shared (burst to 0.5) | Ample. The relay does no crypto and no parsing beyond JSON fan-out |
@@ -409,9 +409,9 @@ User-Agent or it will report a false outage.
 | T3 | `readText()` polling while focused | `clipboard-read` | app window is focused |
 | ~~T4~~ | ~~Chrome extension with `clipboardRead` + offscreen document~~ | ~~install-time~~ | **Unavailable — extensions are blocked by corporate policy (§1.4)** |
 
-**T4 is permanently out of reach, so T1–T3 must carry the whole product.** Practical consequence for design: the user's mental model must be *"switch to LiveClip and it grabs what you copied"*, not *"it watches my clipboard forever"*. Making that switch cheap is therefore a primary UX concern, not a detail:
+**T4 is permanently out of reach, so T1–T3 must carry the whole product.** Practical consequence for design: the user's mental model must be *"switch to Hopboard and it grabs what you copied"*, not *"it watches my clipboard forever"*. Making that switch cheap is therefore a primary UX concern, not a detail:
 
-- Installed as a PWA, LiveClip is one Alt-Tab / Cmd-Tab away in its own window
+- Installed as a PWA, Hopboard is one Alt-Tab / Cmd-Tab away in its own window
 - Capture on focus (T2) is instant and silent, so the round trip is: copy → Alt-Tab → it's already sent
 - The UI must confirm capture visibly ("Sent · 2s ago") so the user learns to trust the focus gesture
 - Never present a state that implies background capture is happening when it isn't
@@ -509,8 +509,8 @@ The elegant part of the fragment-based design: the key the user types can serve 
 
 ```
 user key       :  D75LV                       (never transmitted)
-roomHash       :  SHA-256("liveclip:" + key)  → first 16 bytes, hex  (sent in the WS URL)
-encryption key :  PBKDF2-SHA256(key, salt="liveclip-v1", 250k iters) → AES-GCM-256
+roomHash       :  SHA-256("hopboard:" + key)  → first 16 bytes, hex  (sent in the WS URL)
+encryption key :  PBKDF2-SHA256(key, salt="hopboard-v1", 250k iters) → AES-GCM-256
 payload        :  AES-GCM(plaintext, random 12-byte IV per message)
 ```
 The relay sees only `roomHash` and ciphertext. It cannot derive the key from the hash, so it cannot decrypt. All of this is `crypto.subtle` — no libraries.
@@ -626,8 +626,8 @@ Severity: **Blocker** = stops the build · **High** = silent wrong behaviour if 
 | ~~**OI-1**~~ | ✅ **CLOSED** | ~~WebSocket support on FastAPI Cloud is unverified~~ | **Resolved 2026-08-05: it works.** 20/20 gate against `wss://hopboard.fastapicloud.dev`, upgrade accepted in 973 ms. The SSE+POST fallback is no longer needed; the transport interface stays isolated anyway since it cost nothing. See [M0-RESULTS §4](M0-RESULTS.md) | M0 ✅ |
 | **OI-2** | 🟠 High | **Key collision joins a stranger's room.** The app auto-generates a key on first visit and connects. If that key matches a *live* room, two unrelated people silently share a clipboard. The protocol currently has no create-vs-join distinction | Add `intent: "create" \| "join"` to the connect frame. On `create`, if `welcome.peers > 0`, discard the key, regenerate, retry (max 5). On `join`, `peers == 0` is legitimate (first arrival). See §6 | M1 |
 | **OI-3** | 🟠 High | **Multi-replica split-brain** (R1). Room state is a process-local dict; two devices on different replicas silently never see each other | Pin max replicas to 1. Add `GET /health` returning an instance id so the client can detect a mismatch and warn loudly rather than failing quietly | M0 |
-| **OI-4** | 🟡 Medium | **Duplicate sends from multiple tabs.** Two LiveClip tabs on one machine both poll the same system clipboard and both broadcast the same clip | Leader election across tabs via the Web Locks API (fallback: `BroadcastChannel`). Only the leader tab polls and sends; followers render | M2 |
-| **OI-5** | 🟡 Medium | **Password-manager content lingers on remote machines.** A copied credential syncs to another device's system clipboard and stays there indefinitely — LiveClip would be *undoing* the auto-clear that password managers deliberately perform | Product decision needed. Options: auto-clear remote clipboard after N seconds; a "sensitive — don't auto-write" heuristic; or default `auto-write` off and require a click. Recommend surfacing it as an explicit setting with a documented default | M4 |
+| **OI-4** | 🟡 Medium | **Duplicate sends from multiple tabs.** Two Hopboard tabs on one machine both poll the same system clipboard and both broadcast the same clip | Leader election across tabs via the Web Locks API (fallback: `BroadcastChannel`). Only the leader tab polls and sends; followers render | M2 |
+| **OI-5** | 🟡 Medium | **Password-manager content lingers on remote machines.** A copied credential syncs to another device's system clipboard and stays there indefinitely — Hopboard would be *undoing* the auto-clear that password managers deliberately perform | Product decision needed. Options: auto-clear remote clipboard after N seconds; a "sensitive — don't auto-write" heuristic; or default `auto-write` off and require a click. Recommend surfacing it as an explicit setting with a documented default | M4 |
 | **OI-6** | 🟡 Medium | **Android Chrome clipboard-read UX is unverified.** Desktop shows a persistent per-origin permission prompt; mobile Chrome's behaviour around `readText()` differs and may require a gesture or a paste chip each time | Verify on a real device in M2. If silent read is unavailable, Android falls back to T1 (long-press paste) — which must therefore be a first-class mobile flow, not a desktop afterthought | M2 |
 | **OI-7** | 🟡 Medium | **Cold-start dead air** (R2). Scale-to-zero means the first connect after idle waits for a container to wake | Measure in M0, then resolve D8. Under ~2 s: show "Waking relay…" and do nothing else. 10 s+: consider a low-frequency keep-alive, weighed against Hobby-tier fair use | M0 → M4 |
 | **OI-8** | 🟢 Low | **PBKDF2 cost on low-end Android.** 250k iterations can take several hundred ms | Derive the `CryptoKey` once per session and cache it in memory — never per message. Show an "Unlocking…" state during derivation | M5 |
@@ -636,7 +636,11 @@ Severity: **Blocker** = stops the build · **High** = silent wrong behaviour if 
 | **OI-11** | ⚪ Watch | **FastAPI Cloud is in public beta and compute is not yet invoiced.** The $0 assumption (NFR-4) rests on beta pricing | Monitor. The relay is ~120 lines of standard FastAPI with no platform lock-in, so migrating to another free host is days, not weeks |
 | **OI-12** | ⚪ Watch | **Corporate-network verification needs physical access to that network.** A proxy that blocks WS Upgrade would not show up in testing from a home connection | Schedule an on-network test as part of the M0 gate, not after it | M0 |
 | **OI-14** | 🟠 High | **WebRTC is least likely to work in exactly the environment this is built for.** P2P uses UDP; managed corporate networks routinely block outbound UDP and TLS-inspecting proxies do not pass peer traffic. Direct transfer will frequently fail on the target network — the same class of unknown as OI-1, and it cannot be answered from a home connection | Do **not** buy a TURN server: TURN relays the bytes, so it fixes connectivity by discarding the property that motivated P2P. Instead fall back to chunked transfer over the relay we already have (FR-7.6) — viable precisely because the cap is 5 MB, and the payload is already encrypted so the relay still sees nothing. Label the path visibly. Test on the corporate network alongside OI-12 | M7 |
-| **OI-15** | 🟡 Medium | **Thumbnails leak content automatically.** A 160 px preview of a screenshot can be perfectly legible, and thumbnails travel without being requested — the file's privacy model does not extend to its preview | Add a "send thumbnails" setting. Open question: default on (useful) or off (safe)? Recommend on for images under a threshold, with the setting surfaced rather than buried | M7 |
+| ~~**OI-15**~~ | ✅ **CLOSED** | ~~Thumbnails leak content automatically~~ | **Resolved: "Send previews" toggle, default on.** Kept on because a preview is most of the value of sharing an image at all; the setting is in the Files group and `transfer.announce()` honours it. `tests/files.mjs` asserts thumbs=off actually suppresses the preview, so the toggle cannot rot into decoration | M7 ✅ |
+| ~~**D3-long-key**~~ | ✅ **CLOSED** | ~~The 10-character key option was specified and never built~~ | **Resolved: Settings → Security.** States the tradeoff in numbers — `6 chars · ~29 bits` vs `10 chars · ~49 bits` — and says "applies to the next key", because flipping it does not re-key the session you are in and implying otherwise would be a security claim the app does not honour | ✅ |
+| **OI-16** | 🟠 High | **~~An incoming clip destroyed unsent typing.~~** ✅ Fixed. `editor.setText()` was called unconditionally on every received clip, so text you were mid-way through typing vanished with no undo. With Live mode and a 1s poll on the far side this was a matter of time, not a race | The OS clipboard write still always happens — that is the product. The editor is only overwritten when `editor.isDirty()` is false; otherwise the clip is offered as a banner with the text already on the clipboard | ✅ |
+| **OI-17** | 🟡 Medium | **A device joining was silent.** The key is a bearer credential and the device list going 2→3 is not something anyone notices — the moment of arrival is the only observable signal that someone else holds your key | ✅ Fixed: roster diffing in `state.setPeers` raises a named warning with a "New key" action. The first roster after connecting is not announced, and the roster resets on disconnect, so a relay redeploy does not report your own devices as intruders and train you to ignore the alert |
+| **OI-18** | 🟢 Low | **The retraction seam is in the wrong module.** `registry.announceGone()` takes an injected signal sender because `registry` sits under `transfer` and cannot import it. The outbound half arguably belongs in `transfer.js` beside `announce()`, which already subscribes to `EV.FILE_ADDED` | Left as built: it works, it is covered by 39 tests, and it uses the same injection contract `transfer.js` itself uses. Worth moving if `transfer.js` is touched for other reasons |
 | **OI-13** | 🟡 Medium | **Frontend commits restart the relay.** FastAPI Cloud redeploys on any push to the default branch, so a CSS tweak drops every live WebSocket and clears in-memory rooms | Clients already auto-reconnect and re-fetch the last clip, so the blast radius is a brief blip rather than data loss. If it becomes disruptive: develop the frontend on a branch and merge in batches, or move the relay to its own repo so its deploys are independent of site changes | M6 |
 
 ### 13.1 Decisions still open
