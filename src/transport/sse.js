@@ -114,11 +114,14 @@ export function create({ url, roomHash, onOpen, onFrame, onDown }) {
   };
 
   async function classify() {
+    const guard = deadline(5000);
     try {
-      const res = await fetch(`${base}/health`, { signal: timeout(5000) });
+      const res = await fetch(`${base}/health`, { signal: guard.signal });
       return res.ok ? NO_FALLBACK : `relay error ${res.status}`;
     } catch {
       return "stream refused";
+    } finally {
+      guard.clear();
     }
   }
 
@@ -147,6 +150,7 @@ export function create({ url, roomHash, onOpen, onFrame, onDown }) {
     const batch = take();
 
     let res = null;
+    const guard = deadline();
     try {
       res = await fetch(`${base}/pub/${roomHash}?sid=${encodeURIComponent(sid)}`, {
         method: "POST",
@@ -158,7 +162,7 @@ export function create({ url, roomHash, onOpen, onFrame, onDown }) {
         // One frame per line. JSON.stringify escapes every literal newline, so
         // a frame can never contain one and the split is unambiguous.
         body: batch.join("\n"),
-        signal: timeout(),
+        signal: guard.signal,
       });
     } catch {
       // Did not reach the relay at all. Retry once — a clip the user copied is
@@ -175,6 +179,8 @@ export function create({ url, roomHash, onOpen, onFrame, onDown }) {
       inflight = false;
       console.warn(`[hopboard] dropped ${batch.length} frame(s): relay unreachable`);
       return flush();
+    } finally {
+      guard.clear();
     }
 
     retried = false;
@@ -217,13 +223,19 @@ export function create({ url, roomHash, onOpen, onFrame, onDown }) {
   };
 }
 
-/** AbortSignal.timeout where it exists, hand-rolled where it does not. */
-function timeout(ms = POST_TIMEOUT_MS) {
-  if (typeof AbortSignal !== "undefined" && AbortSignal.timeout) {
-    return AbortSignal.timeout(ms);
-  }
-  if (typeof AbortController === "undefined") return undefined;
+/**
+ * A deadline that stops being armed once the request it guards has finished.
+ *
+ * Deliberately not AbortSignal.timeout(): that cannot be cancelled, so it fires
+ * whether or not the fetch already succeeded, and aborting a settled request
+ * still records it as cancelled. Every POST in a session then shows up red in
+ * the network tab as `net::ERR_ABORTED` — some seconds after it returned 204 —
+ * which is a very convincing way for working code to look broken, and exactly
+ * the sort of false trail this transport does not need another of.
+ */
+function deadline(ms = POST_TIMEOUT_MS) {
+  if (typeof AbortController === "undefined") return { signal: undefined, clear() {} };
   const ctrl = new AbortController();
-  setTimeout(() => ctrl.abort(), ms);
-  return ctrl.signal;
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return { signal: ctrl.signal, clear: () => clearTimeout(timer) };
 }

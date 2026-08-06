@@ -115,6 +115,7 @@ A static web app. Open it on machine A, get a short share key (e.g. `D75LV`). En
 | FR-3.7 | Presence: peer count broadcast on join/leave | Should |
 | FR-3.8 | Last-write-wins ordering using a monotonic per-room sequence number assigned by the relay | Must |
 | FR-3.9 | **Transport failover.** Where a WebSocket cannot be established — including the case where it hangs rather than fails — the client falls back to SSE + POST on the same host, without user action, and states which transport is in use. The remembered choice expires so leaving that network restores the default | Must |
+| FR-3.10 | **Transport override.** The connection item in the status bar picks the transport: Automatic, WebSocket, or HTTP fallback. A pinned transport does not fail over (the status bar says `locked`) and does not expire, and pinning one must not teach the automatic path anything — a forced success is a click, not evidence about the network | Should |
 
 ### 3.4 Installability (PWA)
 | ID | Requirement | Priority |
@@ -216,6 +217,9 @@ Full design in [P2P-FILES.md](P2P-FILES.md).
 | FR-7.6 | If ICE fails within ~5 s, fall back to chunked transfer over the relay (32 KB frames) — **and label it visibly as RELAY, never silently** | Must |
 | FR-7.7 | Max 20 files per session, memory only, cleared on leave | Should |
 | FR-7.8 | Local files are click-to-save; remote files are click-to-request | Must |
+| FR-7.9 | **The approval prompt must not block the app.** It is docked rather than modal, does not take focus, and leaves the editor and every panel usable while it is open — an unanswered request from another device must never stop this one being used | Must |
+| FR-7.10 | Both ends of a request share one deadline (`FILES.REQUEST_TIMEOUT_MS`). An unanswered prompt expires **into a denial**, and the requester stops waiting on the same number, so neither side is left believing in a transfer the other abandoned | Must |
+| FR-7.11 | **"Allow all"** — a per-device standing approval for the rest of the session. Scoped to the room and the tab (`sessionStorage`), dropped when the key rotates, and every transfer it authorises is still announced. The permanent, all-devices version is the existing `autoaccept` setting | Should |
 
 | ID | Requirement |
 |---|---|

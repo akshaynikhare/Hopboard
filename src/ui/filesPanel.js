@@ -346,10 +346,20 @@ function ask(req) {
   });
 }
 
-function settle(token, allowed) {
+function settle(token, allowed, always = false) {
   const p = prompts.get(token);
   if (!p) return;
   prompts.delete(token);
+
+  // "Allow all" is answered before the promise resolves, so any request already
+  // queued behind this one from the same device is covered by it too.
+  if (always && allowed && transfer.allowPeer(p.req.from)) {
+    emit(EV.TOAST, `${p.req.from} can now send and receive without asking, until this tab closes`);
+    for (const [other, q] of [...prompts]) {
+      if (q.req.from === p.req.from) settle(other, true);
+    }
+  }
+
   p.resolve(allowed);
   drawPrompts();
   if (!prompts.size && tick) { clearInterval(tick); tick = null; }
@@ -403,9 +413,37 @@ function drawPrompts() {
     return;
   }
 
-  host.innerHTML = `<div class="ask" role="dialog" aria-modal="true"
-       aria-label="File request" tabindex="-1">
-    ${[...prompts].map(([token, { req, expires }]) => `
+  // The region is created once and kept. Rebuilding it with the cards already
+  // inside would put a live region into the tree pre-populated, which screen
+  // readers announce inconsistently — the same reason banners.js fills its
+  // region a frame late. Only the cards are ever replaced.
+  let region = host.querySelector(".ask.req");
+  if (!region) {
+    host.innerHTML = "";
+    region = document.createElement("div");
+    // Not aria-modal, and no focus grab. This used to be a modal covering the
+    // screen, on the reasoning that it is the last point at which anything can
+    // stop bytes leaving the disk — true, but it also froze the editor behind
+    // it, so an incoming request stopped the app being usable for as long as
+    // nobody answered. The safety property does not actually come from being
+    // modal: it comes from nothing being sent without a click, and from an
+    // unanswered prompt expiring into a denial. Both survive here.
+    region.className = "ask req";
+    region.setAttribute("role", "region");
+    region.setAttribute("aria-label", "File requests");
+    region.setAttribute("aria-live", "polite");
+    host.appendChild(region);
+    host.onclick = onPromptClick;
+    document.addEventListener("keydown", onKey);
+  }
+
+  if (!prompts.size) {
+    host.innerHTML = "";
+    document.removeEventListener("keydown", onKey);
+    return;
+  }
+
+  region.innerHTML = [...prompts].map(([token, { req, expires }]) => `
       <div class="card" data-token="${esc(token)}">
         <div class="t">A device wants one of your files</div>
         <div class="f">${esc(req.name)} <span class="s">${formatSize(req.size)}</span></div>
@@ -416,28 +454,36 @@ function drawPrompts() {
         <div class="acts">
           <span class="cd">${Math.max(0, Math.ceil((expires - Date.now()) / 1000))}s</span>
           <button class="btn ghost" data-deny="${esc(token)}">Deny</button>
+          <button class="btn ghost" data-allowall="${esc(token)}"
+                  title="Stop asking about this device until this tab closes">Allow all</button>
           <button class="btn" data-allow="${esc(token)}">Send it</button>
         </div>
-      </div>`).join("")}
-  </div>`;
-
-  // The dialog itself, not either button. Pre-arming "Send it" means a stray
-  // Enter releases a file; pre-arming "Deny" is safe but silently answers for
-  // someone who has not read it yet. Neither is a decision the app should make.
-  host.querySelector(".ask")?.focus?.();
-
-  host.onclick = e => {
-    const allow = e.target.closest("[data-allow]");
-    if (allow) return settle(allow.dataset.allow, true);
-    const deny = e.target.closest("[data-deny]");
-    if (deny) return settle(deny.dataset.deny, false);
-  };
-  document.addEventListener("keydown", onKey);
+      </div>`).join("");
 }
 
-/** Escape denies. The safe answer is the easy one to reach. */
+function onPromptClick(e) {
+  const allow = e.target.closest("[data-allow]");
+  if (allow) return settle(allow.dataset.allow, true);
+  const always = e.target.closest("[data-allowall]");
+  if (always) return settle(always.dataset.allowall, true, true);
+  const deny = e.target.closest("[data-deny]");
+  if (deny) return settle(deny.dataset.deny, false);
+}
+
+/**
+ * Escape denies — but only while the prompt has focus.
+ *
+ * It used to be global, which was safe when the prompt was modal and there was
+ * nothing else to be doing. Now that the app keeps working underneath it,
+ * Escape belongs to whatever the user is actually in: pressing it to dismiss a
+ * QR modal, or out of habit while typing, should not quietly answer a question
+ * they have not read. Unanswered still ends in a denial — the countdown does
+ * that — so nothing leaks by making this narrower.
+ */
 function onKey(e) {
   if (e.key !== "Escape" || !prompts.size) return;
+  const host = $("mount-modals");
+  if (!host?.contains(document.activeElement)) return;
   e.preventDefault();
   settle([...prompts.keys()].pop(), false);
 }

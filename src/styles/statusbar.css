@@ -36,6 +36,77 @@
 
 .statusbar .dot { box-shadow:0 0 0 1px rgba(255,255,255,.35); }
 
+/* #sbConn is a <button> now — it picks the transport. Strip the agreement the
+   UA makes about buttons so it still reads as one of the status items. */
+button.sitem {
+  border:0;
+  background:none;
+  color:inherit;
+  font:inherit;
+  line-height:inherit;
+}
+button.sitem:focus-visible { outline:1px solid var(--focus); outline-offset:-2px; }
+
+/* ------------------------------------------------------------------ *
+ * Transport menu
+ *
+ * Anchored to the bottom-left because the status bar is the last row on the
+ * screen and #sbConn sits at its left end. Fixed rather than absolute: the
+ * status bar is inside the pinned shell, and an absolutely positioned menu
+ * would be clipped by the editor pane's own overflow.
+ * ------------------------------------------------------------------ */
+.tmenu {
+  position:fixed;
+  left:8px;
+  bottom:calc(var(--statusbar-h) + 6px);
+  z-index:62;
+  width:min(300px, calc(100vw - 16px));
+  background:var(--side);
+  border:1px solid var(--bd2);
+  border-radius:4px;
+  padding:4px;
+  box-shadow:0 8px 28px color-mix(in srgb, var(--activity) 80%, transparent);
+}
+
+.tmenuitem {
+  width:100%;
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  padding:7px 8px;
+  border:0;
+  border-radius:3px;
+  background:none;
+  color:var(--text);
+  font:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+.tmenuitem:hover { background:var(--hover); }
+.tmenuitem:focus-visible { outline:1px solid var(--focus); outline-offset:-2px; }
+
+.tmenuitem .tick {
+  width:11px;
+  flex:none;
+  color:var(--ok);
+  font-size:11px;
+  line-height:1.5;
+}
+.tmenuitem .tx { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.tmenuitem .tx b { font-size:12px; color:var(--bright); font-weight:500; }
+.tmenuitem .tx span { font-size:10.5px; color:var(--dim); line-height:1.4; }
+
+/* On Automatic, which one the app actually settled on. */
+.tmenuitem .tnow {
+  margin-left:auto;
+  align-self:center;
+  flex:none;
+  font-size:9.5px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  color:var(--dim);
+}
+
 /* Drop the least useful items first on narrow screens. */
 @media (max-width:900px) {
   #sbLnCol, .sitem.optional { display:none; }

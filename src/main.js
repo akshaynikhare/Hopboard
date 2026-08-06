@@ -289,6 +289,10 @@ function wire() {
     if (connState === "reconnecting" || connState === "offline") state.resetRoster();
   });
 
+  // The status bar offers a transport; only this file is allowed to hand it to
+  // the transport layer (docs/ARCHITECTURE.md §3).
+  on(EV.TRANSPORT_SELECT, ({ mode }) => relay.setTransport(mode));
+
   on("session:leave", () => {
     relay.close();
     state.setConnection("idle");

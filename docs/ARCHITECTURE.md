@@ -118,6 +118,13 @@ after `NET.SWITCH_AFTER` attempts that never do, move to SSE and say so. The
 probe matters more than it looks — a blocked WebSocket usually does not fail, it
 hangs, so there is no error to react to and nothing but a timer will notice.
 
+The status bar can pin it by hand, and that is a good example of the rule
+working rather than an exception to it. `ui/statusbar.js` owns the menu and
+knows the three values; it emits `EV.TRANSPORT_SELECT`, `main.js` calls
+`relay.setTransport()`, and the UI hears the result back as `EV.TRANSPORT`. No
+UI file imports a channel, so the picker would keep working if the channels
+were replaced tomorrow.
+
 ### Consequences worth knowing
 
 - Event names live in `bus.js` as `EV.*` constants. A typo'd string literal is a

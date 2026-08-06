@@ -224,6 +224,72 @@ ok("a peer cannot retract a file off this machine",
    Boolean(registry.get(stillMine.id)),
    "the console warning above is the point of this check");
 
+/* ---------- session allowances ----------
+   "Allow all from this device" is a standing grant to send files off the
+   machine without asking again, so what it does NOT cover matters as much as
+   what it does. */
+console.log("\nSession allowances\n");
+
+// storage.js degrades silently without web storage, which would make every
+// assertion below pass for the wrong reason.
+const store = new Map();
+globalThis.sessionStorage = {
+  getItem: k => (store.has(k) ? store.get(k) : null),
+  setItem: (k, v) => store.set(k, String(v)),
+  removeItem: k => store.delete(k),
+};
+
+state.setKey({ key: "ROOMA1", roomHash: "roomA" });
+
+ok("a device nobody vouched for is not allowed", transfer.isPeerAllowed("peerZ") === false);
+ok("allowing a device takes", transfer.allowPeer("peerZ") === true && transfer.isPeerAllowed("peerZ"));
+ok("the allowance is stored against its room, in session storage",
+   (store.get("hopboard.allow") || "").includes("roomA"), store.get("hopboard.allow"));
+ok("allowing one device does not allow another", transfer.isPeerAllowed("peerY") === false);
+
+// The security property: rotating the key is how a device is thrown out of a
+// session, so an allowance must not survive it — in either direction.
+state.setKey({ key: "ROOMB2", roomHash: "roomB" });
+ok("rotating the key drops the allowance", transfer.isPeerAllowed("peerZ") === false,
+   "a device ejected by a new key must not still be trusted");
+transfer.allowPeer("peerB");
+state.setKey({ key: "ROOMA1", roomHash: "roomA" });
+ok("and going back to the old room does not resurrect it",
+   transfer.isPeerAllowed("peerZ") === false && transfer.isPeerAllowed("peerB") === false);
+
+ok("an allowance can be taken back",
+   transfer.allowPeer("peerQ") && transfer.forgetPeer("peerQ") && !transfer.isPeerAllowed("peerQ"));
+
+/* The default with no approver and no allowance is to deny — failing open here
+   would hand every file to anyone holding the key. */
+const ours = registry.all().find(f => f.name === "mine.txt");
+transfer.setApprover(null);
+
+/** onSignal is fire-and-forget by design, so wait for the frame it produces. */
+async function waitFor(type, ms = 2000) {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
+    const hit = sent.find(f => f.t === type);
+    if (hit) return hit;
+    await new Promise(r => setTimeout(r, 20));
+  }
+  return null;
+}
+
+sent.length = 0;
+transfer.onSignal({ t: "file-req", id: ours.id, originId: "peerStranger" });
+ok("an unknown device with no approver is denied", Boolean(await waitFor("file-deny")),
+   sent.map(f => f.t).join(", ") || "nothing sent");
+
+sent.length = 0;
+transfer.allowPeer("peerFriend");
+transfer.onSignal({ t: "file-req", id: ours.id, originId: "peerFriend" });
+const accepted = await waitFor("file-accept");
+ok("an allowed device is served without an approver at all",
+   Boolean(accepted) && !sent.some(f => f.t === "file-deny"),
+   sent.map(f => f.t).join(", ") || "nothing sent");
+transfer.cancel(ours.id, "test over");
+
 console.log("\n" + "=".repeat(58));
 console.log(`FILES: ${pass}/${pass + fail} passed`);
 console.log("=".repeat(58));
