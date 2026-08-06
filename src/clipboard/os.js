@@ -29,7 +29,7 @@ export async function write(text) {
       // Fall through to the web path rather than failing: a shell too old to
       // know this command should degrade to the browser behaviour, not lose
       // the clip.
-      console.warn("[hopboard] native clipboard write failed:", err);
+      console.warn("[realtimeclipboard] native clipboard write failed:", err);
     }
   }
 

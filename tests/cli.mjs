@@ -18,8 +18,8 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const BIN = join(REPO, "cli/hopboard.mjs");
-const BASE = process.argv[2] || "wss://hopboard.fastapicloud.dev";
+const BIN = join(REPO, "cli/realtimeclipboard.mjs");
+const BASE = process.argv[2] || "wss://realtimeclipboard.fastapicloud.dev";
 const HTTP = BASE.replace(/^ws/i, "http");
 
 let pass = 0, fail = 0;
@@ -114,7 +114,7 @@ check("the wrong PIN reads nothing at all", wrongSeen.out.trim() === "",
   JSON.stringify(wrongSeen.out.slice(0, 80)));
 check("and times out rather than hanging forever", wrongSeen.code === 5, `code ${wrongSeen.code}`);
 check("the lock beacon is never printed as a clip",
-  !lockedSeen.out.includes("hopboard-lock-v1") && !wrongSeen.out.includes("hopboard-lock-v1"));
+  !lockedSeen.out.includes("realtimeclipboard-lock-v1") && !wrongSeen.out.includes("realtimeclipboard-lock-v1"));
 
 console.log("\n" + "=".repeat(56));
 console.log(`CLI: ${pass}/${pass + fail} passed`);

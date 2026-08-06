@@ -40,9 +40,9 @@
      pinned here is deliberate — a corporate build that can physically reach
      only its own relay is a feature, not an oversight. tests/static-check.mjs
      asserts this list agrees with RELAY_URL in src/core/config.js. !! -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://hopboard.fastapicloud.dev wss://hopboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types hopboard">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
 
-<title>Hopboard</title>
+<title>RealtimeClipboard</title>
 <meta name="theme-color" content="#007acc">
 
 <!-- The app itself must never be indexed.
@@ -64,7 +64,7 @@
      the conflict unpredictably, and the version that loses can end up dropping
      the landing page instead. The noindex above is what we actually want, so
      the canonical must not argue with it. -->
-<link rel="canonical" href="https://akshaynikhare.github.io/Hopboard/app.html">
+<link rel="canonical" href="https://akshaynikhare.github.io/RealtimeClipboard/app.html">
 <!-- Static rather than injected by install.js: Chrome evaluates install
      criteria earlier this way, so beforeinstallprompt fires sooner. -->
 <link rel="manifest" href="./manifest.webmanifest">
@@ -90,7 +90,7 @@
       <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
       <path d="M9 13l2 2 4-4"/>
     </svg>
-    <span class="brand">Hopboard</span>
+    <span class="brand">RealtimeClipboard</span>
 
     <!-- Key, QR, share link, rotate. -->
     <div class="keybar">

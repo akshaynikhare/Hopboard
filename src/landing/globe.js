@@ -1,5 +1,5 @@
 /**
- * Hopboard — live globe.
+ * RealtimeClipboard — live globe.
  *
  * A rotating wireframe globe with a marker on every country that currently has
  * a session, and a counter that says exactly what the relay says. Canvas 2D,

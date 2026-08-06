@@ -7,7 +7,7 @@
  * the boundary test in docs/ARCHITECTURE.md §4.
  *
  * Everything here is path-relative. The site lives on a GitHub Pages subpath
- * (https://<user>.github.io/Hopboard/), so a single leading "/" anywhere below
+ * (https://<user>.github.io/RealtimeClipboard/), so a single leading "/" anywhere below
  * would point at the user's Pages root and silently break both the service
  * worker scope and the install criteria — PRD OI-9.
  */
@@ -153,7 +153,7 @@ function showInstall() {
     id: "pwaInstall",
     kind: "info",
     icon: ICON.install,
-    message: "Install Hopboard for its own window, icon and offline shell.",
+    message: "Install RealtimeClipboard for its own window, icon and offline shell.",
     action: "Install app",
     onAction: promptInstall,
     // Remember the dismissal: Chrome re-fires beforeinstallprompt on later
@@ -188,7 +188,7 @@ async function registerSW() {
   let reg;
   try {
     // Relative script URL and relative scope: on Pages this registers
-    // /Hopboard/sw.js scoped to /Hopboard/, and an absolute "/sw.js" would 404.
+    // /RealtimeClipboard/sw.js scoped to /RealtimeClipboard/, and an absolute "/sw.js" would 404.
     reg = await navigator.serviceWorker.register(scriptURL(SW_URL), { scope: APP_ROOT.href });
   } catch (err) {
     // No offline shell, but the app still works. Not worth a toast.
@@ -228,7 +228,7 @@ function showUpdate(reg) {
     id: "pwaUpdate",
     kind: "warn",
     icon: ICON.update,
-    message: "A new version of Hopboard is ready.",
+    message: "A new version of RealtimeClipboard is ready.",
     action: "Reload",
     onAction: () => applyUpdate(reg),
   });
@@ -272,7 +272,7 @@ export function init() {
     deferredPrompt = null;
     drop("pwaInstall");
     write(DISMISSED, false);         // a later uninstall should offer it again
-    emit(EV.TOAST, "Hopboard installed");
+    emit(EV.TOAST, "RealtimeClipboard installed");
   });
 
   // Installing from Chrome's own address-bar affordance never fires our click

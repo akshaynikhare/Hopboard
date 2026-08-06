@@ -1,5 +1,5 @@
 image:
-  repository: ghcr.io/akshaynikhare/hopboard-relay
+  repository: ghcr.io/akshaynikhare/realtimeclipboard-relay
   tag: ""              # defaults to .Chart.AppVersion
   pullPolicy: IfNotPresent
 
@@ -32,7 +32,7 @@ redis:
   # AOF. A cache-class instance is the right shape.
   url: ""              # redis://redis.default.svc.cluster.local:6379/0
 
-# Deployment policy. All optional; each maps to a HOPBOARD_* variable and each
+# Deployment policy. All optional; each maps to a REALTIMECLIPBOARD_* variable and each
 # defaults to the hosted relay's behaviour. See backend/main.py.
 policy:
   # Pin to the origin your app is served from. "*" is safe only because there
@@ -78,7 +78,7 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-buffering: "off"
   tls:
     enabled: true
-    secretName: hopboard-relay-tls
+    secretName: realtimeclipboard-relay-tls
 
 resources:
   requests:

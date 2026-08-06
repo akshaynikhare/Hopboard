@@ -91,7 +91,7 @@ const b64 = Buffer.from(bytes).toString("base64");
 const lines = b64.match(/.{1,96}/g).map(l => `  "${l}" +`).join("\n").replace(/ \+$/, "");
 
 writeFileSync(OUT, `/**
- * Hopboard — the land mask the globe draws its continents from.
+ * RealtimeClipboard — the land mask the globe draws its continents from.
  *
  * GENERATED FILE. Do not hand-edit: run \`node tools/build-land-mask.mjs\`
  * against Natural Earth's 1:110m land polygons and commit what comes out. The

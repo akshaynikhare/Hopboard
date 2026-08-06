@@ -4,7 +4,7 @@ labels: ["bug"]
 body:
   - type: markdown
     attributes:
-      # First, and deliberately alarming. Hopboard's whole job is moving
+      # First, and deliberately alarming. RealtimeClipboard's whole job is moving
       # passwords and tokens between machines, so the natural instinct when
       # reporting a bug — paste the thing that went wrong — is exactly the
       # instinct that publishes a live credential in a public issue.
@@ -21,7 +21,7 @@ body:
         > if it turns out we need one, we will ask you to make a throwaway
         > session.
 
-        Before filing: [clipboard sync is not working](https://akshaynikhare.github.io/Hopboard/help/clipboard-sync-not-working/)
+        Before filing: [clipboard sync is not working](https://akshaynikhare.github.io/RealtimeClipboard/help/clipboard-sync-not-working/)
         covers the common causes — blocked WebSockets, clipboard permission, and
         a browser that will not read the clipboard in the background.
 
@@ -41,7 +41,7 @@ body:
     attributes:
       label: Steps to reproduce
       description: >
-        Number them. Most Hopboard bugs involve two devices, so say which device
+        Number them. Most RealtimeClipboard bugs involve two devices, so say which device
         did what — "copy on A, nothing on B" is a different bug from
         "copy on B, nothing on A".
       placeholder: |
@@ -126,7 +126,7 @@ body:
     attributes:
       label: Where are you running it?
       options:
-        - The hosted app (akshaynikhare.github.io/Hopboard)
+        - The hosted app (akshaynikhare.github.io/RealtimeClipboard)
         - Installed as an app (PWA)
         - My own copy, hosted somewhere else
         - Locally, from a checkout
@@ -138,7 +138,7 @@ body:
     attributes:
       label: Console output
       description: >
-        F12 → Console, on both devices if you can. Hopboard logs a line at boot
+        F12 → Console, on both devices if you can. RealtimeClipboard logs a line at boot
         with the room hash and whether the session is locked — that line is safe
         to paste, it contains no key and no PIN.
 
@@ -147,8 +147,8 @@ body:
         a `#` fragment from the address bar.
       render: text
       placeholder: |
-        [hopboard] session · room=2bab2d0b41e31a44b28eeaacf7ac6249 locked=false
-        [hopboard] booted · intent=join locked=false device=Chrome · Windows
+        [realtimeclipboard] session · room=2bab2d0b41e31a44b28eeaacf7ac6249 locked=false
+        [realtimeclipboard] booted · intent=join locked=false device=Chrome · Windows
 
   - type: input
     id: version

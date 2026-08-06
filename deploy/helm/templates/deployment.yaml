@@ -13,18 +13,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "hopboard-relay.fullname" . }}
+  name: {{ include "realtimeclipboard-relay.fullname" . }}
   labels:
-    {{- include "hopboard-relay.labels" . | nindent 4 }}
+    {{- include "realtimeclipboard-relay.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "hopboard-relay.selectorLabels" . | nindent 6 }}
+      {{- include "realtimeclipboard-relay.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "hopboard-relay.selectorLabels" . | nindent 8 }}
+        {{- include "realtimeclipboard-relay.selectorLabels" . | nindent 8 }}
       annotations:
         # Roll the pods when policy changes. Without this, editing an env value
         # updates the Deployment spec but leaves the running relay on the old
@@ -42,32 +42,32 @@ spec:
             - name: http
               containerPort: 8000
           env:
-            - name: HOPBOARD_CORS_ORIGINS
+            - name: REALTIMECLIPBOARD_CORS_ORIGINS
               value: {{ .Values.policy.corsOrigins | quote }}
-            - name: HOPBOARD_MAX_PEERS
+            - name: REALTIMECLIPBOARD_MAX_PEERS
               value: {{ .Values.policy.maxPeers | quote }}
-            - name: HOPBOARD_ROOM_TTL
+            - name: REALTIMECLIPBOARD_ROOM_TTL
               value: {{ .Values.policy.roomTtlSeconds | quote }}
             {{- if .Values.policy.disableFiles }}
-            - name: HOPBOARD_DISABLE_FILES
+            - name: REALTIMECLIPBOARD_DISABLE_FILES
               value: "true"
             {{- end }}
             {{- if gt (int .Values.policy.maxSessionSeconds) 0 }}
-            - name: HOPBOARD_MAX_SESSION
+            - name: REALTIMECLIPBOARD_MAX_SESSION
               value: {{ .Values.policy.maxSessionSeconds | quote }}
             {{- end }}
             {{- if .Values.policy.joinTokenSecret.name }}
-            - name: HOPBOARD_JOIN_TOKEN
+            - name: REALTIMECLIPBOARD_JOIN_TOKEN
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.policy.joinTokenSecret.name }}
                   key: {{ .Values.policy.joinTokenSecret.key }}
             {{- else if .Values.policy.joinToken }}
-            - name: HOPBOARD_JOIN_TOKEN
+            - name: REALTIMECLIPBOARD_JOIN_TOKEN
               value: {{ .Values.policy.joinToken | quote }}
             {{- end }}
             {{- if .Values.redis.enabled }}
-            - name: HOPBOARD_REDIS_URL
+            - name: REALTIMECLIPBOARD_REDIS_URL
               value: {{ required "redis.enabled is true but redis.url is empty" .Values.redis.url | quote }}
             {{- end }}
           # Liveness and readiness are the same endpoint because the relay has

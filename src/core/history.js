@@ -41,7 +41,7 @@ export const EVENTS = {
   RESTORE: "history:restore",
 };
 
-const STORE_KEY = "hopboard.history";
+const STORE_KEY = "realtimeclipboard.history";
 
 let clips = [];
 let roomKey = null;      // share key the current list belongs to; null until first KEY_CHANGED

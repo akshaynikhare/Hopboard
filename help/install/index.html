@@ -6,7 +6,7 @@
 
 <!-- One policy, identical on every page of the site. Reasoning and the
      directive-by-directive notes live in app.html. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://hopboard.fastapicloud.dev wss://hopboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types hopboard">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
 
 <!--
   The other half of /download/. That page converts; this one ranks.
@@ -17,18 +17,18 @@
   answers that first, per platform, including where the answer is no, and only
   then says what to install. docs/SEO.md §2 calls this the device-pair matrix.
 -->
-<title>How to install Hopboard on Windows, Mac, Linux, Android and iPhone</title>
-<meta name="description" content="Install the Hopboard clipboard on any device: the desktop app for Windows, macOS and Linux, add to home screen on Android and iPhone, and the command line for servers. What background clipboard capture can and cannot do on each.">
-<link rel="canonical" href="https://akshaynikhare.github.io/Hopboard/help/install/">
+<title>How to install RealtimeClipboard on Windows, Mac, Linux, Android and iPhone</title>
+<meta name="description" content="Install the RealtimeClipboard clipboard on any device: the desktop app for Windows, macOS and Linux, add to home screen on Android and iPhone, and the command line for servers. What background clipboard capture can and cannot do on each.">
+<link rel="canonical" href="https://akshaynikhare.github.io/RealtimeClipboard/help/install/">
 <meta name="theme-color" content="#007acc">
 <link rel="icon" href="../../icons/icon.svg" type="image/svg+xml">
 
 <meta property="og:type" content="article">
-<meta property="og:site_name" content="Hopboard">
-<meta property="og:title" content="How to install Hopboard on any device">
+<meta property="og:site_name" content="RealtimeClipboard">
+<meta property="og:title" content="How to install RealtimeClipboard on any device">
 <meta property="og:description" content="Windows, macOS, Linux, Android, iPhone and the command line — and what background clipboard capture can actually do on each.">
-<meta property="og:url" content="https://akshaynikhare.github.io/Hopboard/help/install/">
-<meta property="og:image" content="https://akshaynikhare.github.io/Hopboard/social/og-card.png">
+<meta property="og:url" content="https://akshaynikhare.github.io/RealtimeClipboard/help/install/">
+<meta property="og:image" content="https://akshaynikhare.github.io/RealtimeClipboard/social/og-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -39,17 +39,17 @@
   "@graph": [
     {
       "@type": "Article",
-      "@id": "https://akshaynikhare.github.io/Hopboard/help/install/#article",
-      "headline": "How to install Hopboard on Windows, Mac, Linux, Android and iPhone",
-      "description": "Every platform Hopboard runs on, what to install on each, and what background clipboard capture can and cannot do.",
-      "isPartOf": { "@id": "https://akshaynikhare.github.io/Hopboard/#website" },
+      "@id": "https://akshaynikhare.github.io/RealtimeClipboard/help/install/#article",
+      "headline": "How to install RealtimeClipboard on Windows, Mac, Linux, Android and iPhone",
+      "description": "Every platform RealtimeClipboard runs on, what to install on each, and what background clipboard capture can and cannot do.",
+      "isPartOf": { "@id": "https://akshaynikhare.github.io/RealtimeClipboard/#website" },
       "inLanguage": "en"
     },
     {
       "@type": "BreadcrumbList",
       "itemListElement": [
-        { "@type": "ListItem", "position": 1, "name": "Hopboard", "item": "https://akshaynikhare.github.io/Hopboard/" },
-        { "@type": "ListItem", "position": 2, "name": "Help", "item": "https://akshaynikhare.github.io/Hopboard/help/" },
+        { "@type": "ListItem", "position": 1, "name": "RealtimeClipboard", "item": "https://akshaynikhare.github.io/RealtimeClipboard/" },
+        { "@type": "ListItem", "position": 2, "name": "Help", "item": "https://akshaynikhare.github.io/RealtimeClipboard/help/" },
         { "@type": "ListItem", "position": 3, "name": "Installing" }
       ]
     }
@@ -74,7 +74,7 @@
           <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
           <path d="M9 13l2 2 4-4"/>
         </svg>
-        <b>Hopboard</b>
+        <b>RealtimeClipboard</b>
       </a>
       <span class="spacer"></span>
       <a class="tlink" href="../../download/">Download</a>
@@ -90,15 +90,15 @@
     <div class="in">
 
       <nav class="crumb" aria-label="Breadcrumb">
-        <a href="../../">Hopboard</a> <span aria-hidden="true">/</span>
+        <a href="../../">RealtimeClipboard</a> <span aria-hidden="true">/</span>
         <a href="../">Help</a> <span aria-hidden="true">/</span>
         <span aria-current="page">Installing</span>
       </nav>
 
       <div class="article">
-        <h1>Installing Hopboard</h1>
+        <h1>Installing RealtimeClipboard</h1>
         <p class="lede">
-          Hopboard runs in a browser on every device you own, and nothing needs
+          RealtimeClipboard runs in a browser on every device you own, and nothing needs
           installing for that. What installing buys you is one specific thing,
           on some platforms only: the app noticing what you copied while you were
           working in a different window.
@@ -124,7 +124,7 @@
               <tr><td>Linux, Wayland</td><td>Desktop app</td><td>KDE and wlroots yes; GNOME no</td></tr>
               <tr><td>Android / ChromeOS</td><td>Add to home screen</td><td><b>No</b> — blocked by Android</td></tr>
               <tr><td>iPhone / iPad</td><td>Add to home screen</td><td><b>No</b> — blocked by iOS</td></tr>
-              <tr><td>Servers, SSH</td><td><code>npx hopboard</code></td><td>Not applicable — it pipes</td></tr>
+              <tr><td>Servers, SSH</td><td><code>npx realtimeclipboard</code></td><td>Not applicable — it pipes</td></tr>
               <tr><td>Anything else</td><td>Nothing — use a browser</td><td>No</td></tr>
             </tbody>
           </table>
@@ -132,12 +132,12 @@
 
         <h2 id="what">What "background capture" actually means</h2>
         <p>
-          In a browser, Hopboard can only read your clipboard while its window is
+          In a browser, RealtimeClipboard can only read your clipboard while its window is
           focused. That is not a limitation of this app — it is a rule every
           browser enforces on every website, because a page that could silently
           read your clipboard would harvest every password you copy. So the
           browser version works like this: you copy something, you switch to
-          Hopboard, and it picks it up as it comes into focus.
+          RealtimeClipboard, and it picks it up as it comes into focus.
         </p>
         <p>
           A native desktop app is not bound by that rule. The Windows, macOS and
@@ -155,12 +155,12 @@
 
         <h2 id="windows">Windows</h2>
         <p>Download the <code>.msi</code> from <a href="../../download/">the download page</a>, or:</p>
-        <pre><code>winget install Hopboard.Hopboard</code></pre>
+        <pre><code>winget install RealtimeClipboard.RealtimeClipboard</code></pre>
         <p>
           If Windows SmartScreen warns you about the installer, that is worth
           taking seriously in general. Check that the publisher matches and that
           you got the file from the
-          <a href="https://github.com/akshaynikhare/Hopboard/releases/latest">official releases page</a>.
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/releases/latest">official releases page</a>.
         </p>
         <p>
           <b>On a work machine:</b> the app needs no administrator rights and
@@ -171,7 +171,7 @@
 
         <h2 id="mac">macOS</h2>
         <p>Download the <code>.dmg</code>, or:</p>
-        <pre><code>brew install --cask hopboard</code></pre>
+        <pre><code>brew install --cask realtimeclipboard</code></pre>
         <p>
           One download covers both Intel and Apple Silicon. macOS needs no
           special permission to read the clipboard, so there is no prompt to
@@ -179,8 +179,8 @@
         </p>
 
         <h2 id="linux">Linux</h2>
-        <pre><code>flatpak install flathub io.github.akshaynikhare.Hopboard</code></pre>
-        <p>Or a <code>.deb</code>, <code>.rpm</code> or AppImage from the releases page, or <code>yay -S hopboard</code> on Arch.</p>
+        <pre><code>flatpak install flathub io.github.akshaynikhare.RealtimeClipboard</code></pre>
+        <p>Or a <code>.deb</code>, <code>.rpm</code> or AppImage from the releases page, or <code>yay -S realtimeclipboard</code> on Arch.</p>
         <p>
           <b>The Wayland caveat, stated plainly.</b> On X11 the app is told when
           the clipboard changes and background capture works. On Wayland it
@@ -200,7 +200,7 @@
         <p>
           There is no Android app, and there is not going to be one. Since
           Android 10, only the app you are currently using, the active keyboard,
-          or an accessibility service may read the clipboard. A Hopboard app
+          or an accessibility service may read the clipboard. A RealtimeClipboard app
           would therefore be a share-sheet button and an icon — everything else
           it could do, the installed web app already does.
         </p>
@@ -226,13 +226,13 @@
         </p>
 
         <h2 id="cli">Servers, SSH sessions and scripts</h2>
-        <pre><code>npx hopboard D75LV</code></pre>
+        <pre><code>npx realtimeclipboard D75LV</code></pre>
         <p>
           For machines with no clipboard and no screen. It reads standard input
           and writes standard output, so it composes with everything else:
         </p>
-        <pre><code>echo "deploy key" | npx hopboard send D75LV
-npx hopboard watch D75LV --once &gt; token.txt</code></pre>
+        <pre><code>echo "deploy key" | npx realtimeclipboard send D75LV
+npx realtimeclipboard watch D75LV --once &gt; token.txt</code></pre>
         <p>
           It needs Node 22 or newer. It is not a separate implementation — it
           imports the same encryption and transport files the browser runs, so a
@@ -245,17 +245,17 @@ npx hopboard watch D75LV --once &gt; token.txt</code></pre>
           them — it only ever sees a room hash and ciphertext — but if you would
           rather not take that on trust, run it yourself:
         </p>
-        <pre><code>docker run -p 8000:8000 ghcr.io/akshaynikhare/hopboard-relay</code></pre>
+        <pre><code>docker run -p 8000:8000 ghcr.io/akshaynikhare/realtimeclipboard-relay</code></pre>
         <p>
           Then point the app at it under <b>Settings → Relay</b>. There is a
           <code>docker-compose.yml</code> with automatic TLS and a Helm chart in
-          <a href="https://github.com/akshaynikhare/Hopboard/tree/main/deploy">the deploy directory</a>.
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/tree/main/deploy">the deploy directory</a>.
         </p>
 
         <p class="hint">
           Ready to install: <a href="../../download/">the download page</a>.
           Something wrong or out of date here?
-          <a href="https://github.com/akshaynikhare/Hopboard/issues">Open an issue</a>.
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/issues">Open an issue</a>.
         </p>
       </div>
 
@@ -266,7 +266,7 @@ npx hopboard watch D75LV --once &gt; token.txt</code></pre>
 <footer class="sec">
   <div class="in">
     <div class="footgrid">
-      <p>Open source — <a href="https://github.com/akshaynikhare/Hopboard">github.com/akshaynikhare/Hopboard</a></p>
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
       <p><a href="../../">Home</a> · <a href="../../download/">Download</a> · <a href="../">Help</a> · <a href="../../blog/">Blog</a></p>
       <p>Sessions are held in memory and never written to disk. Clipboard contents are
          encrypted in your browser before they are sent.</p>

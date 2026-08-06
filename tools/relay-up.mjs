@@ -13,14 +13,14 @@
 
 const CANDIDATES = process.argv[2]
   ? [process.argv[2]]
-  : ["http://127.0.0.1:8000", "https://hopboard.fastapicloud.dev"];
+  : ["http://127.0.0.1:8000", "https://realtimeclipboard.fastapicloud.dev"];
 
 for (const base of CANDIDATES) {
   try {
     const res = await fetch(`${base}/health`, {
       signal: AbortSignal.timeout(3000),
       // Cloudflare fronts the deployed relay and 403s some default agents.
-      headers: { "User-Agent": "hopboard-hook/1.0" },
+      headers: { "User-Agent": "realtimeclipboard-hook/1.0" },
     });
     if (!res.ok) continue;
     const body = await res.json();

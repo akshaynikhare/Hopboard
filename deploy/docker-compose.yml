@@ -1,6 +1,6 @@
-# Hopboard relay, with TLS, in one command.
+# RealtimeClipboard relay, with TLS, in one command.
 #
-#   HOPBOARD_DOMAIN=relay.example.com docker compose up -d
+#   REALTIMECLIPBOARD_DOMAIN=relay.example.com docker compose up -d
 #
 # Caddy is here for one reason and it is not convenience: the client is served
 # over HTTPS, so a browser refuses a ws:// connection from it as mixed content,
@@ -15,7 +15,7 @@
 services:
   relay:
     build: ../backend
-    image: ghcr.io/akshaynikhare/hopboard-relay:latest
+    image: ghcr.io/akshaynikhare/realtimeclipboard-relay:latest
     restart: unless-stopped
     # No published port. Caddy is the only thing that should reach it, and
     # binding 8000 on the host is how a relay ends up quietly serving plaintext
@@ -26,12 +26,12 @@ services:
       # Pin this to the origin your app is served from. The default is "*",
       # which is safe here only because there are no credentials in the design
       # — but a self-hoster who has a single origin should say so.
-      HOPBOARD_CORS_ORIGINS: ${HOPBOARD_CORS_ORIGINS:-*}
+      REALTIMECLIPBOARD_CORS_ORIGINS: ${REALTIMECLIPBOARD_CORS_ORIGINS:-*}
       # Uncomment for a deployment that should not be an open relay for anyone
       # who learns the hostname. Every client then needs ?org=<the same value>.
-      # HOPBOARD_JOIN_TOKEN: ${HOPBOARD_JOIN_TOKEN}
+      # REALTIMECLIPBOARD_JOIN_TOKEN: ${REALTIMECLIPBOARD_JOIN_TOKEN}
       # Text between a person's own machines, but no file movement.
-      # HOPBOARD_DISABLE_FILES: "true"
+      # REALTIMECLIPBOARD_DISABLE_FILES: "true"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).status == 200 else 1)"]
       interval: 30s
@@ -56,7 +56,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      HOPBOARD_DOMAIN: ${HOPBOARD_DOMAIN:?set HOPBOARD_DOMAIN to the hostname this relay answers on}
+      REALTIMECLIPBOARD_DOMAIN: ${REALTIMECLIPBOARD_DOMAIN:?set REALTIMECLIPBOARD_DOMAIN to the hostname this relay answers on}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # Certificates only. Losing these costs a re-issue, not any user data —

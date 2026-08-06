@@ -5,7 +5,7 @@
 | Date | 2026-08-05 |
 | Milestone | M0 — de-risk the relay |
 | Verdict | ✅ **CLEARED — 20/20 against the deployed relay** |
-| Relay | https://hopboard.fastapicloud.dev |
+| Relay | https://realtimeclipboard.fastapicloud.dev |
 | OI-1 | ✅ **Closed.** FastAPI Cloud passes WebSocket upgrades |
 
 M0 exists to test one assumption before anything is built on it: *can this
@@ -98,7 +98,7 @@ fair-use cost. Show a brief "Connecting…" and move on.
 
 ## 4. Deployed results — 20/20 passed ✅
 
-`python test_relay.py wss://hopboard.fastapicloud.dev`
+`python test_relay.py wss://realtimeclipboard.fastapicloud.dev`
 
 ```
 G1  PASS  upgrade accepted — 973 ms          <-- OI-1 ANSWERED
@@ -181,7 +181,7 @@ network, where TLS-inspecting proxies commonly reap idle connections at 60–120
 
 **Room-hash derivation is correct.** The browser derives the room name as
 `SHA-256("liveclip:" + KEY)` truncated to 16 bytes. **The prefix was later
-renamed to `"hopboard:"` when the product was named, so the hashes below no
+renamed to `"realtimeclipboard:"` when the product was named, so the hashes below no
 longer reproduce against the shipped code — they are kept as the record of
 what was actually verified at M0.** Verified against an
 independent Python implementation:

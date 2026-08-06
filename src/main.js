@@ -138,7 +138,7 @@ async function openSession(key, intent, { locked = false, pin = null, prk = null
  * needless to say, appears nowhere at all.
  */
 function announce(roomHash, locked) {
-  console.info(`[hopboard] session · room=${roomHash} locked=${locked}`);
+  console.info(`[realtimeclipboard] session · room=${roomHash} locked=${locked}`);
 }
 
 /**
@@ -319,7 +319,7 @@ async function decryptFrame(frame) {
   } catch {
     // A peer in this room shares the key by construction, so this should be
     // unreachable — drop rather than hand the files layer a half-frame.
-    console.warn("[hopboard] undecryptable signalling frame", frame.t);
+    console.warn("[realtimeclipboard] undecryptable signalling frame", frame.t);
     return null;
   }
 }
@@ -358,7 +358,7 @@ function wire() {
     if (!relay.isOpen()) return false;
     encryptFrame(frame)
       .then(sealed => relay.send(sealed))
-      .catch(err => console.error("[hopboard] could not send cursor frame", err));
+      .catch(err => console.error("[realtimeclipboard] could not send cursor frame", err));
     return true;
   });
 
@@ -422,7 +422,7 @@ function wire() {
       if (added) emit(EV.TOAST, `${how} · ${name}`);
       rejected.forEach(r => emit(EV.TOAST, `${r.name}: ${r.reason}`));
     } catch (err) {
-      console.warn("[hopboard] could not add clipboard image", err);
+      console.warn("[realtimeclipboard] could not add clipboard image", err);
       emit(EV.TOAST, "Could not read that image");
     }
   });
@@ -595,7 +595,7 @@ async function wireFiles() {
       if (!relay.isOpen()) return false;
       encryptFrame(frame)
         .then(sealed => relay.send(sealed))
-        .catch(err => console.error("[hopboard] could not retract a file", err));
+        .catch(err => console.error("[realtimeclipboard] could not retract a file", err));
       return true;
     });
 
@@ -611,11 +611,11 @@ async function wireFiles() {
       if (!relay.isOpen()) return false;
       encryptFrame(frame)
         .then(sealed => relay.send(sealed))
-        .catch(err => console.error("[hopboard] could not send signalling frame", err));
+        .catch(err => console.error("[realtimeclipboard] could not send signalling frame", err));
       return true;
     });
   } catch (err) {
-    console.warn("[hopboard] files transfer layer unavailable", err);
+    console.warn("[realtimeclipboard] files transfer layer unavailable", err);
   }
 }
 
@@ -643,7 +643,7 @@ async function loadOptional() {
       const mod = await load();
       await mod.init?.();
     } catch (err) {
-      console.warn(`[hopboard] optional feature "${label}" not loaded:`, err.message);
+      console.warn(`[realtimeclipboard] optional feature "${label}" not loaded:`, err.message);
     }
   }
 }
@@ -662,7 +662,7 @@ async function loadOptional() {
  */
 function safeInit(label, fn) {
   try { fn(); }
-  catch (err) { console.warn(`[hopboard] "${label}" failed to init:`, err.message); }
+  catch (err) { console.warn(`[realtimeclipboard] "${label}" failed to init:`, err.message); }
 }
 
 async function boot() {
@@ -673,7 +673,7 @@ async function boot() {
   // configuration" belongs (docs/ARCHITECTURE.md §3).
   if (RELAY_IS_CUSTOM && storage.loadRelayUrl() !== RELAY_URL) {
     storage.saveRelayUrl(RELAY_URL);
-    console.info("[hopboard] relay set from the address bar:", RELAY_URL);
+    console.info("[realtimeclipboard] relay set from the address bar:", RELAY_URL);
   }
 
   // Core UI first: these own the surfaces that report connection state, so a
@@ -685,7 +685,7 @@ async function boot() {
 
   wire();
   await wireFiles().catch(err =>
-    console.warn("[hopboard] files layer unavailable:", err.message));
+    console.warn("[realtimeclipboard] files layer unavailable:", err.message));
 
   // ---- connect NOW ----------------------------------------------------
   // Deliberately not awaited: the session is the product, and it must not
@@ -693,7 +693,7 @@ async function boot() {
   // encoder. Errors are reported through the status bar.
   const { key, intent, locked } = resolveKey();
   startSession(key, intent, locked).catch(err => {
-    console.error("[hopboard] session failed to open", err);
+    console.error("[realtimeclipboard] session failed to open", err);
     state.setConnection("offline", "could not start session");
     emit(EV.TOAST, "Could not start the session — check the console");
   });
@@ -721,7 +721,7 @@ async function boot() {
   safeInit("mobile nav", mobileNav.init);
 
   console.info(
-    `[hopboard] booted · intent=${intent} locked=${!!locked} device=${device.name()}`
+    `[realtimeclipboard] booted · intent=${intent} locked=${!!locked} device=${device.name()}`
   );
 }
 

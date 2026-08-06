@@ -1,5 +1,5 @@
 """
-Hopboard relay — M0 clipboard fan-out + M7 peer-to-peer plumbing.
+RealtimeClipboard relay — M0 clipboard fan-out + M7 peer-to-peer plumbing.
 
 In-memory only: no database, no disk, no Redis. Room state lives in this
 process, which is exactly why the deployment MUST be pinned to a single
@@ -63,7 +63,7 @@ from shared import Backend, REDIS_URL
 INSTANCE_ID = uuid.uuid4().hex[:8]
 BOOTED_AT = time.time()
 
-# PRD OI-3. Inert unless HOPBOARD_REDIS_URL is set, in which case this is what
+# PRD OI-3. Inert unless REALTIMECLIPBOARD_REDIS_URL is set, in which case this is what
 # makes replicaCount > 1 safe. See backend/shared.py.
 shared = Backend(REDIS_URL, INSTANCE_ID)
 
@@ -72,21 +72,21 @@ def _int(name: str, default: int) -> int:
     """
     A tunable, overridable by environment for self-hosted deployments.
 
-    Named HOPBOARD_* rather than bare, because this process may share an
+    Named REALTIMECLIPBOARD_* rather than bare, because this process may share an
     environment with anything. Junk is ignored rather than fatal: a relay that
     refuses to start because someone typed MAX_PEERS=eight is a worse outage
     than one that logs it and uses the documented default.
     """
-    raw = os.getenv(f"HOPBOARD_{name}")
+    raw = os.getenv(f"REALTIMECLIPBOARD_{name}")
     if raw is None:
         return default
     try:
         value = int(raw)
     except ValueError:
-        print(f"[relay] HOPBOARD_{name}={raw!r} is not a number; using {default}")
+        print(f"[relay] REALTIMECLIPBOARD_{name}={raw!r} is not a number; using {default}")
         return default
     if value <= 0:
-        print(f"[relay] HOPBOARD_{name}={value} must be positive; using {default}")
+        print(f"[relay] REALTIMECLIPBOARD_{name}={value} must be positive; using {default}")
         return default
     return value
 
@@ -113,24 +113,24 @@ MAX_NAME_CHARS = 64           # nickname, e.g. "Chrome · Windows" (FR-5.7)
 # All default to the hosted behaviour, so an unconfigured relay is exactly the
 # relay that was here before and both protocol gates still pass unchanged.
 #
-#   HOPBOARD_CORS_ORIGINS   comma-separated allowlist. Default "*", which is
+#   REALTIMECLIPBOARD_CORS_ORIGINS   comma-separated allowlist. Default "*", which is
 #                           safe here only because there are no credentials
 #                           anywhere in this design — see the note by the
 #                           middleware below. A self-hoster should pin it.
-#   HOPBOARD_DISABLE_FILES  refuse WebRTC signalling and file frames outright.
+#   REALTIMECLIPBOARD_DISABLE_FILES  refuse WebRTC signalling and file frames outright.
 #                           For an operator whose DLP position is "text may
 #                           move between a person's own machines, files may
 #                           not". Clips are unaffected.
-#   HOPBOARD_JOIN_TOKEN     a shared secret every client must present to join
+#   REALTIMECLIPBOARD_JOIN_TOKEN     a shared secret every client must present to join
 #                           any room. NOT user authentication and not a
 #                           substitute for the session key — it is a door on
 #                           the relay, so an internal deployment is not an open
 #                           relay for anyone who finds the hostname.
-#   HOPBOARD_MAX_SESSION    hard cap in seconds on how long one room may live,
+#   REALTIMECLIPBOARD_MAX_SESSION    hard cap in seconds on how long one room may live,
 #                           counted from its first peer. 0 disables.
-CORS_ORIGINS = [o.strip() for o in os.getenv("HOPBOARD_CORS_ORIGINS", "*").split(",") if o.strip()]
-DISABLE_FILES = os.getenv("HOPBOARD_DISABLE_FILES", "").lower() in {"1", "true", "yes"}
-JOIN_TOKEN = os.getenv("HOPBOARD_JOIN_TOKEN", "") or None
+CORS_ORIGINS = [o.strip() for o in os.getenv("REALTIMECLIPBOARD_CORS_ORIGINS", "*").split(",") if o.strip()]
+DISABLE_FILES = os.getenv("REALTIMECLIPBOARD_DISABLE_FILES", "").lower() in {"1", "true", "yes"}
+JOIN_TOKEN = os.getenv("REALTIMECLIPBOARD_JOIN_TOKEN", "") or None
 MAX_SESSION_SECONDS = _int("MAX_SESSION", 0)
 
 # ---- SSE + POST fallback ------------------------------------------------
@@ -199,7 +199,7 @@ TARGETED = {
 }
 ROOM_WIDE = {"file-meta", "file-gone", "cursor"}
 
-# What HOPBOARD_DISABLE_FILES turns off: everything that moves a file or sets up
+# What REALTIMECLIPBOARD_DISABLE_FILES turns off: everything that moves a file or sets up
 # the channel to move one. Not `cursor`, which is presence rather than data, and
 # not `clip`, which is the product.
 FILE_FRAMES = (TARGETED | ROOM_WIDE) - {"cursor"}
@@ -256,11 +256,11 @@ CLASS_LIMITS["cursor"] = 20
 # implementations read this one attribute per connection, so patching it covers
 # whichever is in play.
 #
-# Set HOPBOARD_WS_DEFLATE=1 to leave the default alone.
+# Set REALTIMECLIPBOARD_WS_DEFLATE=1 to leave the default alone.
 def _disable_permessage_deflate() -> str:
     """Force permessage-deflate off. Returns what happened, for the boot log."""
-    if os.getenv("HOPBOARD_WS_DEFLATE", "").lower() in {"1", "true", "yes"}:
-        return "left on (HOPBOARD_WS_DEFLATE)"
+    if os.getenv("REALTIMECLIPBOARD_WS_DEFLATE", "").lower() in {"1", "true", "yes"}:
+        return "left on (REALTIMECLIPBOARD_WS_DEFLATE)"
     try:
         from uvicorn.config import Config
     except ImportError:
@@ -284,7 +284,7 @@ def _disable_permessage_deflate() -> str:
 WS_DEFLATE_STATE = _disable_permessage_deflate()
 print(f"[relay] permessage-deflate: {WS_DEFLATE_STATE}")
 
-app = FastAPI(title="Hopboard relay", version="0.2.0-m7")
+app = FastAPI(title="RealtimeClipboard relay", version="0.2.0-m7")
 
 # CORS on every response, including the ones this file never writes.
 #
@@ -446,6 +446,12 @@ async def health():
         "uptime_s": round(time.time() - BOOTED_AT, 1),
         "rooms": len(rooms),
         "peers": sum(len(r.peers) for r in rooms.values()),
+        # Reported because the thing it reports is a monkeypatch against another
+        # project's internals, and its failure is silent and expensive: if a
+        # uvicorn upgrade moves that attribute, the relay keeps working while
+        # quietly costing ~3.5x the memory per connection and losing three
+        # quarters of its ceiling. This is how you find that out from outside.
+        "ws_deflate": WS_DEFLATE_STATE,
     }
 
 
@@ -752,7 +758,7 @@ async def _join(room_hash: str, conn: Connection, country: str,
     locked-session admission check. The error frame has already been sent
     either way.
     """
-    # HOPBOARD_JOIN_TOKEN: a door on the RELAY, checked before anything else,
+    # REALTIMECLIPBOARD_JOIN_TOKEN: a door on the RELAY, checked before anything else,
     # including before the room is created. Without it, an internal deployment
     # is an open relay for anyone who learns the hostname.
     #

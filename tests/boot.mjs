@@ -36,10 +36,10 @@ import { dirname, join, resolve } from "node:path";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const LOCKED = process.argv.includes("--locked");
-const RELAY = process.argv.find(a => a.startsWith("ws")) || "wss://hopboard.fastapicloud.dev";
+const RELAY = process.argv.find(a => a.startsWith("ws")) || "wss://realtimeclipboard.fastapicloud.dev";
 
 const dom = new JSDOM(readFileSync(join(REPO, "app.html"), "utf8"), {
-  url: `https://akshaynikhare.github.io/Hopboard/app.html#${LOCKED ? "!" : ""}BOOTTEST`,
+  url: `https://akshaynikhare.github.io/RealtimeClipboard/app.html#${LOCKED ? "!" : ""}BOOTTEST`,
   pretendToBeVisual: true,
 });
 const { window } = dom;

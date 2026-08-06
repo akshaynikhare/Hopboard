@@ -8,16 +8,16 @@ blank_issues_enabled: true
 
 contact_links:
   - name: Clipboard sync is not working
-    url: https://akshaynikhare.github.io/Hopboard/help/clipboard-sync-not-working/
+    url: https://akshaynikhare.github.io/RealtimeClipboard/help/clipboard-sync-not-working/
     about: The common causes first — blocked WebSockets, clipboard permission, and why a browser will not read the clipboard of an unfocused tab.
 
   - name: How it works, and what it deliberately does not do
-    url: https://github.com/akshaynikhare/Hopboard/blob/main/docs/PRD.md
+    url: https://github.com/akshaynikhare/RealtimeClipboard/blob/main/docs/PRD.md
     about: The security model, the threat model, and the settled decisions — no extension, no accounts, no server-side storage.
 
   # Named separately from the bug form on purpose. Someone who has found a way
   # to read another person's clipboard should not be filing a public issue that
   # tells everyone else how, and they will not think to look for a policy file.
   - name: Found a security problem?
-    url: https://github.com/akshaynikhare/Hopboard/security/advisories/new
+    url: https://github.com/akshaynikhare/RealtimeClipboard/security/advisories/new
     about: Report it privately instead of opening a public issue — a working attack on someone's session should not be published before it is fixed.

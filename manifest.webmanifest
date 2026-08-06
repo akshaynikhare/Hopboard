@@ -1,6 +1,6 @@
 {
-  "name": "Hopboard",
-  "short_name": "Hopboard",
+  "name": "RealtimeClipboard",
+  "short_name": "RealtimeClipboard",
   "description": "Online clipboard that syncs text between your devices with a five-character key. No account, end-to-end encrypted, files sent peer-to-peer.",
   "lang": "en",
   "dir": "ltr",

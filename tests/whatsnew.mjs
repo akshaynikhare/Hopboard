@@ -71,8 +71,8 @@ console.log("\nWhat's new\n");
 await whatsNew.init();
 check("a first-time visitor is not shown a changelog", !$("#mount-banners .banner"));
 check("but the version is recorded, so the next release is announced",
-  localStorage.getItem("hopboard.seenVersion") === '"v1.2.0"',
-  localStorage.getItem("hopboard.seenVersion"));
+  localStorage.getItem("realtimeclipboard.seenVersion") === '"v1.2.0"',
+  localStorage.getItem("realtimeclipboard.seenVersion"));
 
 /* ---- same version again: still nothing ---- */
 
@@ -81,7 +81,7 @@ check("re-opening on the same version stays quiet", !$("#mount-banners .banner")
 
 /* ---- a release has landed ---- */
 
-localStorage.setItem("hopboard.seenVersion", JSON.stringify("v1.0.0"));
+localStorage.setItem("realtimeclipboard.seenVersion", JSON.stringify("v1.0.0"));
 await whatsNew.init();
 await new Promise(r => setTimeout(r, 30));   // banners fill their text a frame late
 
@@ -92,7 +92,7 @@ check("it counts the releases missed", banner?.textContent.includes("2 releases"
   banner?.textContent?.slice(0, 90));
 check("it is a banner, not a modal — nothing is blocked", !$(".wnmodal"));
 check("the version is marked seen on arrival, not on read",
-  localStorage.getItem("hopboard.seenVersion") === '"v1.2.0"');
+  localStorage.getItem("realtimeclipboard.seenVersion") === '"v1.2.0"');
 
 /* ---- opening it ---- */
 
@@ -116,7 +116,7 @@ check("closing releases the shell", $(".vs").inert === false);
 /* ---- a broken or missing changelog is silence, not an error ---- */
 
 served = null;
-localStorage.removeItem("hopboard.seenVersion");
+localStorage.removeItem("realtimeclipboard.seenVersion");
 // The banner from the previous step is keyed and still mounted; clear it so the
 // assertion below is about this run rather than the last one.
 document.getElementById("mount-banners").innerHTML = "";

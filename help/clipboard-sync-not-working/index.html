@@ -7,7 +7,7 @@
 <!-- One policy, identical on every page of the site. Reasoning and the
      directive-by-directive notes live in app.html, which is the page that
      actually needs them. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://hopboard.fastapicloud.dev wss://hopboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types hopboard">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
 
 <!--
   Target: "clipboard sync across devices greyed out" and "copy paste between
@@ -24,16 +24,16 @@
 -->
 <title>Clipboard Sync Not Working? Fixes for Windows, Android, Mac and iPhone</title>
 <meta name="description" content="Clipboard sync greyed out or copy-paste between devices not working? The fix order for Windows 11, Samsung, Android, Mac and iPhone — plus what to do when your work PC blocks it entirely.">
-<link rel="canonical" href="https://akshaynikhare.github.io/Hopboard/help/clipboard-sync-not-working/">
+<link rel="canonical" href="https://akshaynikhare.github.io/RealtimeClipboard/help/clipboard-sync-not-working/">
 <meta name="theme-color" content="#007acc">
 <link rel="icon" href="../../icons/icon.svg" type="image/svg+xml">
 
 <meta property="og:type" content="article">
-<meta property="og:site_name" content="Hopboard">
+<meta property="og:site_name" content="RealtimeClipboard">
 <meta property="og:title" content="Clipboard Sync Not Working? Fixes for Windows, Android, Mac and iPhone">
 <meta property="og:description" content="Why the “Sync across your devices” toggle is greyed out, and how to fix copy-paste between devices on every platform.">
-<meta property="og:url" content="https://akshaynikhare.github.io/Hopboard/help/clipboard-sync-not-working/">
-<meta property="og:image" content="https://akshaynikhare.github.io/Hopboard/social/og-card.png">
+<meta property="og:url" content="https://akshaynikhare.github.io/RealtimeClipboard/help/clipboard-sync-not-working/">
+<meta property="og:image" content="https://akshaynikhare.github.io/RealtimeClipboard/social/og-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -50,14 +50,14 @@
   "@graph": [
     {
       "@type": "TechArticle",
-      "@id": "https://akshaynikhare.github.io/Hopboard/help/clipboard-sync-not-working/#article",
+      "@id": "https://akshaynikhare.github.io/RealtimeClipboard/help/clipboard-sync-not-working/#article",
       "headline": "Clipboard sync not working? Fixes for Windows, Android, Mac and iPhone",
       "description": "Why the clipboard sync toggle is greyed out on Windows 11, and how to fix copy-paste between devices on Samsung, Android, Mac and iPhone.",
       "inLanguage": "en",
       "datePublished": "2026-08-06",
       "dateModified": "2026-08-06",
-      "publisher": { "@id": "https://akshaynikhare.github.io/Hopboard/#org" },
-      "mainEntityOfPage": "https://akshaynikhare.github.io/Hopboard/help/clipboard-sync-not-working/"
+      "publisher": { "@id": "https://akshaynikhare.github.io/RealtimeClipboard/#org" },
+      "mainEntityOfPage": "https://akshaynikhare.github.io/RealtimeClipboard/help/clipboard-sync-not-working/"
     },
     {
       "@type": "BreadcrumbList",
@@ -65,14 +65,14 @@
         {
           "@type": "ListItem",
           "position": 1,
-          "name": "Hopboard",
-          "item": "https://akshaynikhare.github.io/Hopboard/"
+          "name": "RealtimeClipboard",
+          "item": "https://akshaynikhare.github.io/RealtimeClipboard/"
         },
         {
           "@type": "ListItem",
           "position": 2,
           "name": "Help",
-          "item": "https://akshaynikhare.github.io/Hopboard/help/"
+          "item": "https://akshaynikhare.github.io/RealtimeClipboard/help/"
         },
         {
           "@type": "ListItem",
@@ -103,10 +103,10 @@
           <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
           <path d="M9 13l2 2 4-4"/>
         </svg>
-        <b>Hopboard</b>
+        <b>RealtimeClipboard</b>
       </a>
       <span class="spacer"></span>
-      <a class="tlink" href="https://github.com/akshaynikhare/Hopboard">GitHub</a>
+      <a class="tlink" href="https://github.com/akshaynikhare/RealtimeClipboard">GitHub</a>
       <a class="tlink strong" href="../../app.html">Open the app</a>
     </div>
   </div>
@@ -118,7 +118,7 @@
     <div class="in">
 
       <nav class="crumb" aria-label="Breadcrumb">
-        <a href="../../">Hopboard</a> <span aria-hidden="true">/</span>
+        <a href="../../">RealtimeClipboard</a> <span aria-hidden="true">/</span>
         <a href="../">Help</a> <span aria-hidden="true">/</span>
         <span aria-current="page">Clipboard sync not working</span>
       </nav>
@@ -320,7 +320,7 @@
         <p>
           A clipboard that lives in a web page sidesteps all three assumptions,
           because there is nothing to install and no account to be signed into.
-          That is what <a href="../../">Hopboard</a> is: open the same page on both
+          That is what <a href="../../">RealtimeClipboard</a> is: open the same page on both
           devices, type the same five-character key, and what you copy on one is
           ready to paste on the other.
         </p>
@@ -414,7 +414,7 @@
             Yes — a browser-based clipboard needs no account at all, because the
             session is identified by a short key you type on both devices rather
             than by a signed-in identity. That is the approach
-            <a href="../../">Hopboard</a> takes, and it is why it works between
+            <a href="../../">RealtimeClipboard</a> takes, and it is why it works between
             different brands and on machines where you cannot install anything.
             </p>
           </div>
@@ -428,7 +428,7 @@
 <footer class="sec">
   <div class="in">
     <div class="footgrid">
-      <p>Open source — <a href="https://github.com/akshaynikhare/Hopboard">github.com/akshaynikhare/Hopboard</a></p>
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
       <p><a href="../../">Home</a> · <a href="../">Help</a> · <a href="../../blog/">Blog</a></p>
       <p>Sessions are held in memory and never written to disk. Clipboard contents are
          encrypted in your browser before they are sent.</p>

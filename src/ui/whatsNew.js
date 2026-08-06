@@ -61,7 +61,7 @@ export async function init() {
     title: `Updated to ${current}`,
     body: count > 1
       ? `${count} releases have landed since you were last here.`
-      : "A new version of Hopboard is running in this tab.",
+      : "A new version of RealtimeClipboard is running in this tab.",
     action: { label: "See what's new", onClick: () => open() },
     dismissAfter: 20000,
   });

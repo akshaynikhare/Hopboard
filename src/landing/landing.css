@@ -1,5 +1,5 @@
 /**
- * Hopboard — landing page.
+ * RealtimeClipboard — landing page.
  *
  * Editorial structure, developer-tool skin. Two ideas do most of the work:
  *
@@ -736,7 +736,7 @@ h3 {
 .cmp tbody tr { transition:background-color .15s var(--ease); }
 .cmp tbody tr:hover th, .cmp tbody tr:hover td { background:color-mix(in srgb,var(--rule2) 30%,transparent); }
 
-/* Hopboard's own row. Marked with the accent rather than a "best" badge — the
+/* RealtimeClipboard's own row. Marked with the accent rather than a "best" badge — the
    table should still read as a comparison, not a scoreboard. */
 .cmp tr.me th, .cmp tr.me td { background:var(--sunk); color:var(--text); }
 .cmp tr.me th { color:var(--bright); box-shadow:inset 3px 0 0 var(--blue); }

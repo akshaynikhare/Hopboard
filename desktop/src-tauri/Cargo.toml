@@ -1,10 +1,10 @@
 [package]
-name = "hopboard"
+name = "realtimeclipboard"
 version = "0.1.0"
 description = "An end-to-end encrypted clipboard shared between your devices"
 authors = ["akshaynikhare"]
 license = "MIT"
-repository = "https://github.com/akshaynikhare/Hopboard"
+repository = "https://github.com/akshaynikhare/RealtimeClipboard"
 edition = "2021"
 # webkit2gtk 4.1 is the real floor on Linux, which is roughly Ubuntu 22.04 and
 # Fedora 36. Older distributions get the browser or the CLI — see

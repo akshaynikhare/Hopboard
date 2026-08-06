@@ -29,7 +29,7 @@ const check = (name, ok, detail = "") => {
 
 console.log("\nBundled build\n");
 
-const OUT = mkdtempSync(join(tmpdir(), "hopboard-build-"));
+const OUT = mkdtempSync(join(tmpdir(), "realtimeclipboard-build-"));
 try {
   execFileSync(process.execPath, [join(REPO, "tools/build.mjs"), OUT], { stdio: "pipe" });
 } catch (err) {
@@ -115,7 +115,7 @@ catch {
 }
 
 const dom = new JSDOM(read("app.html"), {
-  url: "https://akshaynikhare.github.io/Hopboard/app.html#BUNDLE",
+  url: "https://akshaynikhare.github.io/RealtimeClipboard/app.html#BUNDLE",
   pretendToBeVisual: true,
 });
 const { window } = dom;

@@ -147,4 +147,4 @@ run("git", "push", "origin", "main");
 run("git", "push", "origin", tag);
 
 console.log(`\n  ${tag} pushed. GitHub Pages deploys from the tag — watch:`);
-console.log("    https://github.com/akshaynikhare/Hopboard/actions\n");
+console.log("    https://github.com/akshaynikhare/RealtimeClipboard/actions\n");

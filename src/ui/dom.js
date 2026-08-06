@@ -38,7 +38,7 @@ export const esc = s => String(s ?? "")
  */
 const policy = (() => {
   try {
-    return globalThis.trustedTypes?.createPolicy?.("hopboard", {
+    return globalThis.trustedTypes?.createPolicy?.("realtimeclipboard", {
       createHTML: s => s,
       // `require-trusted-types-for 'script'` guards script URLs as well as HTML,
       // and navigator.serviceWorker.register() is one of those sinks. Without

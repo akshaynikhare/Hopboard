@@ -1,4 +1,4 @@
-# Hopboard desktop
+# RealtimeClipboard desktop
 
 The Windows, macOS and Linux app. A Tauri v2 shell around **the repository's own
 `src/`** — not a copy of it, not a port of it, the same files the website serves.
@@ -8,7 +8,7 @@ The Windows, macOS and Linux app. A Tauri v2 shell around **the repository's own
 One reason, and it is worth being precise about it. A web page can only read the
 clipboard while its window is focused; that is a rule every browser enforces, and
 [docs/CLIPBOARD-FLOW.md](../docs/CLIPBOARD-FLOW.md) §5 explains why it is never
-going to change. So the browser version's model is *"switch to Hopboard and it
+going to change. So the browser version's model is *"switch to RealtimeClipboard and it
 grabs what you copied"*.
 
 A native process is not bound by that rule. This app watches the system clipboard

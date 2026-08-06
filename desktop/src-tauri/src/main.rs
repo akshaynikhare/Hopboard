@@ -1,4 +1,4 @@
-// Hopboard desktop — the native shell.
+// RealtimeClipboard desktop — the native shell.
 //
 // The design constraint, and the reason this file is short: Rust never sees a
 // frame, a room hash, or a key. It does exactly four things the web platform
@@ -165,5 +165,5 @@ fn main() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("failed to start Hopboard");
+        .expect("failed to start RealtimeClipboard");
 }

@@ -11,19 +11,19 @@ than filled in.
 **The site is not indexed, and nothing on this page can fix it from this repo.**
 
 `robots.txt` is only honoured at the root of an origin. This project deploys to
-`https://akshaynikhare.github.io/Hopboard/`, so `Hopboard/robots.txt` lands in a
+`https://akshaynikhare.github.io/RealtimeClipboard/`, so `RealtimeClipboard/robots.txt` lands in a
 subdirectory and is never fetched. The file that governs this origin is served
 from `https://akshaynikhare.github.io/robots.txt` and lives in the separate
 `akshaynikhare/akshaynikhare.github.io` repository. It currently declares the
-sitemap for `career-compass` and nothing for Hopboard.
+sitemap for `career-compass` and nothing for RealtimeClipboard.
 
 **Action, in the other repo, one line:**
 
 ```
-Sitemap: https://akshaynikhare.github.io/Hopboard/sitemap.xml
+Sitemap: https://akshaynikhare.github.io/RealtimeClipboard/sitemap.xml
 ```
 
-Do **not** also move the old `Disallow: /Hopboard/app.html` up there. A page
+Do **not** also move the old `Disallow: /RealtimeClipboard/app.html` up there. A page
 blocked by robots.txt is never fetched, so its `noindex` is never read, and
 Google stays free to list the bare URL from the links pointing at it. The
 `Disallow` was the one change that could actually have got the app indexed. It
@@ -116,7 +116,7 @@ not as a campaign of its own, and not as a domain name (§7).
 
 ### Pages to build
 
-Prefix `/Hopboard/` until the domain moves. Priority order:
+Prefix `/RealtimeClipboard/` until the domain moves. Priority order:
 
 | Slug | Target keyword |
 |---|---|
@@ -365,7 +365,7 @@ Google and LLMs.** Both have been done.
 
 The repo description is verbatim the tail of the page `<title>`, the `meta
 description`, the `og:title`, **and** the body text of the auto-generated social
-card. It previously read `Hopboard - Live Clipboard Sharing / Synking` — a typo,
+card. It previously read `RealtimeClipboard - Live Clipboard Sharing / Synking` — a typo,
 and zero target keywords.
 
 Now:
@@ -465,7 +465,7 @@ Ranked by measured expected value:
 
    | Sub | Members | Verdict |
    |---|---:|---|
-   | **r/InternetIsBeautiful** | 16.6M | 🥇 **The only 1,000+ shot.** Rule 6 bans sites requiring an email, name or account — practically written for Hopboard. Snapdrop scored **2,744** here, PairDrop **1,645**. Risk is Rule 2 ("Not Unique") since both already ran — **so lead on clipboard, not file transfer**. Link the live site, not GitHub. Rule 8 removes posts whose site buckles: harden for the hug of death |
+   | **r/InternetIsBeautiful** | 16.6M | 🥇 **The only 1,000+ shot.** Rule 6 bans sites requiring an email, name or account — practically written for RealtimeClipboard. Snapdrop scored **2,744** here, PairDrop **1,645**. Risk is Rule 2 ("Not Unique") since both already ran — **so lead on clipboard, not file transfer**. Link the live site, not GitHub. Rule 8 removes posts whose site buckles: harden for the hug of death |
    | **r/coolgithubprojects** | 112k | 🟢 **Post here first as a dry run.** Sub exists for this; no promo restriction. Ceiling is low (top hot post: 49) |
    | **r/SideProject** | 800k | 🟢 No configured rules. Best reach-to-risk. The pinned *"Share your **Not-AI** projects"* thread (652 upvotes) shows what the sub is rewarding now |
    | **r/opensource** | 373k | 🟡 Rule 4 requires an **OSI licence file** — satisfied as of this pass. Needs correct flair and hours in the comments; Rule 6 removes drive-by posts |
@@ -484,7 +484,7 @@ Ranked by measured expected value:
    verbatim across four subs: *"Pairdrop Is a Free, Open Source, Cross Platform,
    Browser Based Airdrop Like File and Text Sharing App That Uses Encrypted
    Peer-To-Peer Connections."* Zero personality, zero "I built" — every adjective
-   pre-answers an objection. The Hopboard version needs: Free, No Account,
+   pre-answers an objection. The RealtimeClipboard version needs: Free, No Account,
    End-to-End Encrypted, Cross Platform, Browser Based, Clipboard, Peer-to-Peer.
 
    **Two calibrations.** A dud is not a verdict — PairDrop's first two
@@ -552,7 +552,7 @@ followers).
 | **Brand and trust for a security product** | **Decisive.** `username.github.io/Project/` undercuts an end-to-end-encryption pitch |
 | Clean, host-level Search Console property | High |
 | **Ranking uplift from the domain string itself** | **Low. Do not expect this** |
-| Cost | $14.20/yr for `hopboard.app`, renewal at the same price |
+| Cost | $14.20/yr for `realtimeclipboard.app`, renewal at the same price |
 
 Supporting facts: `github.io` is on the Public Suffix List (verified in
 `public_suffix_list.dat`, submitted by GitHub's own security team), so a Search
@@ -560,14 +560,14 @@ Console **Domain property is impossible**. Google's **Change of Address tool is
 also unavailable** — it works only at domain level and explicitly cannot move
 path-level properties. Both roads are closed, so equity only ever gets harder to
 move. Site-level quality signals are pooled across `akshaynikhare.github.io`,
-meaning Hopboard's reputation is entangled with every side project published there.
+meaning RealtimeClipboard's reputation is entangled with every side project published there.
 
 **Do it now precisely because there are zero backlinks and zero traffic.** The
 migration cost is near zero today and rises monotonically forever.
 
 ### Name
 
-**`hopboard.app` is the recommendation.** Not an exact-match domain — Mueller has
+**`realtimeclipboard.app` is the recommendation.** Not an exact-match domain — Mueller has
 confirmed there is no ranking bonus for keywords in a domain, the 2012 EMD update
 killed that shortcut, and `clipboardsync.com` would make branded search volume
 (a genuine authority signal) impossible to distinguish from generic queries.
@@ -591,15 +591,15 @@ checked 2026-08-06:
 
 | Domain | Availability | Cloudflare price/yr |
 |---|---|---:|
-| **`hopboard.app`** | **available — buy this** | **$14.20** |
-| `hopboard.dev` | available | $12.20 |
-| `hopboard.io` | available | $50.00 |
-| `gethopboard.com` | available | — |
-| `hopboard.com` | **already registered** | — |
+| **`realtimeclipboard.app`** | **available — buy this** | **$14.20** |
+| `realtimeclipboard.dev` | available | $12.20 |
+| `realtimeclipboard.io` | available | $50.00 |
+| `getrealtimeclipboard.com` | available | — |
+| `realtimeclipboard.com` | **already registered** | — |
 
-⚠️ Earlier revisions of this document suggested buying `hopboard.com` alongside
+⚠️ Earlier revisions of this document suggested buying `realtimeclipboard.com` alongside
 the `.app` as squatter insurance. **That is not possible — the `.com` is taken.**
-`gethopboard.com` is the nearest fallback if you want a second name, but it is
+`getrealtimeclipboard.com` is the nearest fallback if you want a second name, but it is
 optional: the `.app` alone is the recommendation, and a prefix domain is worth
 little on its own.
 
@@ -660,7 +660,7 @@ records block certificate issuance.
    curl -sI http://yourdomain/                          # 301 → https://
    curl -sI https://www.yourdomain/                     # 301 → apex
    curl -sI https://yourdomain/robots.txt               # this repo's file, at last
-   curl -sI https://akshaynikhare.github.io/Hopboard/   # 301 → custom domain
+   curl -sI https://akshaynikhare.github.io/RealtimeClipboard/   # 301 → custom domain
    ```
 10. Only then update the URLs in `index.html` (canonical, `og:url`, `og:image`,
     four JSON-LD `@id`/`url` values), `app.html` (canonical), `robots.txt` and
@@ -701,7 +701,7 @@ traffic volume.
 Approval is a content-quality review, not a traffic threshold. The current bar:
 **anything under 500 words per page is "thin content" and triggers rejection**, and
 reviewers expect roughly **15–20 substantial pages** of original material
-([approval requirements](https://innopanda.com/google-adsense-in-2026/)). Hopboard
+([approval requirements](https://innopanda.com/google-adsense-in-2026/)). RealtimeClipboard
 today is one landing page plus a `noindex` app. It would be declined.
 
 **This is not a detour.** The 14-page keyword plan in §2, rewritten against the
@@ -747,7 +747,7 @@ That is the whole monetisation plan in a sentence.
 
 ### The conflict nobody will raise until it is too late
 
-An ad network that tracks users **destroys the product's central claim**. Hopboard's
+An ad network that tracks users **destroys the product's central claim**. RealtimeClipboard's
 pitch is "the server cannot read what you copy and nothing is stored." A page
 carrying Google's ad tags is loading a third-party tracker onto the same origin as
 a clipboard tool. Concretely, it costs:
@@ -789,7 +789,7 @@ and carries none of the above cost.
 | `index.html` | Title and description retargeted to "online clipboard"; H1 and four H2s made query-shaped; comparison table added; nine-question FAQ added; schema replaced with an `@graph` of Organization / WebSite / WebPage / WebApplication; `summary_large_image` and 1200×630 `og:image` declared |
 | `src/landing/landing.css` | Styles for the comparison table (scrolls inside its own container, never the page) and the FAQ |
 | `app.html` | Canonical made self-referential — it was contradicting its own `noindex` |
-| `robots.txt` | `Disallow: /Hopboard/app.html` removed (it would have caused the problem it was meant to prevent); the file's inertness documented |
+| `robots.txt` | `Disallow: /RealtimeClipboard/app.html` removed (it would have caused the problem it was meant to prevent); the file's inertness documented |
 | `sitemap.xml` | `lastmod` added |
 | `manifest.webmanifest` | Description retargeted |
 | `README.md` | Restructured for Google and LLM extraction: keyword-bearing H1, one-sentence description above the fold, feature bullets in search phrasing, comparison table, question-shaped FAQ |
@@ -801,7 +801,7 @@ and carries none of the above cost.
 1. **Add the sitemap line to the root `akshaynikhare.github.io` repo's robots.txt.**
    Nothing else in this document matters until this is done.
 2. Verify Google Search Console — **URL-prefix property** at
-   `https://akshaynikhare.github.io/Hopboard/`, **HTML meta-tag method** (DNS is
+   `https://akshaynikhare.github.io/RealtimeClipboard/`, **HTML meta-tag method** (DNS is
    impossible, and file-upload placement in a subdirectory is ambiguously
    documented). Submit the sitemap. Request indexing once — re-submitting burns
    quota and speeds nothing.
@@ -819,7 +819,7 @@ and carries none of the above cost.
    `social/og-card.png`. It is 1200×630, comfortably over GitHub's 640×320
    minimum, and there is no API for this — it has to be done in the UI. Until it
    is, the repo shares as a grey text box.
-7. Link `/Hopboard/` from the portfolio page and a blog post on the user site.
+7. Link `/RealtimeClipboard/` from the portfolio page and a blog post on the user site.
    Same-host internal links, currently forgone entirely.
 8. Submit to **nuzulul/awesome-webrtc** (File Transfer category) and **hemanth/awesome-pwa**.
 9. Run Google Trends manually and fill in section 3.
@@ -852,7 +852,7 @@ a relay, and there are no reliable free TURN servers.
     the QuickClip thread. The real answers: no install, works on ChromeOS, works
     across networks rather than one LAN, no pairing step.
 16. **Ship a Dockerfile for the relay** — it is what makes r/selfhosted and
-    awesome-selfhosted read Hopboard as self-hostable rather than as a hosted
+    awesome-selfhosted read RealtimeClipboard as self-hostable rather than as a hosted
     service, and awesome-selfhosted explicitly excludes *"applications requiring
     separate synchronization servers."*
 

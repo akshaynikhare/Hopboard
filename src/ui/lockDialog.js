@@ -87,13 +87,13 @@ export function ask({ mode = "join", key = "" } = {}) {
         ${key ? `<p class="lockkey">Session <b>${esc(key)}</b></p>` : ""}
 
         <label class="locklbl" for="lockPin">PIN</label>
-        <input id="lockPin" class="lockinput" type="password" name="hopboard-pin"
+        <input id="lockPin" class="lockinput" type="password" name="realtimeclipboard-pin"
                autocomplete="off" autocapitalize="none" autocorrect="off"
                spellcheck="false" enterkeyhint="go"
                aria-describedby="lockStrength">
         ${copy.confirm ? `
         <label class="locklbl" for="lockPin2">Repeat it</label>
-        <input id="lockPin2" class="lockinput" type="password" name="hopboard-pin2"
+        <input id="lockPin2" class="lockinput" type="password" name="realtimeclipboard-pin2"
                autocomplete="off" autocapitalize="none" autocorrect="off"
                spellcheck="false" enterkeyhint="go">` : ""}
 
