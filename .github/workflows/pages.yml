@@ -67,8 +67,19 @@ jobs:
                    social/og-card.png; do
             test -f "_site/$f" || { echo "::error::missing $f"; exit 1; }
           done
-          python3 -c "import json;json.load(open('_site/manifest.webmanifest'))"
           python3 -c "import xml.dom.minidom;xml.dom.minidom.parse('_site/sitemap.xml')"
+          # Manifest: valid JSON, and no SVG in icons[].
+          #
+          # The SVG is not a harmless extra entry. An icon declaring sizes:"any"
+          # satisfies Chrome's "at least one icon >= 144px" test on paper, so it
+          # wins the selection — and then Chrome cannot rasterise it for an app
+          # icon, reports `no-acceptable-icon`, and does NOT fall back to the
+          # PNGs sitting right above it. One SVG line silently removed the
+          # install button from the omnibox while every other criterion passed.
+          # Verified with Page.getInstallabilityErrors: dropping it is the whole
+          # fix. icon.svg is still the favicon in index.html — that is fine, a
+          # <link rel="icon"> and manifest icons[] are unrelated code paths.
+          python3 -c "import json,sys; icons=json.load(open('_site/manifest.webmanifest')).get('icons',[]); svg=[i['src'] for i in icons if i.get('type')=='image/svg+xml' or i['src'].endswith('.svg')]; png=any(i.get('sizes')=='512x512' and i.get('purpose')=='any' for i in icons); svg and print('::error::manifest icons[] contains SVG '+str(svg)+' - this breaks PWA installability in Chrome. Use PNG only.'); png or print('::error::manifest has no 512x512 purpose=any PNG icon'); sys.exit(1 if (svg or not png) else 0)"
           # The app must never be indexable. If this tag is ever dropped, every
           # rendered session — key, clipboard contents, history — becomes
           # crawlable. Fail the deploy rather than find out from a search result.

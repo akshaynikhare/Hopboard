@@ -35,14 +35,20 @@
   opacity:.55;
 }
 
-/* Deliberately at the bottom of the visual hierarchy: this is an explanation
-   for anyone who wonders, not a pitch. */
+/* One line. Deliberately at the bottom of the visual hierarchy: an explanation
+   for anyone who wonders, not a pitch.
+
+   nowrap rather than a short string and hope — the sidebar is drag-resizable,
+   so this pane has no fixed width and a two-line note would push the editor
+   around every time someone dragged the splitter. It ellipsises instead. */
 .adslot-note {
-  max-width:78ch;
   margin:7px 0 0;
   color:var(--dim);
   font:10.5px/1.5 var(--ui-font);
   opacity:.62;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 
 /* Stacked layout: no gutter to clear, and a mobile banner rather than a
@@ -50,6 +56,9 @@
 @media (max-width:900px) {
   .adslot { padding:10px 14px 12px; }
   .adslot-box { height:100px; }
+  /* A phone cannot fit the sentence on one line, and half a sentence ending in
+     "…" would cut it off exactly where the promise is. Let it wrap here. */
+  .adslot-note { white-space:normal; }
 }
 
 /* On a short viewport the editor is the scarce thing. The slot shrinks to a

@@ -6,7 +6,7 @@
  * transport stay swappable while the rest of the app was being built.
  */
 
-import { TEXT } from "./core/config.js";
+import { TEXT, SYNC_MODES } from "./core/config.js";
 import { emit, on, EV } from "./core/bus.js";
 import * as state from "./core/state.js";
 import * as keys from "./core/keys.js";
@@ -246,9 +246,22 @@ function wire() {
 
   // Restoring an old clip from history should behave exactly like a local
   // capture: it goes to the editor and out to peers.
+  //
+  // It also drops the session into Manual. Reaching back for an old clip is a
+  // deliberate, one-off act, and in Live mode it does not survive: the T3 poll
+  // tick reads the OS clipboard a second later, sees whatever is actually
+  // there — not the clip just restored — and broadcasts that instead, so the
+  // click appears to do nothing. Manual stops the poller, which is exactly the
+  // state someone picking a specific clip out of a list is asking for. The
+  // toast says so, because a mode change nobody asked for out loud is a bug
+  // report waiting to happen; the header and status bar then show it.
   on("history:restore", ({ text }) => {
+    const switched = syncMode.set(SYNC_MODES.MANUAL);
     editor.setText(text);
     capture.capture(text, "Restored from history");
+    emit(EV.TOAST, switched
+      ? "Loaded into the editor — switched to Manual"
+      : "Loaded into the editor");
   });
 
   on("session:rejoin", async ({ key }) => {

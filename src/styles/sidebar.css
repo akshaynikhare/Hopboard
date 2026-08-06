@@ -11,30 +11,16 @@
 }
 .side.hidden { display:none; }
 
-/* The key strip. Pinned at the top of the sidebar because reading the key off
-   one screen and typing it on another is the single most common thing anyone
-   does here — it should never require a scroll. */
+/* What the key grants. The key and its buttons moved to the app header
+   (styles/appbar.css); this stayed, because a warning is worth nothing if it
+   is only visible next to the control it warns about. */
 .keyhead {
   flex:none;
-  padding:9px 10px 8px;
+  padding:7px 10px;
   background:var(--tab-off);
   border-bottom:1px solid var(--bd);
 }
-.keyhead-row { display:flex; align-items:center; gap:5px; }
-.keyhead .key {
-  flex:1;
-  font:700 19px/1 var(--mono);
-  letter-spacing:.18em;
-  color:var(--str);
-  background:var(--editor);
-  border:1px solid var(--bd2);
-  border-radius:3px;
-  padding:8px 10px;
-  text-align:center;
-  user-select:all;              /* one click selects the whole key */
-}
 .keyhead-warn {
-  margin-top:6px;
   font-size:10.5px;
   line-height:1.4;
   color:var(--warn);
@@ -101,16 +87,6 @@
 }
 
 .keyrow { display:flex; align-items:center; gap:7px; padding:2px 12px 6px; flex-wrap:wrap; }
-
-.key {
-  font:700 20px/1 var(--mono);
-  letter-spacing:.14em;
-  color:var(--str);
-  background:var(--editor);
-  border:1px solid var(--bd2);
-  border-radius:3px;
-  padding:7px 11px;
-}
 
 .warn {
   margin:0 12px 8px;

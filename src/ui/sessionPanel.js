@@ -70,7 +70,9 @@ function restoreSettings() {
 }
 
 function renderKey(key) {
-  ["key", "bcKey", "sbKeyText"].forEach(id => { const el = $(id); if (el) el.textContent = key; });
+  // Two places since the breadcrumb went: the key in the app header and the
+  // status bar's copy-the-link affordance.
+  ["key", "sbKeyText"].forEach(id => { const el = $(id); if (el) el.textContent = key; });
 }
 
 /**

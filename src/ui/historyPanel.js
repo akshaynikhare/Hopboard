@@ -11,7 +11,8 @@
  * main.js routes TEXT_RECEIVED into clipboard/capture.apply() — so borrowing it
  * would both lie about provenance and fire an unrequested OS clipboard write,
  * with a suppression window that then swallows the user's next real copy.
- * main.js should wire this to editor.setText() and nothing else.
+ * main.js wires RESTORE to the editor, a send, and a switch to Manual mode —
+ * never to the OS clipboard.
  *
  * ── ESCAPING ───────────────────────────────────────────────────────────────
  * Every clip value that reaches innerHTML goes through esc() first. Clip text is
@@ -209,9 +210,15 @@ async function copy(id) {
   }
 }
 
+/**
+ * Announce the intent and stop. The toast lives with the wiring in main.js,
+ * not here: restoring also flips the session to Manual, and only the handler
+ * that performs the switch knows whether the mode actually changed. Emitting a
+ * "Loaded into the editor" toast here as well would queue two messages behind
+ * one click — toast.js serialises them, so it reads as a stutter.
+ */
 function restore(id) {
   const entry = history.get(id);
   if (!entry) return;
   emit(history.EVENTS.RESTORE, { text: entry.text });   // "history:restore"
-  emit(EV.TOAST, "Loaded into the editor");
 }
