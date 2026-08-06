@@ -1,0 +1,62 @@
+# Conventional Commits, because the changelog is generated from them.
+#
+#     <type>(<optional scope>)<optional !>: <subject>
+#     feat(files): resume an interrupted transfer
+#     fix!: stop the poller overwriting a restored clip
+#
+# This is not house style for its own sake. tools/changelog.mjs reads the type
+# to decide which section a commit lands in, and the `!` (or a BREAKING CHANGE
+# footer) to decide whether a release is breaking. A commit that does not say
+# what kind of change it is still ships — it just lands in a general "Changes"
+# bucket, which is worse for whoever reads the release notes later.
+#
+# Bypass with --no-verify when you genuinely need to.
+
+MSG_FILE=$1
+FIRST_LINE=$(head -n1 "$MSG_FILE")
+
+# Things git writes itself, which are not ours to reformat.
+case "$FIRST_LINE" in
+  "Merge "*|"Revert "*|"fixup! "*|"squash! "*|"#"*) exit 0 ;;
+esac
+
+# Types, and what each one means here:
+#   feat      a user can now do something they could not before
+#   fix       something that was wrong is no longer wrong
+#   perf      same behaviour, less time or bytes
+#   refactor  same behaviour, different shape
+#   docs      documentation only
+#   test      tests only
+#   build     dependencies, service worker shell, deploy plumbing
+#   ci        the hooks and workflows themselves
+#   chore     none of the above and not worth a release note
+#   style     whitespace and formatting only
+TYPES="feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert"
+
+if printf '%s' "$FIRST_LINE" | grep -Eq "^($TYPES)(\([a-z0-9 ._/-]+\))?!?: .+"; then
+  # Subject length. 72 is where GitHub starts truncating in a list view, and a
+  # changelog is mostly read as a list.
+  if [ "${#FIRST_LINE}" -gt 72 ]; then
+    echo ""
+    echo "  Subject is ${#FIRST_LINE} characters; keep it under 72."
+    echo "  Put the detail in the body — the changelog only shows the subject."
+    echo ""
+    exit 1
+  fi
+  exit 0
+fi
+
+echo ""
+echo "  Commit messages need a type, so the changelog can sort them."
+echo ""
+echo "      <type>: <what changed>"
+echo ""
+echo "  Types:  feat fix perf refactor docs test build ci chore style revert"
+echo "  Add !   for a breaking change:   feat!: rename the share link format"
+echo ""
+echo "  You wrote:"
+echo "      $FIRST_LINE"
+echo ""
+echo "  Bypass with:  git commit --no-verify"
+echo ""
+exit 1

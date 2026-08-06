@@ -1,0 +1,86 @@
+name: Feature or change
+description: Suggest something Hopboard should do, or do differently
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Worth knowing before you write, because it saves proposing something
+        that cannot be built here:
+
+        - **No Chrome extension, ever.** The target environment blocks extension
+          installs, so the product has to work as a plain web app. That also
+          means background clipboard capture is permanently off the table — a
+          browser will not read the clipboard of an unfocused tab, and no
+          setting changes that.
+        - **No accounts, no server-side storage.** The relay holds one encrypted
+          clip in memory and forgets the room ten minutes after the last device
+          leaves. Anything needing history across sessions, or a file living on
+          a server, is a different product.
+        - **The relay never sees plaintext.** Any feature that would require the
+          server to read a clip, a filename or a device's content is out by
+          construction.
+
+        These are settled decisions in [docs/PRD.md](https://github.com/akshaynikhare/Hopboard/blob/main/docs/PRD.md) §1.4 and §11.1, not
+        a lack of interest. Everything else is open.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is the problem?
+      description: >
+        The situation you are actually in, before any solution. This matters
+        more than the feature — a well-described problem often has a better
+        answer than the one it arrived with.
+      placeholder: |
+        I share a key with a colleague for a few minutes while pairing, and
+        afterwards I have no way to know whether they still have the tab open.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like it to do?
+      placeholder: |
+        Show when each device was last active in the roster, and let me drop
+        one without rotating the key.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What else did you consider?
+      description: >
+        Including doing nothing, or a workaround you already use. Genuinely
+        useful — if the workaround is fine, the feature may not be worth its
+        weight.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app?
+      options:
+        - Clipboard sync
+        - Files and images
+        - Session keys, locking, or sharing
+        - Connection and reliability
+        - The interface
+        - Mobile / phone layout
+        - Install / offline (PWA)
+        - The relay
+        - Documentation
+        - Something else
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Would you want to build it?
+      description: >
+        Entirely optional, and a "no" costs nothing. The repo has no build step
+        and the tests run locally in a git hook — see [docs/RELEASING.md](https://github.com/akshaynikhare/Hopboard/blob/main/docs/RELEASING.md).
+      options:
+        - label: I would be up for opening a PR

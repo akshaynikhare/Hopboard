@@ -140,12 +140,12 @@ the best intent in the whole set:
 
 | Slug | Target keyword | Why |
 |---|---|---|
-| `/clipboard-sync-not-working` | `clipboard sync across devices greyed out`, `copy paste between devices not working` | ⭐ **Rescue traffic.** Their native sync is broken *right now* and nobody in this category writes for it |
-| `/samsung-clipboard-sync` | `share clipboard between samsung devices` (43) | Samsung is its own cluster, twice in the top 45 |
-| `/online-clipboard-qr-code` | `online clipboard qr code` (31), `with qr code` (29) | **The app already has a QR button** — the feature exists, the page does not |
-| `/how-to-sync-clipboard-across-devices` | `how to sync clipboard across devices` (151) | Highest-scoring query found, anywhere |
-| `/share-clipboard-between-android-devices` | (136) | Second highest |
-| `/self-hosted-clipboard-sync` | `clipboard sync self hosted` (34), `open source` (30) | Feeds r/selfhosted and awesome-selfhosted (§6) |
+| `/help/clipboard-sync-not-working` | `clipboard sync across devices greyed out`, `copy paste between devices not working` | ⭐ **Rescue traffic.** Their native sync is broken *right now* and nobody in this category writes for it |
+| `/help/samsung-clipboard-sync` | `share clipboard between samsung devices` (43) | Samsung is its own cluster, twice in the top 45 |
+| `/help/online-clipboard-qr-code` | `online clipboard qr code` (31), `with qr code` (29) | **The app already has a QR button** — the feature exists, the page does not |
+| `/help/how-to-sync-clipboard-across-devices` | `how to sync clipboard across devices` (151) | Highest-scoring query found, anywhere |
+| `/help/share-clipboard-between-android-devices` | (136) | Second highest |
+| `/help/self-hosted-clipboard-sync` | `clipboard sync self hosted` (34), `open source` (30) | Feeds r/selfhosted and awesome-selfhosted (§6) |
 
 ⚠️ Do **not** build for `online clipboard pdf` or `online clipboard image editor`
 — despite decent scores, that is image/PDF *editing* intent, not transfer. And

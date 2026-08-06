@@ -36,6 +36,7 @@ import * as resizer from "./ui/resizer.js";
 import * as syncMode from "./ui/syncMode.js";
 import * as appLinks from "./ui/appLinks.js";
 import * as lockDialog from "./ui/lockDialog.js";
+import * as whatsNew from "./ui/whatsNew.js";
 import * as hints from "./ui/hints.js";
 import * as cursors from "./ui/cursors.js";
 import * as ads from "./ui/ads.js";
@@ -147,10 +148,8 @@ function announce(roomHash, locked) {
  * same name, which is a real room, joinable by anyone holding the link, and
  * would hand the user a session that looks private and is not.
  *
- * A refresh skips the prompt: the stretched PIN is in sessionStorage against
- * the room it unlocks. Which room that is depends on the PIN, so this has to
- * derive to find out — hence the stored value being tried by re-deriving
- * rather than looked up by key.
+ * A refresh skips the prompt: this tab's stretched PIN is in sessionStorage,
+ * filed under the share key, so a reload is silent while a new tab is not.
  */
 async function startSession(key, intent, locked) {
   if (!locked) return openSession(key, intent);
@@ -160,22 +159,41 @@ async function startSession(key, intent, locked) {
 
   const pin = await lockDialog.ask({ mode: intent === "create" ? "create" : "join", key });
   if (!pin) {
+    // Backing out is allowed, but it must not be a dead end. Nothing is
+    // connected and state.key was never set, so the key is parked here for the
+    // "Enter PIN" action to pick up — see retryLock().
+    pendingLock = { key, intent };
+    // No LOCK_STATE here on purpose: `state.locked` is still false because no
+    // session was ever opened, and announcing a lock state the state object
+    // does not hold would put a padlock on a session that does not exist.
     state.setConnection("idle", "locked — PIN required");
-    emit(EV.LOCK_STATE, { locked: true, verified: false });
     return;
   }
   return openSession(key, intent, { locked: true, pin });
 }
 
-/** Re-open the current locked link, asking for the PIN again. */
+/**
+ * The session we are standing outside of, if the prompt was cancelled.
+ *
+ * Only meaningful before a first successful open: after that the key lives in
+ * state like any other session's.
+ */
+let pendingLock = null;
+
+/** Ask for the PIN again, whether we are in the wrong room or in none at all. */
 async function retryLock() {
-  const { key } = state.get();
+  const key = state.get().key ?? pendingLock?.key;
+  const intent = state.get().key ? "join" : (pendingLock?.intent ?? "join");
+  if (!key) return;
+
   const pin = await lockDialog.ask({ mode: "retry", key });
   if (!pin) return;
+
   relay.close();
   cryptoBox.clearCache();
   state.resetRoster();
-  await openSession(key, "join", { locked: true, pin });
+  pendingLock = null;
+  await openSession(key, intent, { locked: true, pin });
 }
 
 /* ------------------------------------------------------------------
@@ -517,6 +535,8 @@ function wire() {
 
   on("session:relock", () => retryLock());
 
+  on("ui:whatsnew", () => whatsNew.open());
+
   // A relay restart drops every socket (OI-13) and its rooms with them. On
   // reconnect the roster is rebuilt from scratch, so the peers we already knew
   // about would each be reported as a fresh arrival and fire the "a device
@@ -655,6 +675,9 @@ async function boot() {
   safeInit("resizers", resizer.init);
   safeInit("sync mode", syncMode.init);
   safeInit("project links", appLinks.init);
+  // Not awaited: it fetches a JSON file and, if that is slow or missing, the
+  // consequence is one banner that does not appear.
+  safeInit("what's new", () => { whatsNew.init(); });
   safeInit("hints", hints.init);
   safeInit("ad slot", ads.init);
   safeInit("peer cursors", cursors.init);

@@ -1,0 +1,31 @@
+# The checks that need a relay, plus everything pre-commit already ran.
+#
+# Split this way because of what each moment can afford. A commit happens dozens
+# of times an hour and has to stay fast and offline; a push happens a few times
+# a day and is the last point before the change leaves this machine, so it is
+# where the end-to-end suites belong.
+#
+# The relay-backed suites SKIP rather than fail when there is no relay to talk
+# to. That is deliberate: a hook that blocks a push because you are on a plane
+# teaches people to pass --no-verify by habit, and a habit of bypassing the gate
+# is worse than the gate not running.
+
+echo "Running the full suite before push …"
+
+npm run --silent verify || exit 1
+
+# e2e and boot reach for a relay. Both exit non-zero if they can reach one and
+# something is actually broken, and are skipped here if nothing answers.
+if npm run --silent relay:up; then
+  npm test --silent || {
+    echo ""
+    echo "  Full suite failed — nothing pushed."
+    echo ""
+    exit 1
+  }
+else
+  echo ""
+  echo "  No relay reachable — skipped the end-to-end suites."
+  echo "  Start one with 'npm run relay' if you want them to run."
+  echo ""
+fi

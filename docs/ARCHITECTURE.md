@@ -63,8 +63,10 @@ src/
     hints.js            getting-started overlay
     panes.js            collapsible sidebar panes (delegated)
     resizer.js          draggable splitters
-    qr.js               QR modal
+    modal.js            the one focus-trapping dialog shell
+    qr.js               QR modal (predates modal.js; still has its own copy)
     lockDialog.js       the PIN prompt for locked sessions
+    whatsNew.js         release notes, read from changelog.json
     install.js          PWA install + service worker
     ads.js              the single ad placeholder
   styles/
@@ -149,7 +151,8 @@ were replaced tomorrow.
 | Add a UI panel | new `ui/*.js` + `styles/*.css`, register in `main.js` |
 | Change a colour | `styles/tokens.css` |
 | Add a setting | `state.js` defaults → a row in the right menu in `sessionPanel.js`. No markup in `app.html`: the menus render from state when opened |
-| Add a modal | Copy the `ui/qr.js` pattern — inert shell, tab ring, Escape, focus restore — and mount to `document.body`, **never** `#mount-modals`. `filesPanel.js` owns that node and rewrites its `innerHTML` on a 500 ms tick, which would delete a dialog out from under its own focus trap |
+| Add a modal | `ui/modal.js` — `show({className, html, labelledBy, onClose})`. It owns the inert shell, the tab ring, Escape, and focus restore. Do **not** hand-roll another one, and do not mount to `#mount-modals`: `filesPanel.js` owns that node and rewrites its `innerHTML` on a 500 ms tick, which would delete a dialog out from under its own focus trap |
+| Release something | `npm run release -- minor`. Tests run in a git hook, not on GitHub; a tag is what deploys — [RELEASING.md](RELEASING.md) |
 
 ### Adding a feature, worked example
 
