@@ -92,6 +92,10 @@ export const FT = {
   FILE_DONE:   "file-done",      // {id, to, digest}                 relay fallback
   FILE_CANCEL: "file-cancel",    // {id, to, reason}         either direction
   FILE_ERROR:  "file-error",     // {id, to, reason}
+  // Retraction. Broadcast like file-meta, because it undoes one: the owner is
+  // telling the room the file is gone so a stale tile does not sit on every
+  // peer offering something that can no longer be fetched.
+  FILE_GONE:   "file-gone",      // {id}                     broadcast, no `to`
 };
 
 /** Exactly the frames main.js should route into onSignal(). */
@@ -281,6 +285,10 @@ export function onSignal(frame) {
 
 const INBOUND = {
   [FT.FILE_META]:   onFileMeta,
+  // registry owns the rule that a peer may retract only what it announced, and
+  // never a local file — it checks the relay-stamped `from`, not the
+  // client-supplied originId, so a spoofed id cannot delete someone else's tile.
+  [FT.FILE_GONE]:   f => registry.applyGone(f),
   [FT.FILE_REQ]:    onFileReq,
   [FT.FILE_ACCEPT]: onFileAccept,
   [FT.FILE_DENY]:   f => { closeAndFail(f.id, f.reason || "the other device declined"); },

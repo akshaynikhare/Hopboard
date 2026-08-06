@@ -7,7 +7,9 @@
   border-radius:2px;
   border:1px solid transparent;
   background:var(--blue);
-  color:#fff;
+  /* --on-fixed is the token for exactly this: a foreground on a surface that
+     keeps its colour in both themes. 4.51:1 on --blue. */
+  color:var(--on-fixed);
   padding:5px 11px;
 }
 .btn:hover { filter:brightness(1.12); }
@@ -27,7 +29,10 @@
   border-radius:4px;
   flex:none;
 }
-.ibtn:hover { background:rgba(255,255,255,.12); }
+/* Was rgba(255,255,255,.12): a white wash, which is a 1.04:1 change against
+   the light theme's app header — no hover feedback at all for half the users.
+   Tinting with --text moves the right way in both themes. */
+.ibtn:hover { background:color-mix(in srgb, var(--text) 16%, transparent); }
 .ibtn svg {
   width:14px; height:14px;
   fill:none; stroke:currentColor; stroke-width:1.5;
@@ -60,11 +65,18 @@ select {
   top:2px; left:2px;
   width:14px; height:14px;
   border-radius:99px;
-  background:#fff;
+  /* The knob's POSITION is what states the switch's value, so the knob has to
+     be visible against the track it is sitting on. A white knob on the light
+     theme's --bd2 track is 1.57:1 — the off state had no readable indicator at
+     all, and the two track colours are only 2.87:1 apart from each other, so
+     nothing else was carrying it either. Two knob colours, one per track:
+     --bright off (8.92 dark / 13.34 light), --on-fixed on (4.51 both).
+     Nothing changes visually in the dark theme, where --bright is #e7e7e7. */
+  background:var(--bright);
   transition:transform .14s;
 }
 .sw[aria-checked="true"] { background:var(--blue); }
-.sw[aria-checked="true"]::after { transform:translateX(14px); }
+.sw[aria-checked="true"]::after { background:var(--on-fixed); transform:translateX(14px); }
 
 .dot {
   width:7px; height:7px;
@@ -76,6 +88,13 @@ select {
 .dot.wait { background:var(--warn); }
 .dot.off  { background:var(--bad); }
 
+/* Solid rather than a tint of themselves.
+   The tinted form (colour at 20% behind the same colour) is 3.56:1 for P2P and
+   3.45:1 for RELAY in the light theme — under AA for 9.5px text, and the
+   badges in files.css are already solid, so this is also the more consistent
+   of the two. --editor as the foreground is the same relationship the peer
+   cursor labels use, and it clears 4.5 on both colours in both themes
+   (ok 8.18/5.16, warn 7.22/4.92). */
 .pill {
   font-size:9.5px;
   font-weight:700;
@@ -83,8 +102,73 @@ select {
   border-radius:2px;
   letter-spacing:.03em;
 }
-.pill.p2p   { background:color-mix(in srgb, var(--ok) 20%, transparent);   color:var(--ok); }
-.pill.relay { background:color-mix(in srgb, var(--warn) 20%, transparent); color:var(--warn); }
+.pill.p2p   { background:var(--ok);   color:var(--editor); }
+.pill.relay { background:var(--warn); color:var(--editor); }
+
+/* ------------------------------------------------------------------ *
+ * Pane disclosure button
+ *
+ * ui/panes.js wraps a pane header's chevron and label in a real <button> so
+ * the header is keyboard-operable and announces as a disclosure. Everything
+ * here exists to make that button indistinguishable from the text it replaced:
+ * .paneh owns the font, the casing and the colour, and a <button> inherits
+ * none of them.
+ * ------------------------------------------------------------------ */
+.panebtn {
+  display:flex;
+  align-items:center;
+  gap:5px;            /* the gap .paneh used to provide between chevron and label */
+  flex:0 1 auto;      /* exactly what the text node it replaced already had */
+  border:0;
+  margin:0;
+  padding:0;
+  background:none;
+  font:inherit;
+  color:inherit;
+  letter-spacing:inherit;
+  text-transform:inherit;
+  text-align:left;
+  cursor:pointer;
+}
+
+/* ------------------------------------------------------------------ *
+ * Focus, continued
+ *
+ * base.css sets the ring to --focus, which is right on --editor, --side,
+ * --tab-off and --hover and wrong everywhere else. These are the elements
+ * whose own background is one of the four surfaces the accent cannot be seen
+ * against — the fixed accent (--blue) and the #3c3c3c / #cecece chrome.
+ * --bright clears 3:1 on all of them, worst case 3.65:1 on --blue in dark.
+ * ------------------------------------------------------------------ */
+.appbar :focus-visible,           /* --title  2.62:1 in dark */
+.qrhead :focus-visible,           /* --title  2.62:1 in dark */
+.statusbar :focus-visible,        /* --status 1.07:1 in both */
+select:focus-visible,             /* --input  2.62:1 in dark */
+.btn:focus-visible,               /* --blue   1.07:1, --input 2.62:1 for .ghost */
+.modebtn:focus-visible,           /* --blue when on, --bd2 when Manual */
+.sw:focus-visible                 /* --bd2 off, --blue on */
+  { outline-color:var(--bright); }
+
+/* The switch is 18px tall and the ring would land on the knob. Outside it, and
+   nothing in a settings row clips overflow. */
+.sw:focus-visible { outline-offset:2px; }
+
+/* ------------------------------------------------------------------ *
+ * Visually hidden
+ *
+ * Text for a screen reader that would be noise on screen — a unit after a bare
+ * count, mostly. Not `display:none`, which removes it from the accessibility
+ * tree as well, which is the entire point of it existing.
+ * ------------------------------------------------------------------ */
+.vh {
+  position:absolute;
+  width:1px; height:1px;
+  margin:-1px; padding:0;
+  overflow:hidden;
+  clip-path:inset(50%);
+  white-space:nowrap;
+  border:0;
+}
 
 .toast {
   position:fixed;
@@ -104,3 +188,28 @@ select {
   box-shadow:0 3px 12px rgba(0,0,0,.45);
 }
 .toast.show { opacity:1; transform:translateY(0); }
+
+/* ------------------------------------------------------------------ *
+ * Reduced motion
+ *
+ * Surgical rather than the blanket `*{transition:none!important}`: movement
+ * goes, fades and colour changes stay. A cross-fade carries state — cursors.css
+ * depends on one so that a peer's departure is not a jump cut — while a thing
+ * sliding across the screen carries nothing.
+ *
+ * This lives in components.css and not base.css because main.css imports base
+ * first: an equal-specificity rule there would lose to appbar.css, sidebar.css
+ * and files.css. styles/qr.css and styles/cursors.css each carry their own
+ * block, because each is injected as its own sheet at runtime.
+ * ------------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  /* The toast rises 8px as it fades in. Keep the fade, drop the rise —
+     `transition:.18s` is shorthand for `all`, so the property list is what
+     needs narrowing, not the duration. */
+  .toast      { transition-property:opacity; transform:none; }
+  .toast.show { transform:none; }
+
+  .sw::after { transition:none; }   /* the knob slides 14px */
+  .chev      { transition:none; }   /* the chevron rotates 90° */
+  .bar       { transition:none; }   /* the transfer bar grows across the tile */
+}

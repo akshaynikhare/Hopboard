@@ -36,16 +36,13 @@
 .hrow:focus-within .hcopy,
 .hrow .hcopy:focus-visible { opacity: 1; }
 
-/* Direction badges. Reuses the .pill sizing from components.css; the tint
-   pattern (colour at low alpha behind the same colour) matches .pill.p2p. */
-.pill.sent {
-  background: color-mix(in srgb, var(--focus) 22%, transparent);
-  color: var(--focus);
-}
-.pill.recv {
-  background: color-mix(in srgb, var(--ok) 22%, transparent);
-  color: var(--ok);
-}
+/* Solid, matching what components.css does for .pill.p2p / .pill.relay.
+   The tinted form was 2.86:1 for SENT — the worst text contrast in the app, on
+   9.5px type. A colour at 22% behind itself never separates far enough from
+   itself to be readable; the badges in files.css were already solid, so this is
+   the more consistent answer as well as the legible one. */
+.pill.sent { background: var(--status); color: var(--on-fixed); }
+.pill.recv { background: var(--ok);    color: var(--editor); }
 
 /* One line, always. What people paste here is stack traces and JSON, and a row
    that grows to twenty lines destroys the list. */

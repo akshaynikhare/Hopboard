@@ -11,18 +11,45 @@ body {
   -webkit-font-smoothing:antialiased;
 }
 
-:focus-visible { outline:1px solid var(--focus); outline-offset:-1px; }
+/* ------------------------------------------------------------------ *
+ * Focus
+ *
+ * 2px rather than 1, and drawn INSIDE the element's own box, so the ring
+ * always sits on that element's own background. That is what makes the colour
+ * a per-surface decision instead of a guess, and components.css re-points the
+ * handful of surfaces where the accent is not enough.
+ *
+ * --focus measured against the surfaces it actually lands on
+ * (SC 1.4.11 Non-text Contrast wants 3:1) — dark / light:
+ *
+ *     --editor   3.96 / 4.21   PASS
+ *     --side     3.64 / 3.80   PASS
+ *     --tab-off  3.27 / 3.56   PASS
+ *     --hover    3.76 / 3.95   PASS
+ *     --title    2.62 /  ---   FAIL in dark  (the app header, the QR title bar)
+ *     --input    2.62 /  ---   FAIL in dark  (select, .btn.ghost)
+ *     --bd2      2.62 / 2.68   FAIL in both  (the switch track, Manual)
+ *     --blue     1.07 / 1.07   FAIL in both  — no ring at all, in either theme
+ *
+ * The four failures are covered in components.css by swapping the ring to
+ * --bright, whose worst case is 3.65:1 (on --blue, dark).
+ * ------------------------------------------------------------------ */
+:focus-visible { outline:2px solid var(--focus); outline-offset:-2px; }
 
-/* VS Code's overlay scrollbars */
+/* VS Code's overlay scrollbars.
+   The alpha is higher than VS Code's own 0.4: at that value the thumb is
+   1.66:1 against the editor and 1.61:1 against the sidebar in the light theme
+   — a control you cannot see. --text at 55% lands between 3.15 and 4.11 across
+   both surfaces in both themes, and reads the same. */
 ::-webkit-scrollbar { width:14px; height:14px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb {
-  background:rgba(121,121,121,.4);
+  background:color-mix(in srgb, var(--text) 55%, transparent);
   border:3px solid transparent;
   background-clip:content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background:rgba(100,100,100,.7);
+  background:color-mix(in srgb, var(--text) 75%, transparent);
   background-clip:content-box;
 }
 

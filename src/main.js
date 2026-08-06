@@ -36,6 +36,7 @@ import * as resizer from "./ui/resizer.js";
 import * as syncMode from "./ui/syncMode.js";
 import * as hints from "./ui/hints.js";
 import * as cursors from "./ui/cursors.js";
+import * as ads from "./ui/ads.js";
 
 /* ------------------------------------------------------------------
    session key
@@ -161,8 +162,7 @@ async function decryptFrame(frame) {
    outbound
 ------------------------------------------------------------------- */
 async function sendText(text) {
-  const { aesKey, originId, settings } = state.get();
-  if (settings.direction === "Receive only") return;
+  const { aesKey, originId } = state.get();
   if (!aesKey || !relay.isOpen()) return;
   if (text.length > TEXT.MAX_CHARS) return;
 
@@ -190,12 +190,31 @@ function wire() {
     sendText(text);
   });
 
-  // Remote clip -> editor, then the OS clipboard. capture.apply owns the
-  // suppression ordering that stops the value bouncing back to the sender.
+  // Remote clip -> OS clipboard, and the editor only if it is safe to.
+  //
+  // The clipboard write always happens: that is the product, it is what the
+  // user asked for by enabling the session, and it costs them nothing.
+  //
+  // The EDITOR is different. Overwriting it discards whatever the user was
+  // typing, with no undo. So when there is unsent work in there, the clip is
+  // offered rather than applied — the text is already on their clipboard, and
+  // one click puts it in the editor if they want it.
   on(EV.TEXT_RECEIVED, async ({ text }) => {
-    editor.setText(text);
     await capture.apply(text);
+
+    if (!editor.isDirty()) {
+      editor.setText(text);
+      // The core event of the product announced nothing at all: a screen-reader
+      // user had no way to know a clip had arrived. Routed through the toast
+      // queue, which collapses duplicates and paces bursts, so Live mode does
+      // not turn this into a firehose.
+      emit(EV.TOAST, `Clip received · ${text.length.toLocaleString()} characters`);
+      return;
+    }
+    emit(EV.CLIP_OFFERED, { text });
   });
+
+  on("clip:accept", ({ text }) => editor.setText(text));
 
   // A generated key turned out to be in use. Regenerate rather than silently
   // join a stranger's session (OI-2).
@@ -234,7 +253,26 @@ function wire() {
 
   on("session:rejoin", async ({ key }) => {
     relay.close();
+    state.resetRoster();
     await openSession(keys.normalise(key), "join");
+  });
+
+  // "Someone joined and it wasn't me" — get out of the room and take a new key.
+  on("session:rotate", async () => {
+    relay.close();
+    state.resetRoster();
+    const key = keys.generate(
+      state.get().settings.longKeys ? keys.LENGTHS.LONG : keys.LENGTHS.NORMAL);
+    emit(EV.TOAST, "New key — the old session is abandoned");
+    await openSession(key, "create");
+  });
+
+  // A relay restart drops every socket (OI-13) and its rooms with them. On
+  // reconnect the roster is rebuilt from scratch, so the peers we already knew
+  // about would each be reported as a fresh arrival and fire the "a device
+  // joined" warning — crying wolf on a deploy.
+  on(EV.CONN_STATE, ({ state: connState }) => {
+    if (connState === "reconnecting" || connState === "offline") state.resetRoster();
   });
 
   on("session:leave", () => {
@@ -250,8 +288,21 @@ function wire() {
 async function wireFiles() {
   try {
     const transfer = await import("./files/transfer.js");
+    const registry = await import("./files/registry.js");
     filesFrames = new Set(transfer.FRAMES ?? []);
     filesSignalHandler = transfer.onSignal ?? null;
+
+    // registry needs the wire too, to retract a file it has removed. It sits
+    // under transfer.js and may not import it, so it takes the same injected
+    // sender. (Arguably the retraction belongs in transfer.js next to
+    // announce() — noted in ARCHITECTURE.md; the seam works and is tested.)
+    registry.setSignalSender?.(frame => {
+      if (!relay.isOpen()) return false;
+      encryptFrame(frame)
+        .then(sealed => relay.send(sealed))
+        .catch(err => console.error("[hopboard] could not retract a file", err));
+      return true;
+    });
 
     // Announcing local files and re-announcing to new peers is transfer.js's
     // own business — it subscribes to the bus directly. Doing it from here is
@@ -343,6 +394,7 @@ async function boot() {
   safeInit("resizers", resizer.init);
   safeInit("sync mode", syncMode.init);
   safeInit("hints", hints.init);
+  safeInit("ad slot", ads.init);
   safeInit("peer cursors", cursors.init);
   safeInit("install prompt", install.init);
 

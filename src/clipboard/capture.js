@@ -106,7 +106,6 @@ export async function tryRead() {
   // machine unless the user pastes it here or presses Send.
   if (s.settings.syncMode !== SYNC_MODES.LIVE) return;
   if (!s.settings.autoread) return;
-  if (s.settings.direction === "Receive only") return;
   if (state.isSuppressed()) return;          // just applied a remote clip (FR-2.6)
 
   const text = await os.read();
@@ -138,8 +137,6 @@ export async function tryReadImage() {
  * docs/P2P-FILES.md. capture.js stays ignorant of files/: it announces.
  */
 function captureImage(blob, how) {
-  const s = state.get();
-  if (s.settings.direction === "Receive only") return;
   const ext = (blob.type.split("/")[1] || "png").replace("jpeg", "jpg");
   const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   emit(EV.IMAGE_CAPTURED, {
@@ -173,7 +170,6 @@ export function capture(text, how) {
 export async function apply(text) {
   const s = state.get();
   if (!s.settings.autowrite) return false;
-  if (s.settings.direction === "Send only") return false;
 
   s.lastSent = text;
   state.suppress(TEXT.SUPPRESS_MS);

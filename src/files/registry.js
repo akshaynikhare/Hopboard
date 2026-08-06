@@ -18,6 +18,7 @@
 
 import { FILES } from "../core/config.js";
 import { emit, EV } from "../core/bus.js";
+import * as state from "../core/state.js";
 import * as thumbs from "./thumbs.js";
 
 const items = [];
@@ -43,6 +44,37 @@ export const count = () => items.length;
 
 /** Is a transfer under way for this file? The UI offers cancel when true. */
 export const isBusy = id => BUSY.has(get(id)?.state);
+
+/* ------------------------------------------------------------------ *
+ * Injected collaborators
+ *
+ * Two seams, both copying the contract files/transfer.js already uses, because
+ * this module sits UNDER both the transport and the transfer machinery and may
+ * import neither:
+ *
+ *   setSignalSender(fn)  The same encrypt-and-send closure main.js hands
+ *                        transfer.js. Removal needs it to tell the room that
+ *                        one of OUR files is gone; without it removal is
+ *                        local-only, which is safe but leaves a stale tile on
+ *                        every peer until they click it. See the note on
+ *                        FRAME_GONE for what still has to be wired.
+ *
+ *   setCanceller(fn)     transfer.cancel, injected by ui/filesPanel.js.
+ *                        Importing files/transfer.js from here would be a cycle
+ *                        pointing the wrong way — transfer.js imports this
+ *                        module — and would make the list depend on the
+ *                        machinery that moves it.
+ *
+ * Both default to "not wired", and every call site treats that as "do the local
+ * half and carry on". A missing collaborator must never block a removal: the
+ * user asked for the bytes to go.
+ * ------------------------------------------------------------------ */
+
+let sendSignal = null;
+let canceller = null;
+
+export function setSignalSender(fn) { sendSignal = typeof fn === "function" ? fn : null; }
+export function setCanceller(fn) { canceller = typeof fn === "function" ? fn : null; }
 
 /** Returns {added, rejected:[{name, reason}]} — the caller reports rejections. */
 export async function add(fileList, { makeThumbs = true } = {}) {
@@ -71,6 +103,7 @@ export async function add(fileList, { makeThumbs = true } = {}) {
       path: null,                                   // "p2p" | "relay" once transferred
       state: STATE.IDLE,
       error: null,
+      url: null,                                    // live object URL, if save() made one
     });
     added++;
     // Announced individually rather than via FILES_CHANGED: that event carries
@@ -88,7 +121,7 @@ export function addRemote({ id, name, size, type, thumb, originId }) {
   if (get(id)) return;
   items.push({ id, name, size, type, thumb, blob: null,
                origin: "remote", owner: originId, progress: 0, path: null,
-               state: STATE.IDLE, error: null });
+               state: STATE.IDLE, error: null, url: null });
   emit(EV.FILES_CHANGED, items);
 }
 
@@ -197,27 +230,206 @@ export function reset(id) {
   emit(EV.FILES_CHANGED, items);
 }
 
-export function remove(id) {
-  const i = items.findIndex(f => f.id === id);
-  if (i < 0) return;
-  items.splice(i, 1);
+/* ------------------------------------------------------------------ *
+ * Removal
+ *
+ * Adding a file was always one-way: the list only grew, up to the 20-file cap.
+ * Twenty 5 MB files is 100 MB of Blob pinned in a tab that has no other reason
+ * to be large, and there was no way to get any of it back short of closing the
+ * tab. remove() and clear() existed and were wired to nothing.
+ *
+ * Three things have to happen, in this order, and none of them is optional:
+ *
+ *   1. STOP ANY TRANSFER FIRST. Dropping the entry out from under a running
+ *      send makes transfer.js discover mid-loop that "the file went away" and
+ *      report a transfer error to a peer that did nothing wrong; on the receive
+ *      side it leaves the holder streaming into a tab that has stopped
+ *      listening. Cancelling first sends a file-cancel the peer understands and
+ *      releases the half-built Blob in the reassembler.
+ *   2. TELL THE ROOM, if it was ours. Otherwise every peer keeps a tile for a
+ *      file that no longer exists, and only finds out by clicking it.
+ *   3. RELEASE THE BYTES. Splicing the array is not enough on its own: an entry
+ *      can still be referenced by a render pass or an object URL, and a Blob
+ *      lives exactly as long as the last thing pointing at it.
+ * ------------------------------------------------------------------ */
+
+/**
+ * The frame that says "the file I announced is gone".
+ *
+ * ⚠️ NOT YET DELIVERABLE END TO END. The outbound half is here and is exercised
+ * by tests/files.mjs, but three things outside this module have to land before a
+ * peer can act on it, and until then nothing is put on the wire at all (no
+ * signal sender is installed, so signal() is a no-op rather than a frame the
+ * relay answers with UNKNOWN_TYPE):
+ *
+ *   - backend/main.py: "file-gone" must join ROOM_WIDE. It is a broadcast, like
+ *     file-meta, whose retraction it is — the relay would otherwise reject it.
+ *   - main.js: registry.setSignalSender(...) — the same closure already passed
+ *     to transfer.setSignalSender — and a route for the inbound frame into
+ *     applyGone().
+ *   - files/transfer.js: FRAMES is frozen at module load and main.js routes
+ *     strictly off it, so the type has to be declared there to be routed.
+ *
+ * Until then removal is local-only and degrades the way it always did: a peer
+ * that requests a file we no longer hold gets file-error "that file is no
+ * longer available" from onFileReq(), which is honest but late.
+ */
+export const FRAME_GONE = "file-gone";
+
+/**
+ * Drop a file from this session.
+ *
+ * `announce:false` is how an inbound retraction is applied — a peer telling us
+ * its file is gone must not make us broadcast a retraction of our own, or two
+ * devices bounce the same news around the room.
+ */
+export function remove(id, { announce = true, reason = "the file was removed" } = {}) {
+  const f = get(id);
+  if (!f) return false;
+
+  abortTransfer(id, reason);          // before the entry goes — see the note above
+
+  const i = items.indexOf(f);
+  if (i >= 0) items.splice(i, 1);
+
+  // While we still know whose it was. Someone else's file is only ever hidden
+  // locally: we are not entitled to delete it from the device that holds it.
+  if (announce && f.origin === "local") announceGone(f);
+
+  release(f);
   emit(EV.FILES_CHANGED, items);
+  return true;
 }
 
-export function clear() {
+/** Drop everything. Returns how many entries went, so the caller can say so. */
+export function clear({ announce = true, reason = "the file list was cleared" } = {}) {
+  const dropped = [...items];
+  if (!dropped.length) return 0;
+
+  // Cancelled first, and while the entries still exist, so transfer.js can name
+  // the file in the message it sends the peer.
+  for (const f of dropped) abortTransfer(f.id, reason);
+
   items.length = 0;
+  for (const f of dropped) {
+    if (announce && f.origin === "local") announceGone(f);
+    release(f);
+  }
   emit(EV.FILES_CHANGED, items);
+  return dropped.length;
 }
 
-/** Trigger a browser download of a file we already hold. */
+/** Tell the room a local file is gone, so its tile disappears there too. */
+export function announceGone(file) {
+  if (!file || file.origin !== "local") return false;
+  // Only routing fields: main.js seals everything else, and there is nothing
+  // here worth sealing — an id the room already saw in the file-meta it retracts.
+  return signal({ t: FRAME_GONE, id: file.id });
+}
+
+/**
+ * Apply an inbound retraction. Hostile by assumption, like every other frame:
+ * membership of the session is the only thing authenticating it (P2P-FILES §6),
+ * so a peer may retract what IT announced and nothing else. Without the owner
+ * check, anyone holding the key could clear everybody's file list.
+ */
+export function applyGone(frame) {
+  if (!frame || frame.t !== FRAME_GONE || frame.id == null) return false;
+  const f = get(String(frame.id));
+  if (!f) return false;
+  if (f.origin !== "local") {
+    // `from` is stamped by the relay on the socket the frame arrived on and is
+    // the one field a client cannot lie about; `originId` is whatever the
+    // sender typed. Prefer the former, and refuse outright if a file we know
+    // the owner of comes with neither.
+    const from = frame.from ?? frame.originId;
+    if (f.owner && from !== f.owner) return false;
+    return remove(f.id, { announce: false, reason: "the other device removed it" });
+  }
+  // Our own file. A peer does not get to delete it off this machine.
+  console.warn("[registry] ignoring a file-gone for a local file", f.id);
+  return false;
+}
+
+/* ---- the two halves of "actually gone" ---- */
+
+/**
+ * Release everything this entry holds on to. `items.splice()` only drops one
+ * reference; a 5 MB Blob survives an object URL, and it survives whatever else
+ * still points at the entry object (a render pass, a closure mid-await).
+ * Nulling the fields makes the removal collectible now rather than eventually.
+ */
+function release(f) {
+  if (!f) return;
+  revokeUrl(f);
+  f.blob = null;
+  f.thumb = null;                     // a 160 px JPEG data URL is ~8 KB, x20
+}
+
+function revokeUrl(f) {
+  if (!f?.url) return;
+  try { URL.revokeObjectURL(f.url); } catch { /* not a browser, or already gone */ }
+  f.url = null;
+}
+
+/** Stop a transfer for this file, if one is running and a canceller is wired. */
+function abortTransfer(id, reason) {
+  if (!canceller) return false;
+  try { return canceller(id, reason) !== false; }
+  catch (err) {
+    // A cancel that throws must not strand the file in the list — the user
+    // asked for it gone, and the worst case is a transfer that times out.
+    console.error("[registry] canceller threw", err);
+    return false;
+  }
+}
+
+let warnedNoSender = false;
+
+function signal(frame) {
+  if (!sendSignal) {
+    if (!warnedNoSender) {
+      warnedNoSender = true;
+      console.warn("[registry] no signal sender wired — removals stay local. " +
+                   "main.js should call registry.setSignalSender(), and the relay " +
+                   `must forward "${FRAME_GONE}"`);
+    }
+    return false;
+  }
+  frame.originId = state.get().originId;    // the receiver checks it owns the file
+  try { return sendSignal(frame) !== false; }
+  catch (err) {
+    console.error("[registry] signal send threw", err);
+    return false;
+  }
+}
+
+/**
+ * Trigger a browser download of a file we already hold.
+ *
+ * The object URL used to be revoked on the very next line, which races the
+ * download: the URL can be dead before the browser has started fetching it,
+ * and the failure mode is a save button that does nothing on some browsers and
+ * not others. It is now kept on the entry and revoked either when the file is
+ * removed — release() does it immediately, so a removed file cannot be held
+ * alive by a URL nobody can reach — or on a timer, whichever comes first.
+ */
+const SAVE_URL_TTL_MS = 60_000;
+
 export function save(id) {
   const f = get(id);
   if (!f?.blob) return false;
-  const url = URL.createObjectURL(f.blob);
+
+  revokeUrl(f);                                     // never leak a second one
+  const url = f.url = URL.createObjectURL(f.blob);
+
   const a = document.createElement("a");
   a.href = url;
   a.download = f.name;
   a.click();
-  URL.revokeObjectURL(url);
+
+  // The Blob is already held by the entry, so this URL costs no extra memory
+  // while the file is in the session; the timer is what stops it outliving one.
+  setTimeout(() => { if (f.url === url) revokeUrl(f); }, SAVE_URL_TTL_MS);
   return true;
 }

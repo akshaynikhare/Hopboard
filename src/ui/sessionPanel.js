@@ -26,7 +26,10 @@ export function init() {
     const next = sw.getAttribute("aria-checked") !== "true";
     sw.setAttribute("aria-checked", String(next));
     persist(sw.dataset.k, next);
+    if (sw.dataset.k === "longKeys") renderKeyStrength();
   }));
+
+  renderKeyStrength();
 
   bind("poll", "change", e => {
     persist("poll", e.target.value);
@@ -76,7 +79,24 @@ function renderKey(key) {
  * announces the intent — it does not own the transport.
  */
 function newKey() {
-  emit("session:rejoin", { key: keys.generate() });
+  emit("session:rejoin", { key: keys.generate(keyLength()) });
+}
+
+const keyLength = () =>
+  state.get().settings.longKeys ? keys.LENGTHS.LONG : keys.LENGTHS.NORMAL;
+
+/**
+ * Say what the setting buys in numbers, not adjectives. "More secure" is
+ * unfalsifiable; "~29 bits" versus "~49 bits" lets someone decide.
+ */
+function renderKeyStrength() {
+  const el = $("keyBits");
+  if (!el) return;
+  const n = keyLength();
+  // "applies to the next key" matters: flipping this does not re-key the
+  // session you are already in, and silently implying otherwise would be a
+  // security claim the app is not honouring.
+  el.textContent = `${n} characters · ~${Math.round(keys.entropyBits(n))} bits · applies to the next key`;
 }
 
 async function copyLink() {

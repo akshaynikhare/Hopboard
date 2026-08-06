@@ -12,6 +12,8 @@ import * as capture from "../clipboard/capture.js";
 import { $, esc } from "./dom.js";
 
 const banners = new Map();
+/** key -> a function that cancels that banner's auto-dismiss timer. */
+const timers = new Map();
 let mount;
 
 export function init() {
@@ -54,6 +56,38 @@ export function init() {
     });
   });
 
+  // A clip arrived while there was unsent work in the editor. It is already on
+  // the clipboard; this only offers to put it in view, so nothing is lost
+  // either way.
+  on(EV.CLIP_OFFERED, ({ text }) => {
+    show("offered", {
+      tone: "info",
+      title: "New clip received",
+      body: `It is on your clipboard. Applying it here replaces what you have typed. `
+          + `“${text.slice(0, 70)}${text.length > 70 ? "…" : ""}”`,
+      action: {
+        label: "Show it",
+        onClick: () => { emit("clip:accept", { text }); dismiss("offered"); },
+      },
+    });
+  });
+
+  // The key is a bearer credential: whoever holds it is in. Silently adding a
+  // device to a list nobody re-reads is not enough — if a stranger guesses or
+  // is handed the key, the moment they arrive is the only moment it is
+  // noticeable.
+  on(EV.PEER_JOINED, ({ name }) => {
+    show("joined", {
+      tone: "warn",
+      title: "A device joined this session",
+      body: `${name || "An unnamed device"} can now read what you copy and `
+          + `request your files. If that was not you, generate a new key.`,
+      action: { label: "New key", onClick: () => emit("session:rotate") },
+      // Auto-dismissed, but only while nobody is reading it — see show().
+      dismissAfter: 15000,
+    });
+  });
+
   on(EV.INSTANCE_CHANGED, ({ from, to }) => {
     show("split", {
       tone: "bad",
@@ -64,19 +98,37 @@ export function init() {
   });
 }
 
-function show(key, { tone, title, body, action }) {
+/** rAF where it exists; a timer otherwise, so this module works headless. */
+const soon = fn =>
+  (typeof requestAnimationFrame === "function" ? requestAnimationFrame(fn) : setTimeout(fn, 0));
+
+/**
+ * A banner appears without anyone asking for it, so it has to announce itself
+ * or a screen-reader user simply never learns that a clip is waiting or that
+ * clipboard access was refused.
+ *
+ * Two roles, not one. "Relay instance changed" means sync has silently stopped
+ * working and reads as lag until someone is told, so it interrupts (alert).
+ * The rest are things you can act on when you get to them, and interrupting
+ * whatever is being read for a permission prompt is the behaviour that trains
+ * people to turn the screen reader's verbosity down.
+ */
+const ROLE = { bad: "alert" };
+
+function show(key, { tone, title, body, action, dismissAfter }) {
   dismiss(key);
 
   const el = document.createElement("div");
   el.className = `banner banner-${tone}`;
-  el.innerHTML = `
-    <div class="banner-txt">
-      <b>${esc(title)}</b>
-      <span>${esc(body)}</span>
-    </div>`;
+  el.setAttribute("role", ROLE[tone] ?? "status");
+
+  const txt = document.createElement("div");
+  txt.className = "banner-txt";
+  el.appendChild(txt);
 
   if (action) {
     const btn = document.createElement("button");
+    btn.type = "button";
     btn.className = "btn sm";
     btn.textContent = action.label;
     btn.onclick = () => action.onClick();
@@ -84,17 +136,59 @@ function show(key, { tone, title, body, action }) {
   }
 
   const close = document.createElement("button");
+  close.type = "button";
   close.className = "banner-x";
-  close.setAttribute("aria-label", "Dismiss");
+  // Three banners can be on screen at once, and three buttons all called
+  // "Dismiss" are indistinguishable in a screen reader's element list.
+  close.setAttribute("aria-label", `Dismiss: ${title}`);
   close.textContent = "×";
   close.onclick = () => dismiss(key);
   el.appendChild(close);
 
   mount.appendChild(el);
   banners.set(key, el);
+
+  // Filled a frame AFTER the live region is in the tree. A region that arrives
+  // with its text already inside it is announced inconsistently across screen
+  // readers — some treat the whole subtree as one insertion and say nothing.
+  // Populating it once it is being watched is the behaviour they all agree on.
+  soon(() => {
+    if (banners.get(key) !== el) return;              // dismissed within the frame
+    txt.innerHTML = `<b>${esc(title)}</b><span>${esc(body)}</span>`;
+  });
+
+  if (dismissAfter > 0) autoDismiss(key, el, dismissAfter);
+}
+
+/**
+ * A banner that vanishes on a timer takes its action button with it.
+ *
+ * Fifteen seconds is comfortable if you saw it arrive, and nowhere near enough
+ * if a screen reader is still reading the sentence before it, or if you are
+ * partway through tabbing to "New key" (WCAG 2.2.1). So the clock stops
+ * whenever the banner has focus in it or the pointer over it, and restarts
+ * from the top when attention moves away. Nothing auto-dismisses out from
+ * under someone who is looking at it.
+ */
+function autoDismiss(key, el, ms) {
+  let timer = 0;
+  let hovering = false;
+
+  const held = () => hovering || el.contains(document.activeElement);
+  const stop = () => { clearTimeout(timer); timer = 0; };
+  const start = () => { if (!timer && !held()) timer = setTimeout(() => dismiss(key), ms); };
+
+  el.addEventListener("pointerenter", () => { hovering = true; stop(); });
+  el.addEventListener("pointerleave", () => { hovering = false; start(); });
+  el.addEventListener("focusin", stop);
+  el.addEventListener("focusout", () => soon(start));   // focus lands next tick
+  timers.set(key, stop);
+  start();
 }
 
 function dismiss(key) {
+  timers.get(key)?.();
+  timers.delete(key);
   banners.get(key)?.remove();
   banners.delete(key);
 }

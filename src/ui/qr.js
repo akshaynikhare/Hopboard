@@ -429,11 +429,39 @@ function ensureStyles() {
   document.head.appendChild(link);
 }
 
-let openModal = null;      // { el, restoreFocus, onKeydown }
+let openModal = null;      // { el, restoreFocus, onKeydown, inerted }
 
 export function init() {
   ensureStyles();
   on("ui:qr", ({ text } = {}) => showQr(text));
+}
+
+/**
+ * The app shell, which everything except the toast, the modals and the cursor
+ * layer lives inside. Made inert while a dialog is open so that a screen
+ * reader's virtual cursor cannot wander out of the dialog into the page
+ * behind it — aria-modal alone is advisory, and support for it is uneven.
+ */
+const SHELL = ".vs";
+
+function setShellInert(on) {
+  const shell = document.querySelector(SHELL);
+  if (!shell) return false;
+  // Tested before assigning: `shell.inert = true` would create an own property
+  // and make the feature test pass on an engine that does not implement it.
+  const supported = "inert" in shell;
+  if (on) {
+    shell.inert = true;
+    // inert is supported everywhere current, but if this is running somewhere
+    // it is not, aria-hidden still gets the announcement half right. It is
+    // never set on an ancestor of the focused element: the dialog is a sibling
+    // of the shell, not a child of it.
+    if (!supported) shell.setAttribute("aria-hidden", "true");
+  } else {
+    shell.inert = false;
+    shell.removeAttribute("aria-hidden");
+  }
+  return true;
 }
 
 /** Open the QR modal for `text` (the share link). Safe to call repeatedly. */
@@ -446,31 +474,42 @@ export function showQr(text) {
 
   let body;
   try {
-    body = `<div class="qrframe">${toSvg(encode(payload), { label: `QR code for ${payload}` })}</div>`;
+    // The label is short on purpose. It used to be the whole share link, which
+    // a screen reader then read out character by character before the same URL
+    // appeared again, verbatim, in .qrlink immediately below.
+    body = `<div class="qrframe">${toSvg(encode(payload), { label: "QR code for this session's share link" })}</div>`;
   } catch (err) {
     // Too long for version 10 — say so rather than rendering a broken symbol.
     body = `<div class="qrfail">${esc(err.message)}</div>`;
   }
 
-  const host = $("mount-modals");
-  if (!host) return console.error("[qr] #mount-modals missing");
+  // Deliberately NOT #mount-modals. ui/filesPanel.js owns that hook and drives
+  // it with `host.innerHTML = …` on every 500 ms countdown tick, so a file
+  // request arriving while this dialog is open would delete it out from under
+  // the focus trap — leaving a document-level keydown listener attached to a
+  // detached node and focus stranded on nothing. .qrmodal is position:fixed and
+  // takes no layout from its parent, so body is an equivalent home.
+  // See docs/ACCESSIBILITY.md for the filesPanel.js side of this.
+  const host = document.body;
+  if (!host) return console.error("[qr] no document.body to mount into");
 
   const el = document.createElement("div");
   el.className = "qrmodal";
   el.innerHTML = `
     <div class="qrback" data-close></div>
-    <div class="qrdlg" role="dialog" aria-modal="true" aria-labelledby="qrTitle">
+    <div class="qrdlg" role="dialog" aria-modal="true" tabindex="-1"
+         aria-labelledby="qrTitle" aria-describedby="qrNote">
       <div class="qrhead">
         <span id="qrTitle">Scan to join this session</span>
         <span class="spacer"></span>
-        <button class="ibtn" id="qrClose" title="Close" aria-label="Close" data-close>
-          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        <button class="ibtn" type="button" id="qrClose" title="Close" aria-label="Close" data-close>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
       <div class="qrbody">
         ${body}
         <div class="qrlink" tabindex="0">${esc(payload)}</div>
-        <div class="qrnote">The link contains the key. Anyone who scans it can read what you copy.</div>
+        <div class="qrnote" id="qrNote">The link contains the key. Anyone who scans it can read what you copy.</div>
       </div>
     </div>`;
 
@@ -482,22 +521,31 @@ export function showQr(text) {
     if (e.key === "Tab") trapTab(e, el);
   };
 
-  openModal = { el, restoreFocus, onKeydown };
+  openModal = { el, restoreFocus, onKeydown, inerted: setShellInert(true) };
   document.addEventListener("keydown", onKeydown, true);
   bind(el, "click", e => { if (e.target.closest("[data-close]")) close(); });
 
-  ($("qrClose") ?? el.querySelector(".qrdlg"))?.focus?.();
+  // The dialog itself, not the close button. Focusing Close first announces
+  // "Close, button" and nothing else — the title, the warning and the link are
+  // all skipped, and the one thing offered is the way out. Landing on the
+  // container reads the dialog's name and description first, and Tab then
+  // reaches Close as the first stop.
+  const dlg = el.querySelector(".qrdlg");
+  (dlg ?? $("qrClose"))?.focus?.();
 }
 
 export function close() {
   if (!openModal) return;
-  const { el, restoreFocus, onKeydown } = openModal;
+  const { el, restoreFocus, onKeydown, inerted } = openModal;
   openModal = null;
 
   document.removeEventListener("keydown", onKeydown, true);
+  if (inerted) setShellInert(false);
   el.remove();
   // Focus goes back where it came from — a dialog that drops focus to <body>
   // strands keyboard and screen-reader users at the top of the document.
+  // Restored AFTER the shell is made interactive again: focus() on an inert
+  // subtree is a no-op, and the failure is silent.
   if (restoreFocus && document.contains(restoreFocus)) restoreFocus.focus?.();
 }
 
@@ -519,7 +567,14 @@ function trapTab(e, el) {
   const last = items[items.length - 1];
   const active = document.activeElement;
 
-  if (!el.contains(active)) { e.preventDefault(); first.focus(); return; }
+  // Anything not in the ring gets pushed to an end of it. That covers focus
+  // outside the dialog, and it covers the dialog container itself — which is
+  // where focus starts, is tabindex="-1", and therefore is not a ring member.
+  // Without this branch the first Shift+Tab of every open escaped the trap,
+  // because the browser looked for the previous focusable BEFORE the dialog
+  // and found the app behind it.
+  const at = items.indexOf(active);
+  if (at === -1) { e.preventDefault(); (e.shiftKey ? last : first).focus(); return; }
   if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
   else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
 }

@@ -25,6 +25,16 @@
   padding:2px 10px 6px;
 }
 
+/* "Clear all", injected into the pane header by ui/filesPanel.js because
+   app.html has no slot for it.
+
+   The [hidden] rule is not belt-and-braces: .ibtn sets display:grid, and an
+   author declaration beats the user agent's `[hidden] { display:none }` at any
+   specificity — so without this the button stays visible with an empty list and
+   `hidden = true` does nothing at all. */
+#bClearFiles[hidden] { display:none; }
+#bClearFiles:hover { color:var(--bad); }
+
 .tile {
   background:var(--editor);
   border:1px solid var(--bd2);
@@ -43,6 +53,7 @@
   font-size:19px;
   color:var(--dim);
   overflow:hidden;
+  position:relative;          /* anchors the remove button, see below */
 }
 .tile .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
 
@@ -84,6 +95,52 @@
   cursor:pointer;
 }
 .tile .tcancel:hover { background:var(--bad); color:var(--bright); }
+
+/* Remove — a different job from cancel, so a different corner and a different
+   shape. Cancel (×) stops a transfer and keeps the file; this drops the file.
+   Bottom-right of the THUMBNAIL rather than of the tile: it stays diagonally
+   opposite cancel and clear of the badge, and it costs the file name none of
+   the ~82px it has to work with.
+
+   Hidden until the tile is hovered or the button itself is focused, because a
+   grid of twenty bins reads as an editing surface rather than a file list.
+   opacity rather than display so it keeps its place in the layout and stays
+   reachable by Tab; it can never be clicked while invisible, since any pointer
+   inside the tile has already revealed it. */
+.tile .tremove {
+  position:absolute;
+  right:3px; bottom:3px;
+  width:17px; height:17px;
+  display:grid; place-items:center;
+  padding:0;
+  border:0;
+  border-radius:2px;
+  background:color-mix(in srgb, var(--editor) 72%, transparent);
+  color:var(--text);
+  cursor:pointer;
+  opacity:0;
+  transition:opacity .12s, background .12s;
+}
+.tile .tremove svg {
+  width:11px; height:11px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.6;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.tile:hover .tremove,
+.tile .tremove:focus-visible { opacity:1; }
+.tile .tremove:hover,
+.tile .tremove:focus-visible { background:var(--bad); color:var(--on-fixed); }
+
+/* A control revealed by hover is a control a phone does not have. */
+@media (hover: none) {
+  .tile .tremove { opacity:1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile .tremove { transition:none; }
+}
 
 /* The transport path is never hidden — a relay fallback is a different privacy
    story from a direct transfer, so it gets its own badge. */
@@ -208,4 +265,27 @@
   font-size:10.5px;
   font-family:var(--mono);
   color:var(--dim);
+}
+
+/* ------------------------------------------------------------------ *
+ * Destructive confirmation — removing a file mid-transfer, clearing the pane
+ *
+ * Shares the request prompt's shell on purpose: both are "this is about to
+ * happen to a file, decide". It sits one layer higher because the two can be
+ * open together — a peer can ask for a file while its owner is clearing the
+ * list — and the question being answered must be the one on top.
+ * ------------------------------------------------------------------ */
+
+.ask.confirm { z-index:61; }
+
+/* The warning rail turns from advisory to destructive. */
+.ask.confirm .w { border-left-color:var(--bad); }
+
+/* Scoped to the dialog rather than added to components.css: this is the only
+   place in the app with a destructive primary action, and a global .btn.bad
+   would invite one elsewhere without the confirmation that justifies it. */
+.ask.confirm .btn.bad {
+  background:var(--bad);
+  color:var(--on-fixed);
+  border-color:transparent;
 }

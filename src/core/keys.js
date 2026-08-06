@@ -2,11 +2,35 @@
 
 import { KEY } from "./config.js";
 
-/** Cryptographically random key from the unambiguous alphabet. */
+/**
+ * Cryptographically random key from the unambiguous alphabet.
+ *
+ * Note the modulo bias: 256 does not divide 30, so the first 16 letters of the
+ * alphabet are very slightly likelier than the last 14. The effect is about
+ * 0.03 bits over a 6-character key — irrelevant next to the 30-bit total, and
+ * called out here so nobody has to rediscover it.
+ */
 export function generate(length = KEY.LENGTH) {
   const bytes = crypto.getRandomValues(new Uint8Array(length));
   return Array.from(bytes, b => KEY.ALPHABET[b % KEY.ALPHABET.length]).join("");
 }
+
+/**
+ * Bits of entropy in a key of this length, given the 30-letter alphabet.
+ *
+ *   6 chars  ≈ 29.4 bits   — the default. Convenient, and brute-forceable
+ *                            offline by anyone who captured ciphertext.
+ *  10 chars  ≈ 49.1 bits   — ~1.6 million times harder, still typeable.
+ *
+ * PBKDF2 at 250k iterations multiplies the cost of each guess, but it does not
+ * change the shape of the problem: short keys are a convenience decision, and
+ * this function exists so the UI can say so in numbers rather than adjectives.
+ */
+export function entropyBits(length) {
+  return Math.log2(KEY.ALPHABET.length) * length;
+}
+
+export const LENGTHS = { NORMAL: KEY.LENGTH, LONG: KEY.LONG_LENGTH };
 
 /**
  * Normalise before ANY use — hashing, comparison, display.

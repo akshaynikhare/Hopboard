@@ -21,12 +21,23 @@
 
   /* text */
   --text:#cccccc;
-  --dim:#858585;
+  /* Was #858585 — VS Code's own, and 4.15:1 on --side in dark. That is under
+     AA, and --dim carries every sublabel, group heading, pane count, empty
+     state and timestamp in the app, so it was the single most-used failing
+     value. #a8a8a8 is the first value that clears 4.5:1 on every surface it
+     actually lands on, including the app header at 4.64. */
+  --dim:#a8a8a8;
   --bright:#e7e7e7;
 
   /* accents */
   --blue:#007acc;
-  --status:#007acc;
+  /* The status bar is white-on-accent across its full width. At #007acc that
+     is 4.51:1 — passing AA by 0.01, the most fragile number in the theme, and
+     the over-limit character counter on it was 3.26:1. #005a9e takes white to
+     7.10 and the counter to 5.14. --blue is deliberately NOT changed: it is a
+     background for buttons and the brand accent, and moving it would darken
+     the whole app to fix one bar. */
+  --status:#005a9e;
   --focus:#007fd4;
   --hover:#2a2d2e;
   --sel:#264f78;
