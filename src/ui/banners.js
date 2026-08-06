@@ -8,6 +8,7 @@
  */
 
 import { on, emit, EV } from "../core/bus.js";
+import { TRANSPORT } from "../core/config.js";
 import * as capture from "../clipboard/capture.js";
 import { $, esc } from "./dom.js";
 
@@ -85,6 +86,34 @@ export function init() {
       action: { label: "New key", onClick: () => emit("session:rotate") },
       // Auto-dismissed, but only while nobody is reading it — see show().
       dismissAfter: 15000,
+    });
+  });
+
+  // Which pipe the session is running down. Silence here would be the same
+  // mistake FR-7.6 forbids for file transfers: a fallback nobody is told about
+  // reads as "the app is just slow today".
+  on(EV.TRANSPORT, ({ mode, blocked }) => {
+    if (blocked) {
+      // Not "reconnecting". Neither a WebSocket nor a plain HTTP stream is
+      // getting through, which no amount of waiting fixes — this is the banner
+      // that gives someone something concrete to take to their IT desk.
+      show("transport", {
+        tone: "bad",
+        title: "Cannot reach the relay",
+        body: "Neither WebSockets nor HTTP streaming is getting through. If you are on "
+            + "a managed network, ask for hopboard.fastapicloud.dev to be allowed on 443.",
+      });
+      return;
+    }
+
+    if (mode !== TRANSPORT.SSE) return dismiss("transport");
+
+    show("transport", {
+      tone: "info",
+      title: "Using the HTTP fallback",
+      body: "WebSockets are blocked on this network, so Hopboard switched to HTTP "
+          + "streaming. Everything works and is still end-to-end encrypted; sending is "
+          + "a little slower.",
     });
   });
 

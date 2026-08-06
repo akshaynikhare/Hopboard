@@ -114,6 +114,7 @@ A static web app. Open it on machine A, get a short share key (e.g. `D75LV`). En
 | FR-3.6 | Heartbeat ping/pong every 30 s to survive idle-timeout proxies | Must |
 | FR-3.7 | Presence: peer count broadcast on join/leave | Should |
 | FR-3.8 | Last-write-wins ordering using a monotonic per-room sequence number assigned by the relay | Must |
+| FR-3.9 | **Transport failover.** Where a WebSocket cannot be established — including the case where it hangs rather than fails — the client falls back to SSE + POST on the same host, without user action, and states which transport is in use. The remembered choice expires so leaving that network restores the default | Must |
 
 ### 3.4 Installability (PWA)
 | ID | Requirement | Priority |
@@ -326,6 +327,8 @@ Hobby tier allowances, and what each means here:
 
 > The client's transport layer must be written behind a small interface (`connect / send / onMessage / close`) so that swapping WebSocket for SSE+POST touches one file and nothing else.
 
+**Built, and for the other end of the wire.** R3 turned out fine — the platform passes upgrades (OI-1). Fallback 1 shipped anyway, because the risk it addresses is symmetric and only half of it was ever about the host: the *client's* network is the one this product is aimed at (§5.4), and it is the half that cannot be fixed by changing providers. It is not a manual switch or a deploy-time flag. The client tries a WebSocket, and if two attempts fail to become usable it moves to `GET /sse/<roomHash>` + `POST /pub/<roomHash>` on the same host and says so in the status bar and a banner. Both transports serve the same rooms, so a device on each still sync with one another.
+
 ### 4.4 Repo layout
 ```
 /                      → static site root (GitHub Pages)
@@ -448,7 +451,7 @@ The primary deployment context is a managed corporate environment, which shapes 
 |---|---|
 | Extension installation blocked | PWA-only, permanently (§1.4). Already reflected throughout |
 | Outbound traffic restricted to 443 | `wss://` on 443 is standard and should pass. No custom ports, ever |
-| TLS-inspecting proxies may not pass WebSocket Upgrade | Reinforces the SSE+POST fallback in §4.3. Test from inside the actual corporate network during M0, not only from a home connection |
+| TLS-inspecting proxies may not pass WebSocket Upgrade | **Handled: automatic failover to SSE+POST (FR-3.9).** Note the failure mode it had to be built around — a blocked upgrade usually *hangs* rather than erroring, so the client cannot wait for an error it will never get, and gives each transport a fixed window to prove itself. Still test from inside the actual corporate network, not only from a home connection |
 | Proxies commonly kill idle connections at 60–120 s | 30 s heartbeat (FR-3.6) is a hard requirement, not a nicety |
 | Domain allowlisting | Relay lives on one stable hostname so IT can allowlist a single domain. Avoid rotating subdomains; a custom domain (D5) makes this easier to justify to IT |
 | Data-handling policy | E2EE (§7.3) means clipboard contents never exist in plaintext outside the browser — the strongest available answer to "where does our data go?" Worth documenting for any security review |
@@ -459,7 +462,10 @@ The primary deployment context is a managed corporate environment, which shapes 
 
 Transport: WebSocket, JSON text frames. URL: `wss://<app>.fastapicloud.dev/ws/<roomHash>`.
 
-The schema below is transport-agnostic on purpose: if the SSE+POST fallback (§4.3) is needed, the same envelopes travel over `GET /sse/<roomHash>` and `POST /pub/<roomHash>` with no other change.
+The schema below is transport-agnostic on purpose, and this is now load-bearing rather than aspirational: the SSE+POST fallback (§4.3, FR-3.9) carries these same envelopes over `GET /sse/<roomHash>` and `POST /pub/<roomHash>`, with two transport-level additions and no schema change.
+
+1. `welcome` carries an extra `sid` on that path only. A stream is the session; a POST is a separate request that could claim to be anyone, so `?sid=` is what ties one back to the other. It is stripped in the transport and never reaches the protocol layer.
+2. A POST body is one frame per line. `JSON.stringify` escapes every literal newline, so the split is unambiguous, and each line is still held to the 32 KB cap individually.
 
 ### Client → Server
 ```jsonc
@@ -634,7 +640,7 @@ Severity: **Blocker** = stops the build · **High** = silent wrong behaviour if 
 | **OI-9** | 🟢 Low | **Service worker scope and updates on a Pages subpath.** SW scope is confined to `/<repo>/`; registration must use a relative path, and a stale `sw.js` can pin users to an old build | Register relatively; version the cache name; ship the update toast in FR-4.6. Verify an update actually reaches an installed PWA | M3 |
 | **OI-10** | 🟢 Low | **PWA install drops the URL fragment.** `start_url` cannot carry `#KEY`, so the installed app opens with no room | FR-4.5 restores from `localStorage`. Undefined today: what the app shows when that is empty — specify "generate a fresh key and explain why" rather than a blank screen | M3 |
 | **OI-11** | ⚪ Watch | **FastAPI Cloud is in public beta and compute is not yet invoiced.** The $0 assumption (NFR-4) rests on beta pricing | Monitor. The relay is ~120 lines of standard FastAPI with no platform lock-in, so migrating to another free host is days, not weeks |
-| **OI-12** | ⚪ Watch | **Corporate-network verification needs physical access to that network.** A proxy that blocks WS Upgrade would not show up in testing from a home connection | Schedule an on-network test as part of the M0 gate, not after it | M0 |
+| **OI-12** | ⚪ Watch | **Corporate-network verification needs physical access to that network.** A proxy that blocks WS Upgrade would not show up in testing from a home connection | Schedule an on-network test as part of the M0 gate, not after it. **The consequence is now degradation rather than breakage**: FR-3.9 fails over to SSE+POST by itself, so an untested network costs a slower transport and a banner instead of a dead app. `tests/fallback.mjs` simulates the block (a socket that hangs, which is how it actually presents) and `backend/test_sse.py` gates the relay side, so the path is exercised without the network. Neither replaces the on-network test — a proxy that also buffers the event stream is the remaining unknown, and the client detects that case by requiring the welcome frame within a fixed window | M0 |
 | **OI-14** | 🟠 High | **WebRTC is least likely to work in exactly the environment this is built for.** P2P uses UDP; managed corporate networks routinely block outbound UDP and TLS-inspecting proxies do not pass peer traffic. Direct transfer will frequently fail on the target network — the same class of unknown as OI-1, and it cannot be answered from a home connection | Do **not** buy a TURN server: TURN relays the bytes, so it fixes connectivity by discarding the property that motivated P2P. Instead fall back to chunked transfer over the relay we already have (FR-7.6) — viable precisely because the cap is 5 MB, and the payload is already encrypted so the relay still sees nothing. Label the path visibly. Test on the corporate network alongside OI-12 | M7 |
 | ~~**OI-15**~~ | ✅ **CLOSED** | ~~Thumbnails leak content automatically~~ | **Resolved: "Send previews" toggle, default on.** Kept on because a preview is most of the value of sharing an image at all; the setting is in the Files group and `transfer.announce()` honours it. `tests/files.mjs` asserts thumbs=off actually suppresses the preview, so the toggle cannot rot into decoration | M7 ✅ |
 | ~~**D3-long-key**~~ | ✅ **CLOSED** | ~~The 10-character key option was specified and never built~~ | **Resolved: Settings → Security.** States the tradeoff in numbers — `6 chars · ~29 bits` vs `10 chars · ~49 bits` — and says "applies to the next key", because flipping it does not re-key the session you are in and implying otherwise would be a security claim the app does not honour | ✅ |

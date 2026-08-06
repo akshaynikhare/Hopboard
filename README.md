@@ -66,6 +66,7 @@ welcome — open an issue.
 | Frontend | Static HTML/JS on GitHub Pages, installable as a Chrome PWA |
 | Relay | FastAPI on FastAPI Cloud — in-memory rooms, no database, no disk |
 | Text | WebSocket through the relay, AES-GCM encrypted in the browser |
+| Blocked networks | If a proxy eats the WebSocket, the client moves itself to SSE + POST on the same host and says so |
 | Files | WebRTC data channel, direct between peers, 5 MB cap |
 | Key | `SHA-256(key)` routes the room; `PBKDF2(key)` encrypts. The key itself is never transmitted |
 
@@ -120,13 +121,14 @@ app.html                the app itself (noindex)
 src/
   main.js               composition root — wires modules together
   core/                 bus, config, state, crypto, storage
-  transport/            relay client, protocol, reconnect
+  transport/            relay client, protocol, reconnect, WebSocket/SSE failover
   clipboard/            OS clipboard read/write, capture tiers
   files/                thumbnails, registry, P2P transfer
   ui/                   one module per panel + shared helpers
   styles/               design tokens + per-component CSS
 backend/                FastAPI relay — deployed separately
 tests/e2e.mjs           two peers, real crypto, live relay
+tests/fallback.mjs      WebSocket blocked → SSE failover, through the real client
 docs/                   PRD, clipboard design, P2P design, M0 results
 ```
 
@@ -146,7 +148,11 @@ cd backend
 pip install -r requirements.txt
 python -m uvicorn main:app --port 8000
 python test_relay.py ws://127.0.0.1:8000    # 45-check protocol gate
+python test_sse.py http://127.0.0.1:8000    # 30-check fallback gate
 ```
+
+With the relay running, `node tests/fallback.mjs ws://127.0.0.1:8000` exercises
+the client's WebSocket → SSE failover with WebSockets simulated as blocked.
 
 See [backend/README.md](backend/README.md) for deployment, **including the
 replica-pinning step that must not be skipped.**

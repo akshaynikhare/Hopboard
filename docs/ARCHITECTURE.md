@@ -94,6 +94,30 @@ system. If the deployed relay turns out not to pass WebSocket upgrades
 (PRD **OI-1**), `transport/relay.js` gets replaced with an SSE+POST client and
 **no UI file changes**. That swap is the whole point of the boundary.
 
+It got used, for the other half of the problem. The relay passes upgrades fine;
+the *client's* network may not (PRD §5.4). So the transport is now chosen at
+runtime and no UI file changed:
+
+```
+  transport/
+    relay.js       the facade: protocol, heartbeat, backoff, and which channel
+    ws.js          channel — WebSocket
+    sse.js         channel — SSE downstream + POST upstream, for blocked networks
+    protocol.js    frame shapes, transport-agnostic
+```
+
+`ws.js` and `sse.js` implement one contract (`create → {send, close, isOpen}`)
+and know nothing but how to move frames. Everything that is easy to get subtly
+different between two transports — the hello, the 30 s heartbeat, jittered
+reconnect backoff, the last-clip replay — lives in `relay.js` once, for both.
+Nothing above `relay.js` can tell which one is live, and the static check
+enforces that no UI/files/clipboard module imports anything from `transport/`.
+
+The switch itself: try WebSocket, give it `NET.PROBE_MS` to become usable, and
+after `NET.SWITCH_AFTER` attempts that never do, move to SSE and say so. The
+probe matters more than it looks — a blocked WebSocket usually does not fail, it
+hangs, so there is no error to react to and nothing but a timer will notice.
+
 ### Consequences worth knowing
 
 - Event names live in `bus.js` as `EV.*` constants. A typo'd string literal is a

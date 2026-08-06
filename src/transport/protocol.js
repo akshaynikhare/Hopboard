@@ -53,4 +53,9 @@ export const ERRORS = {
   RATE_LIMITED: "Slow down — too many messages",
   ROOM_FULL:    "This session already has the maximum number of devices",
   BAD_JSON:     "The relay sent something unreadable",
+  NO_STREAM:    "The connection expired — reconnecting",
+  // Only ever shown after the transport has given up retrying: the usual cause
+  // is our own just-closed connection still holding the name, which clears on
+  // its own. See relay.js reclaimIdentity().
+  PEER_ID_TAKEN: "Another device in this session is using the same id — files may not reach this one",
 };
