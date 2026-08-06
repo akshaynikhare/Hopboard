@@ -139,7 +139,7 @@ start("flow", function flow() {
   const labels = byId("flowLabels");
   const pill   = byId("flowPill");
   const pillText = byId("flowPillText");
-  if (!stage || !svg || !text || !pill) return;
+  if (!stage || !svg || !text || !files || !nodesG || !labels || !pill || !pillText) return;
 
   const SVGNS = "http://www.w3.org/2000/svg";
   let layout = null, len = 0, metrics = null, raf = 0, started = 0, onScreen = false;
@@ -210,9 +210,11 @@ start("flow", function flow() {
     len = text.getTotalLength();
     position();
     // Only reveal the pill once it has somewhere real to be. If the stage is
-    // not laid out (hidden tab on some engines) getScreenCTM() returns null and
-    // an un-transformed pill would sit in the top-left corner.
+    // not laid out yet (a background tab on some engines) getScreenCTM() returns
+    // null, and an un-transformed pill would sit in the top-left corner. Try
+    // once more on the next frame, by which point layout has certainly run.
     if (metrics) stage.dataset.ready = "1";
+    else requestAnimationFrame(() => { position(); if (metrics) stage.dataset.ready = "1"; });
   }
 
   function position() {
