@@ -127,8 +127,19 @@ A static web app. Open it on machine A, get a short share key (e.g. `D75LV`). En
 | FR-4.5 | `start_url` must restore the last room from `localStorage` (fragments are not preserved by the manifest) | Must |
 | FR-4.6 | SW update flow: new version detected → non-blocking "Update available · Reload" toast | Should |
 
-### 3.5 Settings panel
-Small, collapsible, persisted in `localStorage`.
+### 3.5 Settings
+
+Persisted in `localStorage`. **Not a panel** — every setting lives in a slide-up
+menu on the status-bar item that already reports the thing it governs:
+connection → transport, device count → roster and session keys, Live sync →
+clipboard and receiving, P2P → files, gear → key strength and pointer sharing.
+
+It was a sidebar pane. On a phone that made it one tab out of four, so every
+setting, the device roster, and the split-brain warning that means sync has
+silently stopped all sat behind the editor until someone went looking. The
+status bar is on screen in every view on every layout, which is also why an item
+holding a menu is never dropped at narrow widths — hiding it would hide the only
+route to what is inside.
 
 | ID | Setting | Default |
 |---|---|---|

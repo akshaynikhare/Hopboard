@@ -54,9 +54,10 @@ src/
     banners.js          inline notices: permission, pending clip, peer joined
     editor.js           the main panel
     filesPanel.js       files and images
-    sessionPanel.js     devices and settings
+    sessionPanel.js     devices and settings — as status-bar menus, not a pane
     historyPanel.js     session clip history
-    statusbar.js        bottom bar
+    statusbar.js        bottom bar, and the transport picker on it
+    statusMenu.js       the slide-up menus every status item opens
     syncMode.js         Live / Manual switch
     cursors.js          live peer pointers
     hints.js            getting-started overlay
@@ -146,7 +147,7 @@ were replaced tomorrow.
 | Touch the system clipboard | `clipboard/os.js` — the only file that may |
 | Add a UI panel | new `ui/*.js` + `styles/*.css`, register in `main.js` |
 | Change a colour | `styles/tokens.css` |
-| Add a setting | `state.js` defaults → markup in `index.html` → `sessionPanel.js` |
+| Add a setting | `state.js` defaults → a row in the right menu in `sessionPanel.js`. No markup in `app.html`: the menus render from state when opened |
 
 ### Adding a feature, worked example
 

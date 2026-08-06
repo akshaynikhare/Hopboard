@@ -3,6 +3,7 @@
 import { on, emit, EV } from "../core/bus.js";
 import { TRANSPORT } from "../core/config.js";
 import * as state from "../core/state.js";
+import * as menu from "./statusMenu.js";
 import { $, esc } from "./dom.js";
 
 const LABEL = {
@@ -87,106 +88,39 @@ let picked = "";          // what the user chose; "" is automatic
 let live = null;          // what is actually carrying frames right now
 
 function initTransportPicker() {
-  const button = $("sbConn");
-  const host = $("mount-transport");
-  if (!button || !host) return;                  // status bar is optional furniture
+  menu.attach("sbConn", {
+    label: "Connection transport",
+    render: drawMenu,
+    onEvent: (e, close) => {
+      const option = e.target.closest?.("[data-transport]");
+      if (!option || e.type !== "click") return;
+      // The empty string means automatic, so read the attribute rather than
+      // trusting dataset to round-trip "" as anything but "".
+      emit(EV.TRANSPORT_SELECT, { mode: option.getAttribute("data-transport") || null });
+      close();
+      $("sbConn")?.focus();
+    },
+  });
 
   on(EV.TRANSPORT, ({ mode, forced }) => {
     picked = forced ?? "";
     live = mode;
-    if (!host.firstChild) return;                // only if it is open
-    drawMenu(host);
-    anchor(host);
-  });
-
-  button.addEventListener("click", e => {
-    e.stopPropagation();
-    host.firstChild ? closeMenu(host) : openMenu(host);
-  });
-
-  host.addEventListener("click", e => {
-    const option = e.target.closest("[data-transport]");
-    if (!option) return;
-    // The empty string means automatic, so read the attribute rather than
-    // trusting dataset to round-trip "" as anything but "".
-    emit(EV.TRANSPORT_SELECT, { mode: option.getAttribute("data-transport") || null });
-    closeMenu(host);
-    $("sbConn")?.focus();
+    menu.refresh();                              // only does anything if it is open
   });
 }
 
-function openMenu(host) {
-  drawMenu(host);
-  anchor(host);
-  $("sbConn")?.setAttribute("aria-expanded", "true");
-  host.querySelector("[data-transport]")?.focus();
-  // Capture phase: a click anywhere else closes it before that click does
-  // whatever else it was going to do, which is what every menu in every app
-  // does and what people expect without thinking about it.
-  document.addEventListener("click", onAway, true);
-  document.addEventListener("keydown", onMenuKey);
-}
-
-function closeMenu(host) {
-  host.innerHTML = "";
-  $("sbConn")?.setAttribute("aria-expanded", "false");
-  document.removeEventListener("click", onAway, true);
-  document.removeEventListener("keydown", onMenuKey);
-}
-
-function onAway(e) {
-  const host = $("mount-transport");
-  if (!host?.firstChild) return;
-  if (host.contains(e.target) || $("sbConn")?.contains(e.target)) return;
-  closeMenu(host);
-}
-
-function onMenuKey(e) {
-  if (e.key !== "Escape") return;
-  e.preventDefault();
-  closeMenu($("mount-transport"));
-  $("sbConn")?.focus();
-}
-
-/**
- * Sit directly above the button that opened it, without falling off the screen.
- *
- * Measured off the button rather than fixed in CSS, in both axes, because both
- * move. Horizontally: the status bar puts the share key before the connection
- * item and drops items at narrow widths, so #sbConn's left edge depends on the
- * key's length and the window. Vertically: the status bar is the last row on a
- * desktop but NOT on a phone, where the tab bar sits below it — a menu offset
- * from the bottom of the viewport was correct on one layout and covering the
- * tab bar on the other.
- *
- * The CSS values stay as the fallback for anything that cannot measure.
- */
-function anchor(host) {
-  const menu = host.querySelector(".tmenu");
-  const button = $("sbConn");
-  if (!menu || typeof button?.getBoundingClientRect !== "function") return;
-
-  const bar = button.getBoundingClientRect();
-  const width = menu.getBoundingClientRect().width || 300;
-  if (!bar.width && !bar.height) return;                 // not laid out yet
-
-  menu.style.left = `${Math.max(8, Math.min(bar.left, window.innerWidth - width - 8))}px`;
-  menu.style.bottom = `${Math.max(0, window.innerHeight - bar.top + 6)}px`;
-}
-
-function drawMenu(host) {
-  host.innerHTML = `<div class="tmenu" role="menu" aria-label="Connection transport">
-    ${OPTIONS.map(o => {
-      const chosen = o.value === picked;
-      // "in use" is a different fact from "chosen": on Automatic the app picks,
-      // and the user is entitled to see which one it landed on.
-      const inUse = !chosen && !picked && o.value && o.value === live;
-      return `<button class="tmenuitem" type="button" role="menuitemradio"
-                 aria-checked="${chosen}" data-transport="${esc(o.value)}">
-        <span class="tick">${chosen ? "✓" : ""}</span>
-        <span class="tx"><b>${esc(o.name)}</b><span>${esc(o.hint)}</span></span>
-        ${inUse ? `<span class="tnow">in use</span>` : ""}
-      </button>`;
-    }).join("")}
-  </div>`;
+function drawMenu() {
+  return OPTIONS.map(o => {
+    const chosen = o.value === picked;
+    // "in use" is a different fact from "chosen": on Automatic the app picks,
+    // and the user is entitled to see which one it landed on.
+    const inUse = !chosen && !picked && o.value && o.value === live;
+    return `<button class="smenuitem" type="button" role="menuitemradio"
+               aria-checked="${chosen}" data-mi="${esc(o.value || "auto")}"
+               data-transport="${esc(o.value)}">
+      <span class="tick">${chosen ? "✓" : ""}</span>
+      <span class="tx"><b>${esc(o.name)}</b><span>${esc(o.hint)}</span></span>
+      ${inUse ? `<span class="tnow">in use</span>` : ""}
+    </button>`;
+  }).join("");
 }
