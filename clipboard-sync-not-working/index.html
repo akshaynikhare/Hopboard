@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!--
+  Target: "clipboard sync across devices greyed out" and "copy paste between
+  devices not working". Both surfaced in the autocomplete mine (docs/SEO.md §3)
+  and neither has a good answer in the results today — every page that ranks
+  tells you to turn the toggle on, which is exactly what the reader has already
+  failed to do.
+
+  The intent here is the best in the whole keyword set: the reader's built-in
+  clipboard sync is broken RIGHT NOW. Fix their problem first and honestly,
+  including the cases where the fix is "your IT department blocked it and you
+  cannot change that". The product belongs at the end, as the answer to the
+  cases that cannot be fixed — not at the top.
+-->
+<title>Clipboard Sync Not Working? Fixes for Windows, Android, Mac and iPhone</title>
+<meta name="description" content="Clipboard sync greyed out or copy-paste between devices not working? The fix order for Windows 11, Samsung, Android, Mac and iPhone — plus what to do when your work PC blocks it entirely.">
+<link rel="canonical" href="https://akshaynikhare.github.io/Hopboard/clipboard-sync-not-working/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="../icons/icon.svg" type="image/svg+xml">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Hopboard">
+<meta property="og:title" content="Clipboard Sync Not Working? Fixes for Windows, Android, Mac and iPhone">
+<meta property="og:description" content="Why the “Sync across your devices” toggle is greyed out, and how to fix copy-paste between devices on every platform.">
+<meta property="og:url" content="https://akshaynikhare.github.io/Hopboard/clipboard-sync-not-working/">
+<meta property="og:image" content="https://akshaynikhare.github.io/Hopboard/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<!--
+  TechArticle rather than Article: this is instructional, and the subtype costs
+  nothing. BreadcrumbList is justified HERE and not on the homepage — there is a
+  real two-level hierarchy for it to describe, and the trail it declares matches
+  the trail rendered in the markup below.
+-->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://akshaynikhare.github.io/Hopboard/clipboard-sync-not-working/#article",
+      "headline": "Clipboard sync not working? Fixes for Windows, Android, Mac and iPhone",
+      "description": "Why the clipboard sync toggle is greyed out on Windows 11, and how to fix copy-paste between devices on Samsung, Android, Mac and iPhone.",
+      "inLanguage": "en",
+      "datePublished": "2026-08-06",
+      "dateModified": "2026-08-06",
+      "publisher": { "@id": "https://akshaynikhare.github.io/Hopboard/#org" },
+      "mainEntityOfPage": "https://akshaynikhare.github.io/Hopboard/clipboard-sync-not-working/"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Hopboard",
+          "item": "https://akshaynikhare.github.io/Hopboard/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Clipboard sync not working"
+        }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="../src/landing/landing.css">
+</head>
+<body>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="../">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <rect x="8" y="3" width="8" height="4" rx="1"/>
+          <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
+          <path d="M9 13l2 2 4-4"/>
+        </svg>
+        <b>Hopboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="https://github.com/akshaynikhare/Hopboard">GitHub</a>
+      <a class="tlink strong" href="../app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section class="sec">
+    <div class="in">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="../">Hopboard</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">Clipboard sync not working</span>
+      </nav>
+
+      <div class="article">
+        <h1>Clipboard sync not working?</h1>
+
+        <p class="lede">
+          On Windows, the most common cause is not the one people expect: the
+          <b>“Sync across your devices” toggle does not appear at all until
+          clipboard history itself is switched on</b>. Turn on clipboard history
+          first and the sync option stops being greyed out. If it is still greyed
+          out after that, you are almost certainly signed in with a local or
+          work account, or Group Policy has disabled it.
+        </p>
+
+        <p>
+          That covers most cases. The rest of this page works through each
+          platform in the order worth trying, and is honest about the situations
+          where there is no fix — on a managed work laptop, in particular, you
+          often cannot change this at all, and no amount of clicking will help.
+        </p>
+
+        <h2>Windows 11 and 10: “Sync across your devices” is greyed out</h2>
+
+        <p>
+          Work through these in order. Each step is a genuinely different cause,
+          and they are ordered by how often they turn out to be the problem.
+        </p>
+
+        <ol class="steps">
+          <li>
+            <b>Turn on clipboard history first.</b> Go to
+            <code>Settings › System › Clipboard</code> and enable
+            <b>Clipboard history</b> at the top of the page. The sync toggle
+            below it is inert until this is on — this is the single most common
+            reason it looks greyed out, and most guides skip it because they
+            assume you already did it.
+          </li>
+          <li>
+            <b>Sign in with a Microsoft account.</b> Clipboard sync runs through
+            Microsoft's cloud, so a local Windows account cannot use it. Check
+            <code>Settings › Accounts</code>. A local account is a hard blocker,
+            not a bug.
+          </li>
+          <li>
+            <b>Check whether the PC is managed.</b> On a work or domain-joined
+            machine, Group Policy can disable clipboard history and its sync
+            outright, and that setting overrides the Settings app — the toggle
+            will not respond no matter what you do. In mid-2026 a policy change
+            disabled clipboard history on a wave of enterprise and some consumer
+            machines, so this became much more common than it used to be.
+            <b>If this is your situation, nothing on this list will fix it.</b>
+          </li>
+          <li>
+            <b>Check the keyboard shortcut works at all.</b> Press
+            <kbd>Windows</kbd>+<kbd>V</kbd>. If no panel appears, clipboard
+            history is off or blocked, and sync cannot work regardless.
+          </li>
+          <li>
+            <b>Confirm both PCs use the same Microsoft account.</b> Sync happens
+            between machines on one account. Two accounts will never see each
+            other's clipboard, and Windows gives no warning about it.
+          </li>
+        </ol>
+
+        <div class="honest">
+          <h3>The limitation nobody mentions</h3>
+          <p>
+            Even fully working, Windows clipboard sync only moves text between
+            <b>Windows PCs signed into the same Microsoft account</b>. It will not
+            reach your phone, your Mac, your Linux box or a colleague's machine.
+            If that is what you actually wanted, the feature was never going to
+            do it.
+          </p>
+        </div>
+
+        <h2>Copy and paste between iPhone and Mac not working</h2>
+
+        <p>
+          Apple's Universal Clipboard has five requirements and fails silently
+          when any one of them is missing. All five must be true at once:
+        </p>
+
+        <ul class="sq-list">
+          <li>Both devices signed into the <b>same Apple Account</b></li>
+          <li><b>Wi-Fi on</b> for both — even when they are on different networks</li>
+          <li><b>Bluetooth on</b> for both; this is how they find each other</li>
+          <li><b>Handoff enabled</b> on both, in General settings</li>
+          <li>The devices physically <b>near each other</b>, within Bluetooth range</li>
+        </ul>
+
+        <p>
+          Bluetooth is the one people miss, because copying text feels like it
+          should travel over the network. It does not: proximity is part of the
+          design. Universal Clipboard also has a short timeout — copy something,
+          wait a few minutes, and it will no longer be there to paste.
+        </p>
+
+        <h2>Samsung and Android clipboard not syncing</h2>
+
+        <p>
+          Android has no system-wide clipboard sync between devices. What exists
+          is vendor-specific and only works inside one ecosystem: Samsung's own
+          sync moves the clipboard between Samsung devices signed into the same
+          Samsung account, and Microsoft's Phone Link can move clipboard content
+          between an Android phone and a Windows PC on supported handsets.
+        </p>
+
+        <p>
+          So if you are trying to copy from a Samsung phone to a non-Samsung
+          tablet, or from an Android phone to a Mac, there is no built-in feature
+          to fix. It does not exist to be turned on.
+        </p>
+
+        <h2>Chromebook clipboard not syncing</h2>
+
+        <p>
+          ChromeOS syncs the clipboard with an Android phone through Phone Hub,
+          which requires both devices on the same Google account and Bluetooth
+          on. Between a Chromebook and a Windows PC or Mac, there is no built-in
+          route at all.
+        </p>
+
+        <h2>Why they all break the same way</h2>
+
+        <p>
+          Every built-in clipboard sync fails on the same three conditions, and
+          once you see the pattern the troubleshooting stops being mysterious:
+        </p>
+
+        <div class="tablewrap" tabindex="0" role="region"
+             aria-label="What each built-in clipboard sync requires — scrolls sideways">
+          <table class="cmp">
+            <caption class="sr-only">
+              Requirements and limits of Windows, Apple, Samsung and ChromeOS
+              built-in clipboard sync compared with a browser-based clipboard.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Built-in feature</th>
+                <th scope="col">Needs an account</th>
+                <th scope="col">Works across brands</th>
+                <th scope="col">Needs devices nearby</th>
+                <th scope="col">Blockable by IT</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Windows clipboard sync</th>
+                <td class="n">Microsoft account</td>
+                <td class="n">Windows only</td>
+                <td class="y">No</td>
+                <td class="n">Yes — Group Policy</td>
+              </tr>
+              <tr>
+                <th scope="row">Apple Universal Clipboard</th>
+                <td class="n">Apple Account</td>
+                <td class="n">Apple only</td>
+                <td class="n">Yes — Bluetooth range</td>
+                <td class="n">Yes — MDM</td>
+              </tr>
+              <tr>
+                <th scope="row">Samsung clipboard sync</th>
+                <td class="n">Samsung account</td>
+                <td class="n">Samsung only</td>
+                <td class="n">Usually</td>
+                <td class="n">Yes</td>
+              </tr>
+              <tr>
+                <th scope="row">ChromeOS Phone Hub</th>
+                <td class="n">Google account</td>
+                <td class="n">ChromeOS + Android</td>
+                <td class="n">Yes — Bluetooth</td>
+                <td class="n">Yes</td>
+              </tr>
+              <tr class="me">
+                <th scope="row">A browser-based clipboard</th>
+                <td class="y">None</td>
+                <td class="y">Any browser</td>
+                <td class="y">No</td>
+                <td>Only if the site is blocked</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          Three assumptions run through all of them: <b>you own devices from one
+          brand</b>, <b>you are signed into that brand's account on all of
+          them</b>, and often <b>the devices are in the same room</b>. Break any
+          one — an Android phone and a work Windows laptop, a personal Mac and a
+          managed PC, a machine where you cannot sign in — and the built-in
+          feature has nothing to offer.
+        </p>
+
+        <h2>What to use when the built-in sync will not cooperate</h2>
+
+        <p>
+          A clipboard that lives in a web page sidesteps all three assumptions,
+          because there is nothing to install and no account to be signed into.
+          That is what <a href="../">Hopboard</a> is: open the same page on both
+          devices, type the same five-character key, and what you copy on one is
+          ready to paste on the other.
+        </p>
+
+        <ul class="sq-list">
+          <li><b>No account</b> — so a local Windows account or a locked-down profile is irrelevant</li>
+          <li><b>No install</b> — so it works on a machine where you have no admin rights</li>
+          <li><b>Any brand to any brand</b> — Windows to Android, Mac to Windows, Chromebook to phone</li>
+          <li><b>Any network</b> — home Wi-Fi to mobile data; the devices do not need to be near each other</li>
+          <li><b>End-to-end encrypted</b> — text is encrypted in your browser before it is sent, and the server stores nothing</li>
+        </ul>
+
+        <p>
+          The honest caveats, since this page is about things not working: it is
+          pre-alpha, the five-character key is a bearer credential so anyone who
+          learns it can read that session, and a browser cannot read your
+          clipboard in the background — you switch to the tab and it picks up
+          what you copied. That last one is a browser security rule that applies
+          to every web app, not a missing feature.
+        </p>
+
+        <p>
+          <a class="btn" href="../app.html">Open the clipboard</a>
+        </p>
+      </div>
+
+      <div class="faq" id="faq">
+        <h2>Common questions</h2>
+
+        <h3>Why is clipboard sync greyed out in Windows 11?</h3>
+        <p>
+          Almost always because clipboard history is switched off — the sync
+          toggle stays inert until you enable clipboard history above it in
+          <code>Settings › System › Clipboard</code>. If it is still greyed out,
+          you are signed in with a local account rather than a Microsoft account,
+          or the machine is managed and Group Policy has disabled the feature.
+        </p>
+
+        <h3>Does Windows clipboard sync work with Android or Mac?</h3>
+        <p>
+          No. Windows clipboard sync only works between Windows PCs signed into
+          the same Microsoft account. Microsoft's Phone Link can move clipboard
+          content between some Android phones and a Windows PC, but that is a
+          separate feature with its own device requirements.
+        </p>
+
+        <h3>Why is copy and paste between my iPhone and Mac not working?</h3>
+        <p>
+          Universal Clipboard needs all five of its conditions at once: the same
+          Apple Account, Wi-Fi on, Bluetooth on, Handoff enabled, and the devices
+          within Bluetooth range. Bluetooth is the one most often overlooked,
+          because copying text feels like it should travel over the network.
+        </p>
+
+        <h3>Can my employer block clipboard sync?</h3>
+        <p>
+          Yes, and this is common. On a domain-joined or MDM-managed machine,
+          Group Policy can disable clipboard history and its syncing entirely,
+          and that overrides the Settings app. There is no user-side workaround —
+          the toggle will not respond. A web page is often the only route left,
+          assuming the site itself is not blocked.
+        </p>
+
+        <h3>Is there a clipboard sync that works without an account?</h3>
+        <p>
+          Yes — a browser-based clipboard needs no account at all, because the
+          session is identified by a short key you type on both devices rather
+          than by a signed-in identity. That is the approach
+          <a href="../">Hopboard</a> takes, and it is why it works between
+          different brands and on machines where you cannot install anything.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/Hopboard">github.com/akshaynikhare/Hopboard</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
