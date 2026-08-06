@@ -462,7 +462,7 @@ followers).
 | **Brand and trust for a security product** | **Decisive.** `username.github.io/Project/` undercuts an end-to-end-encryption pitch |
 | Clean, host-level Search Console property | High |
 | **Ranking uplift from the domain string itself** | **Low. Do not expect this** |
-| Cost | ~$10–13/yr |
+| Cost | $14.20/yr for `hopboard.app`, renewal at the same price |
 
 Supporting facts: `github.io` is on the Public Suffix List (verified in
 `public_suffix_list.dat`, submitted by GitHub's own security team), so a Search
@@ -490,8 +490,28 @@ plaintext before the 301 upgrades it. On `.app` the browser refuses plaintext
 before sending a packet. For an E2EE tool on a platform that cannot set security
 headers, that converts a real weakness into a non-issue.
 
-Avoid `.io`: roughly 3× the cost, no HSTS benefit, and unresolved long-term
+Avoid `.io`: roughly 3.5× the cost, no HSTS benefit, and unresolved long-term
 registry uncertainty tied to the British Indian Ocean Territory's status.
+
+**Where and what it costs.** Cloudflare Registrar, at
+[domains.cloudflare.com](https://domains.cloudflare.com/) — it sells at registry
+wholesale with no markup, **the renewal price equals the registration price**
+(no first-year teaser that jumps later), and WHOIS redaction is included. Prices
+checked 2026-08-06:
+
+| Domain | Availability | Cloudflare price/yr |
+|---|---|---:|
+| **`hopboard.app`** | **available — buy this** | **$14.20** |
+| `hopboard.dev` | available | $12.20 |
+| `hopboard.io` | available | $50.00 |
+| `gethopboard.com` | available | — |
+| `hopboard.com` | **already registered** | — |
+
+⚠️ Earlier revisions of this document suggested buying `hopboard.com` alongside
+the `.app` as squatter insurance. **That is not possible — the `.com` is taken.**
+`gethopboard.com` is the nearest fallback if you want a second name, but it is
+optional: the `.app` alone is the recommendation, and a prefix domain is worth
+little on its own.
 
 ### Setup — the parts that bite
 
@@ -686,8 +706,10 @@ autocomplete depth and SERP composition · all Reddit data (API and web both blo
 · Authority Scores for 12 of 14 direct competitors (below Semrush's public
 threshold) · exact Search Console "request indexing" daily quota (unpublished) ·
 whether Bing Webmaster Tools accepts a path-scoped property · GitHub's repo-search
-relevance formula (never published) · Cloudflare Registrar exact pricing
-(aggregators disagreed by ±7%).
+relevance formula (never published).
+
+**Since resolved:** Cloudflare Registrar pricing and domain availability were
+looked up directly on 2026-08-06 and are now stated as fact in §7, not estimated.
 
 **SERP orderings** come from Bing and DuckDuckGo — Google direct-fetch was blocked
 — and are directionally reliable to roughly ±1–2 positions.
