@@ -1,13 +1,27 @@
 /**
  * Capture tiers — the heart of the sending half. See docs/CLIPBOARD-FLOW.md.
  *
- *   T1  paste event            always works, no permission
- *   T2  read on focus          needs clipboard-read
- *   T3  poll while focused     needs clipboard-read
- *   T4  background capture     IMPOSSIBLE for a web app, permanently
+ *   T0  native clipboard watch  desktop app only — the OS tells us
+ *   T1  paste event             always works, no permission
+ *   T2  read on focus           needs clipboard-read
+ *   T3  poll while focused      needs clipboard-read
+ *   T4  background capture      IMPOSSIBLE for a web app, permanently
  *
- * There is no clipboard-change event on the web platform, so "capture" means
- * "look at the moments we are allowed to look".
+ * There is no clipboard-change event on the web platform, so in a browser
+ * "capture" means "look at the moments we are allowed to look".
+ *
+ * T0 is the exception, and the entire reason the desktop app exists. Inside the
+ * Tauri shell a native listener — AddClipboardFormatListener on Windows,
+ * NSPasteboard changeCount on macOS, XFixes on X11 — reports every change,
+ * whether or not this window is focused. T4 stays impossible; T0 is not T4,
+ * because the code doing the watching is not the web page.
+ *
+ * !! T0 makes the loop-suppression ordering in apply() far more dangerous than
+ * it already was. T3 only ever polled while focused, so a mistake there was
+ * bounded by the user looking at the window. T0 sees every clipboard change on
+ * the machine, forever, so the lastSent-before-write ordering is now the only
+ * thing between the user and an endless clipboard storm across every device in
+ * the session. See docs/CLIPBOARD-FLOW.md §6. !!
  */
 
 import { POLL_OPTIONS, TEXT, SYNC_MODES, IMAGES } from "../core/config.js";
@@ -47,10 +61,44 @@ export function start() {
     tryRead();
   });
 
+  startNative();
   detectTier();
 }
 
+/**
+ * T0 — the desktop shell's clipboard watcher.
+ *
+ * The native side owns the OS boundary and emits a `clipboard://text` event
+ * with what it read. This adds no new path into the app: it lands in the same
+ * capture() funnel as every other tier, so `main.js`, the editor, the history
+ * and the transport are untouched. That is the boundary in
+ * docs/ARCHITECTURE.md §3 doing its job — a whole new capture mechanism, on a
+ * platform that did not exist before, and no UI file changes.
+ *
+ * Absent outside Tauri, so this is a no-op in a browser rather than a branch.
+ */
+function startNative() {
+  const tauri = globalThis.__TAURI__;
+  if (!tauri?.event?.listen) return;
+
+  tauri.event.listen("clipboard://text", ({ payload }) => {
+    // Mode is checked HERE as well as in the native side, deliberately.
+    // Manual mode means nothing leaves this machine unless the user says so,
+    // and that promise must not depend on a second process having got the
+    // message. The cheap check is the one that is load-bearing.
+    if (state.get().settings.syncMode !== SYNC_MODES.LIVE) return;
+    if (state.isSuppressed()) return;                // FR-2.6, and see the header
+    if (typeof payload === "string" && payload) capture(payload, "Copied anywhere");
+  }).catch(() => { /* the shell is older than this event; the other tiers stand */ });
+
+  state.setTier("T0", "watching the system clipboard");
+}
+
 export async function detectTier() {
+  // The native watcher outranks anything the browser can offer, and unlike the
+  // others it does not depend on a permission or on focus. Do not let the
+  // browser's own detection downgrade the reported tier underneath it.
+  if (globalThis.__TAURI__?.event) return;
   if (!os.canRead()) return state.setTier("T1", "paste only");
 
   const apply = s => {

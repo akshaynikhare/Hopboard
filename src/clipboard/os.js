@@ -6,8 +6,33 @@
 import { emit, EV } from "../core/bus.js";
 import { IMAGES } from "../core/config.js";
 
-/** Requires document focus. Needs no permission. */
+/**
+ * Requires document focus in a browser. Needs no permission.
+ *
+ * In the desktop shell it needs neither. The native side owns the OS clipboard
+ * there, so an arriving clip lands immediately rather than queueing until the
+ * user happens to focus the window — which removes the "1 pending" state
+ * entirely on desktop, and with it half of what makes the browser version feel
+ * like a compromise.
+ *
+ * The ordering invariant is upheld on the far side: main.rs `set_clipboard`
+ * records the value BEFORE writing it, so the native watcher recognises its own
+ * echo instead of broadcasting it back (docs/CLIPBOARD-FLOW.md §6).
+ */
 export async function write(text) {
+  const invoke = globalThis.__TAURI__?.core?.invoke;
+  if (invoke) {
+    try {
+      await invoke("set_clipboard", { text });
+      return true;
+    } catch (err) {
+      // Fall through to the web path rather than failing: a shell too old to
+      // know this command should degrade to the browser behaviour, not lose
+      // the clip.
+      console.warn("[hopboard] native clipboard write failed:", err);
+    }
+  }
+
   try {
     await navigator.clipboard.writeText(text);
     return true;
