@@ -332,18 +332,14 @@ export const DEFAULT_SYNC_MODE = SYNC_MODES.LIVE;
  * moved account is then one edit, and the four links cannot drift into pointing
  * at three different projects.
  *
- * COFFEE_HANDLE is separate because it is a different service's account name
- * and only happens to match today.
- *
  * !! UNVERIFIED: OWNER is real (the repo is at github.com/akshaynikhare/
- * RealtimeClipboard); the sponsors page and the Buy Me a Coffee handle were guessed from
- * it and have NOT been confirmed to exist. Check both before this ships — a
- * donate link that 404s costs more goodwill than no donate link. !!
+ * RealtimeClipboard); the sponsors page was guessed from it and has NOT been
+ * confirmed to exist. Check it before this ships — a donate link that 404s
+ * costs more goodwill than no donate link. !!
  */
 export const REPO = {
   OWNER: "akshaynikhare",
   NAME: "RealtimeClipboard",
-  COFFEE_HANDLE: "akshaynikhare",
 };
 
 export const LINKS = {
@@ -361,7 +357,6 @@ export const LINKS = {
    */
   NEW_ISSUE: `https://github.com/${REPO.OWNER}/${REPO.NAME}/issues/new/choose`,
   SPONSOR: `https://github.com/sponsors/${REPO.OWNER}`,
-  COFFEE:  `https://www.buymeacoffee.com/${REPO.COFFEE_HANDLE}`,
 };
 
 export const IMAGES = {

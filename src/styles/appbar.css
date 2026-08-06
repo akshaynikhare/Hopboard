@@ -76,7 +76,7 @@
   .modebtn { padding:3px 8px; }
 }
 
-/* Project links — report, coffee, sponsor — in the far-right corner.
+/* Project links — report, sponsor — in the far-right corner.
    Quiet by default (--dim, no border, no fill): they are the only things in
    the header that ask the user for something rather than do something for
    them, and an ask that shouts competes with the mode switch beside it. The
@@ -106,7 +106,6 @@
   white-space:nowrap;
 }
 .alink:hover { background:color-mix(in srgb, var(--text) 16%, transparent); color:var(--text); }
-.alink.coffee:hover  { color:var(--warn); }
 .alink.sponsor:hover { color:var(--bad); }
 .alink svg {
   width:14px; height:14px; flex:none;

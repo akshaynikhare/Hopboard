@@ -776,9 +776,9 @@ run on the app page too without breaking anything above. ⚠️ **Their current
 publisher terms, traffic minimums and CPMs could not be verified — ethicalads.io
 returned 429.** Check before committing.
 
-Also already wired into `app.html`: **Buy Me a Coffee** and **GitHub Sponsors**.
-For covering $10.46/yr, a single sponsor beats a year of ads at 27 pageviews/day —
-and carries none of the above cost.
+Also already wired into `app.html`: **GitHub Sponsors**. For covering $10.46/yr,
+a single sponsor beats a year of ads at 27 pageviews/day — and carries none of
+the above cost.
 
 ## 9. What was changed in this pass
 
