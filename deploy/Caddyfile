@@ -1,0 +1,44 @@
+# TLS and a reverse proxy, and nothing clever.
+#
+# Caddy gets and renews a certificate by itself, which is the only reason
+# "self-host the relay" fits in one command. Everything below is either required
+# by the protocol or required by the corporate networks this is built for.
+
+{$HOPBOARD_DOMAIN} {
+	encode zstd gzip
+
+	# The relay's three ways in. Listed explicitly rather than proxying `/`
+	# because anything else reaching this hostname is a mistake, and a 404 is a
+	# better answer to a mistake than a proxied one.
+	@relay path /ws/* /sse/* /pub/* /health /stats
+	handle @relay {
+		reverse_proxy relay:8000 {
+			# The SSE half of the fallback is a stream that stays open for the
+			# life of the session and only writes on a keepalive. Any buffering
+			# in front of it turns "the app works on a locked-down network"
+			# into "the app hangs on a locked-down network", which is the exact
+			# failure the fallback exists to prevent.
+			flush_interval -1
+
+			# A WebSocket has no traffic between heartbeats, and the client
+			# beats at 30 s to stay under the 60-120 s idle reaping common in
+			# corporate proxies (PRD §5.4). This side must not be the one that
+			# gives up first.
+			transport http {
+				read_timeout 0
+				write_timeout 0
+			}
+		}
+	}
+
+	handle {
+		respond "Hopboard relay. The app is served separately." 404
+	}
+
+	# The relay holds ciphertext in RAM and logs no clip content; these keep the
+	# proxy in front of it from being the component that starts.
+	log {
+		output stderr
+		format console
+	}
+}
