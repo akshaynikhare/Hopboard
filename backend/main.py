@@ -1,5 +1,5 @@
 """
-Hopboard relay — M0 clipboard fan-out + M7 peer-to-peer plumbing.
+RealtimeClipboard relay — M0 clipboard fan-out + M7 peer-to-peer plumbing.
 
 In-memory only: no database, no disk, no Redis. Room state lives in this
 process, which is exactly why the deployment MUST be pinned to a single
@@ -58,8 +58,37 @@ from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
+from shared import Backend, REDIS_URL
+
 INSTANCE_ID = uuid.uuid4().hex[:8]
 BOOTED_AT = time.time()
+
+# PRD OI-3. Inert unless REALTIMECLIPBOARD_REDIS_URL is set, in which case this is what
+# makes replicaCount > 1 safe. See backend/shared.py.
+shared = Backend(REDIS_URL, INSTANCE_ID)
+
+
+def _int(name: str, default: int) -> int:
+    """
+    A tunable, overridable by environment for self-hosted deployments.
+
+    Named REALTIMECLIPBOARD_* rather than bare, because this process may share an
+    environment with anything. Junk is ignored rather than fatal: a relay that
+    refuses to start because someone typed MAX_PEERS=eight is a worse outage
+    than one that logs it and uses the documented default.
+    """
+    raw = os.getenv(f"REALTIMECLIPBOARD_{name}")
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        print(f"[relay] REALTIMECLIPBOARD_{name}={raw!r} is not a number; using {default}")
+        return default
+    if value <= 0:
+        print(f"[relay] REALTIMECLIPBOARD_{name}={value} must be positive; using {default}")
+        return default
+    return value
 
 # PRD FR-2.8. Applies to *every* frame including file-chunk, per
 # docs/P2P-FILES.md §5 ("chunk size matches the existing relay frame cap — no
@@ -67,11 +96,42 @@ BOOTED_AT = time.time()
 # JSON frame, not on the chunk inside it. Base64 inflates 4/3, so a chunk must
 # be ~24 KB of ciphertext (~23 KB of file) to fit a 32 KB frame with its
 # envelope. A literal 32 KB chunk becomes a ~44 KB frame and is rejected.
-MAX_FRAME_BYTES = 32 * 1024
-MAX_PEERS = 8                 # PRD §6
-ROOM_TTL_SECONDS = 600        # PRD FR-3.4 — evict 10 min after the last peer leaves
+MAX_FRAME_BYTES = _int("MAX_FRAME_BYTES", 32 * 1024)
+MAX_PEERS = _int("MAX_PEERS", 8)                  # PRD §6
+ROOM_TTL_SECONDS = _int("ROOM_TTL", 600)          # PRD FR-3.4 — evict 10 min after the last peer leaves
 MAX_ID_CHARS = 64             # peerId / `to` — long enough for a uuid, bounded
 MAX_NAME_CHARS = 64           # nickname, e.g. "Chrome · Windows" (FR-5.7)
+
+# ---- deployment policy --------------------------------------------------
+#
+# Everything above is a protocol limit and has one correct value. These are
+# choices an OPERATOR makes, and they exist because the interesting deployment
+# of this relay is not ours — it is one inside somebody's own network, where the
+# pitch is "your engineers already paste secrets into pastebin; here is the same
+# convenience on hardware you control".
+#
+# All default to the hosted behaviour, so an unconfigured relay is exactly the
+# relay that was here before and both protocol gates still pass unchanged.
+#
+#   REALTIMECLIPBOARD_CORS_ORIGINS   comma-separated allowlist. Default "*", which is
+#                           safe here only because there are no credentials
+#                           anywhere in this design — see the note by the
+#                           middleware below. A self-hoster should pin it.
+#   REALTIMECLIPBOARD_DISABLE_FILES  refuse WebRTC signalling and file frames outright.
+#                           For an operator whose DLP position is "text may
+#                           move between a person's own machines, files may
+#                           not". Clips are unaffected.
+#   REALTIMECLIPBOARD_JOIN_TOKEN     a shared secret every client must present to join
+#                           any room. NOT user authentication and not a
+#                           substitute for the session key — it is a door on
+#                           the relay, so an internal deployment is not an open
+#                           relay for anyone who finds the hostname.
+#   REALTIMECLIPBOARD_MAX_SESSION    hard cap in seconds on how long one room may live,
+#                           counted from its first peer. 0 disables.
+CORS_ORIGINS = [o.strip() for o in os.getenv("REALTIMECLIPBOARD_CORS_ORIGINS", "*").split(",") if o.strip()]
+DISABLE_FILES = os.getenv("REALTIMECLIPBOARD_DISABLE_FILES", "").lower() in {"1", "true", "yes"}
+JOIN_TOKEN = os.getenv("REALTIMECLIPBOARD_JOIN_TOKEN", "") or None
+MAX_SESSION_SECONDS = _int("MAX_SESSION", 0)
 
 # ---- SSE + POST fallback ------------------------------------------------
 #
@@ -139,6 +199,11 @@ TARGETED = {
 }
 ROOM_WIDE = {"file-meta", "file-gone", "cursor"}
 
+# What REALTIMECLIPBOARD_DISABLE_FILES turns off: everything that moves a file or sets up
+# the channel to move one. Not `cursor`, which is presence rather than data, and
+# not `clip`, which is the product.
+FILE_FRAMES = (TARGETED | ROOM_WIDE) - {"cursor"}
+
 # Every forwarded frame is setup/teardown control traffic — bursty for a moment,
 # then silent — except file-chunk, which is the bulk path, and cursor, which is
 # a steady trickle.
@@ -156,7 +221,70 @@ FRAME_CLASS.update({
 })
 CLASS_LIMITS["cursor"] = 20
 
-app = FastAPI(title="Hopboard relay", version="0.2.0-m7")
+# ---- permessage-deflate, off ---------------------------------------------
+#
+# The single largest thing standing between this relay and its memory ceiling.
+#
+# `websockets` negotiates the permessage-deflate extension by default, and every
+# accepted connection then allocates a zlib context — a ~256 KB window, per
+# socket, for as long as the socket is open. Measured against this relay on a
+# 512 MB container:
+#
+#     deflate on    63.6 MB baseline + 276 KB/connection  ->  ~1,600 sockets
+#     deflate off   38.3 MB baseline +  80 KB/connection  ->  ~5,900 sockets
+#
+# and the compression was never buying anything, because of what this relay
+# carries. Every payload is AES-GCM ciphertext, base64'd, produced in a browser
+# (PRD §7.3). Ciphertext is incompressible by construction — that is what makes
+# it ciphertext — so deflate was spending a quarter of a megabyte per peer to
+# emit random bytes slightly larger than it found them. Turning it off gives
+# back roughly three quarters of the connection ceiling and costs nothing at
+# all; it even trims a few bytes per frame that deflate was adding.
+#
+# Why a monkeypatch and not a flag: the flag is `--ws-per-message-deflate false`
+# on uvicorn's command line, and on a managed platform we do not own that
+# command line — `fastapi deploy` builds it. So this reaches the same switch
+# from inside the app.
+#
+# Why a property and not an assignment: `Config.__init__` has already run and
+# already written `ws_per_message_deflate = True` into the config INSTANCE by
+# the time this module is imported (the server loads the app after building its
+# config), so a class attribute would be shadowed by it. A property is a data
+# descriptor, and data descriptors on the class take precedence over the
+# instance `__dict__` — which is what makes this work on the live config object
+# rather than only on ones built later. All three of uvicorn's WebSocket
+# implementations read this one attribute per connection, so patching it covers
+# whichever is in play.
+#
+# Set REALTIMECLIPBOARD_WS_DEFLATE=1 to leave the default alone.
+def _disable_permessage_deflate() -> str:
+    """Force permessage-deflate off. Returns what happened, for the boot log."""
+    if os.getenv("REALTIMECLIPBOARD_WS_DEFLATE", "").lower() in {"1", "true", "yes"}:
+        return "left on (REALTIMECLIPBOARD_WS_DEFLATE)"
+    try:
+        from uvicorn.config import Config
+    except ImportError:
+        # Not running under uvicorn. Nothing to do, and nothing is broken —
+        # another server simply will not have this knob.
+        return "skipped (not uvicorn)"
+    try:
+        if isinstance(Config.__dict__.get("ws_per_message_deflate"), property):
+            return "already off"
+        Config.ws_per_message_deflate = property(
+            lambda self: False,
+            lambda self, value: None,      # swallow Config.__init__'s assignment
+        )
+        return "off"
+    except Exception as exc:               # pragma: no cover — never fail boot
+        # A memory optimisation must never be the reason the relay does not
+        # start. Worst case we run as we did before, using more RAM.
+        return f"could not disable ({exc.__class__.__name__})"
+
+
+WS_DEFLATE_STATE = _disable_permessage_deflate()
+print(f"[relay] permessage-deflate: {WS_DEFLATE_STATE}")
+
+app = FastAPI(title="RealtimeClipboard relay", version="0.2.0-m7")
 
 # CORS on every response, including the ones this file never writes.
 #
@@ -177,7 +305,7 @@ app = FastAPI(title="Hopboard relay", version="0.2.0-m7")
 # scopes pass through untouched; CORS does not apply to them.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
     max_age=86400,
@@ -282,6 +410,11 @@ class Peer:
 
 @dataclass
 class Room:
+    # Its own key in `rooms`. Needed because a frame being fanned out has to be
+    # published under the room's name, and the fan-out only ever received the
+    # Room object. Defaulted so nothing that constructs a bare Room breaks.
+    hash: str = ""
+
     # Keyed by connection: the connection is the identity that always exists,
     # whereas a peerId only becomes meaningful once `hello` lands.
     peers: dict[Connection, Peer] = field(default_factory=dict)
@@ -313,6 +446,12 @@ async def health():
         "uptime_s": round(time.time() - BOOTED_AT, 1),
         "rooms": len(rooms),
         "peers": sum(len(r.peers) for r in rooms.values()),
+        # Reported because the thing it reports is a monkeypatch against another
+        # project's internals, and its failure is silent and expensive: if a
+        # uvicorn upgrade moves that attribute, the relay keeps working while
+        # quietly costing ~3.5x the memory per connection and losing three
+        # quarters of its ceiling. This is how you find that out from outside.
+        "ws_deflate": WS_DEFLATE_STATE,
     }
 
 
@@ -350,19 +489,57 @@ async def stats(response: Response):
     # applied app-wide: the WebSocket route has no business advertising this.
     response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Cache-Control"] = "public, max-age=15"
+    return _stats_payload()
+
+
+# How long a computed /stats payload is reused. The globe polls on a 30 s floor
+# (src/landing/globe.js) and the response is already declared cacheable for 15 s,
+# so nothing observable changes — this is only about what happens when the
+# browser cache is not the thing asking.
+STATS_CACHE_SECONDS = 5.0
+_stats_cached: dict | None = None
+_stats_cached_at = 0.0
+
+
+def _stats_payload() -> dict:
+    """The globe's counts, recomputed at most once every STATS_CACHE_SECONDS.
+
+    This walks every peer in every room, which is O(rooms x peers) on the event
+    loop — the same loop every clip and every heartbeat is waiting on. It is
+    also public, unauthenticated and linked from the landing page, so the number
+    of times it runs is chosen by whoever is visiting rather than by us.
+
+    On the hosted tier that loop has 0.1 vCPU to work with. A few hundred people
+    with the landing page open is then enough for the globe to measurably slow
+    down the clipboard, which is a poor trade for a decoration. Recomputing on a
+    timer instead makes the cost of a request independent of how many arrive.
+
+    Deliberately not a background task: a room with no visitors should compute
+    nothing at all, and a timer that keeps running when the page is closed is
+    the thing scale-to-zero exists to avoid.
+    """
+    global _stats_cached, _stats_cached_at
+
+    now = time.monotonic()
+    if _stats_cached is not None and now - _stats_cached_at < STATS_CACHE_SECONDS:
+        return _stats_cached
 
     countries: dict[str, int] = {}
+    devices = 0
     for room in rooms.values():
+        devices += len(room.peers)
         for peer in room.peers.values():
             if peer.country:
                 countries[peer.country] = countries.get(peer.country, 0) + 1
 
-    return {
+    _stats_cached = {
         "rooms": len(rooms),
-        "devices": sum(len(r.peers) for r in rooms.values()),
+        "devices": devices,
         "countries": countries,
         "instance": INSTANCE_ID,
     }
+    _stats_cached_at = now
+    return _stats_cached
 
 
 # ---------------------------------------------------------------- helpers
@@ -388,8 +565,16 @@ async def _send(conn: Connection, obj: dict) -> bool:
         return False
 
 
-async def _broadcast(room: Room, frame: str, exclude: Connection | None = None) -> None:
-    """Fan out a raw frame to every peer but the sender (PRD FR-3.2)."""
+async def _broadcast(room: Room, frame: str, exclude: Connection | None = None,
+                     local_only: bool = False) -> None:
+    """Fan out a raw frame to every peer but the sender (PRD FR-3.2).
+
+    `local_only` is set when this frame ARRIVED from another replica: it has
+    already been fanned out there, and re-publishing it would loop it between
+    the two forever.
+    """
+    if not local_only:
+        await shared.publish(room.hash, frame)
     dead = []
     for peer in list(room.peers):
         if peer is exclude:
@@ -400,6 +585,31 @@ async def _broadcast(room: Room, frame: str, exclude: Connection | None = None) 
             dead.append(peer)
     for peer in dead:
         room.peers.pop(peer, None)
+
+
+async def _deliver_remote(room_hash: str, frame: str) -> None:
+    """A frame that another replica fanned out. Deliver it to our peers only."""
+    room = rooms.get(room_hash)
+    if room and frame:
+        await _broadcast(room, frame, local_only=True)
+
+
+@app.on_event("startup")
+async def _open_shared() -> None:
+    try:
+        await shared.connect()
+    except Exception as exc:
+        # Loud, and non-fatal. A relay that refuses to start because Redis is
+        # slow to come up is worse than one that serves a single process and
+        # says so — but it MUST say so, because the silent version of this is
+        # the split-brain in PRD OI-3.
+        print(f"[relay] shared backend unavailable ({exc}). "
+              f"Serving single-process — do NOT run more than one replica.")
+
+
+@app.on_event("shutdown")
+async def _close_shared() -> None:
+    await shared.close()
 
 
 def _roster(room: Room) -> list[dict]:
@@ -495,6 +705,10 @@ async def _evict_later(room_hash: str) -> None:
     room = rooms.get(room_hash)
     if room and not room.peers:
         rooms.pop(room_hash, None)
+        # One pump task per room, so an evicted room must give its back.
+        # Without this a long-lived relay accumulates a task and a subscription
+        # for every room it has ever seen.
+        await shared.unsubscribe(room_hash)
 
 
 # ------------------------------------------------------- session, either way
@@ -535,16 +749,39 @@ def _admits(room: Room, auth: str | None) -> bool:
 
 
 async def _join(room_hash: str, conn: Connection, country: str,
-                extra: dict | None = None, auth: str | None = None):
+                extra: dict | None = None, auth: str | None = None,
+                org: str | None = None):
     """Put a connection in a room and welcome it. Returns (room, peer) or None.
 
-    None means the connection must be ended — the room is full, or the peer
-    failed the locked-session admission check. The error frame has already been
-    sent either way.
+    None means the connection must be ended — the room is full, the deployment
+    requires an org token this peer did not present, or the peer failed the
+    locked-session admission check. The error frame has already been sent
+    either way.
     """
+    # REALTIMECLIPBOARD_JOIN_TOKEN: a door on the RELAY, checked before anything else,
+    # including before the room is created. Without it, an internal deployment
+    # is an open relay for anyone who learns the hostname.
+    #
+    # It is not user authentication and must not be mistaken for the session
+    # key: everyone in an organisation holds the same value, and it says
+    # "you may use this relay", never "you may read this room". The key is
+    # still the only thing that decrypts anything.
+    #
+    # compare_digest because this is a secret compared on every connection, and
+    # `==` on strings leaks its length and prefix through timing.
+    if JOIN_TOKEN is not None and not hmac.compare_digest(org or "", JOIN_TOKEN):
+        await _send(conn, {"t": "error", "code": "ORG_TOKEN_REQUIRED"})
+        return None
+
     room = rooms.get(room_hash)
     if room is None:
-        room = rooms[room_hash] = Room()
+        room = rooms[room_hash] = Room(hash=room_hash)
+        # Frames from the other replicas are fanned out locally and NOT
+        # re-published, or the two processes would bounce each one forever.
+        await shared.subscribe(
+            room_hash,
+            lambda frame, rh=room_hash: _deliver_remote(rh, frame),
+        )
 
     if len(room.peers) >= MAX_PEERS:
         await _send(conn, {"t": "error", "code": "ROOM_FULL"})
@@ -663,7 +900,17 @@ async def _handle_raw(room: Room, me: Peer, raw: str) -> None:
             "seq": room.seq,
         }
         room.last = json.dumps(envelope, separators=(",", ":"))
+        # FR-3.3 replay, shared. Carries the room's own TTL, so it expires with
+        # the room rather than outliving it.
+        await shared.set_last(room.hash, room.last, ROOM_TTL_SECONDS)
         await _broadcast(room, room.last, exclude=me.conn)
+
+    elif DISABLE_FILES and kind in FILE_FRAMES:
+        # Refused, not dropped. A client whose file-req vanishes shows a
+        # transfer that never starts and never fails, and the user retries it
+        # for five minutes; an error says whose decision this was. `cursor` is
+        # deliberately still allowed — it is presence, not data movement.
+        await _send(me.conn, {"t": "error", "code": "FILES_DISABLED"})
 
     elif kind in ROOM_WIDE:                 # file-meta: thumbnails to the room
         msg["from"] = me.peer_id
@@ -688,7 +935,8 @@ async def ws(sock: WebSocket, room_hash: str):
     # ?a= is a locked session's admission token. Absent for open sessions, and a
     # client older than this check simply never sends one.
     joined = await _join(room_hash, conn, _country_of(sock.headers),
-                         auth=sock.query_params.get("a"))
+                         auth=sock.query_params.get("a"),
+                         org=sock.query_params.get("org"))
     if joined is None:
         await sock.close(code=1013)
         return
@@ -746,7 +994,8 @@ async def sse(room_hash: str, request: Request):
     # meet.
     joined = await _join(room_hash, conn, _country_of(request.headers),
                          extra={"sid": conn.sid},
-                         auth=request.query_params.get("a"))
+                         auth=request.query_params.get("a"),
+                         org=request.query_params.get("org"))
 
     async def stream() -> AsyncIterator[bytes]:
         # 2 KB of comment before anything else. Some proxies (and one or two

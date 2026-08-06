@@ -36,10 +36,25 @@ import { dirname, join, resolve } from "node:path";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const LOCKED = process.argv.includes("--locked");
-const RELAY = process.argv.find(a => a.startsWith("ws")) || "wss://hopboard.fastapicloud.dev";
+const RELAY = process.argv.find(a => a.startsWith("ws")) || process.env.RELAY_BASE
+  || "wss://realtimeclipboard.fastapicloud.dev";
 
+/**
+ * The relay goes in the URL, because that is the only way to actually move it.
+ *
+ * RELAY above used to feed nothing but the log line below: the app resolves its
+ * relay from core/config.js at import time, so this test printed one address
+ * and connected to another. That was invisible while the two happened to
+ * agree, and became "CONNECTED: NO against a relay I am running right here"
+ * the moment they did not.
+ *
+ * `?relay=` is the mechanism the app already has for exactly this, so pointing
+ * the test with it exercises that path rather than adding a test-only hook.
+ */
 const dom = new JSDOM(readFileSync(join(REPO, "app.html"), "utf8"), {
-  url: `https://akshaynikhare.github.io/Hopboard/app.html#${LOCKED ? "!" : ""}BOOTTEST`,
+  url: `https://akshaynikhare.github.io/RealtimeClipboard/app.html`
+     + `?relay=${encodeURIComponent(RELAY)}`
+     + `#${LOCKED ? "!" : ""}BOOTTEST`,
   pretendToBeVisual: true,
 });
 const { window } = dom;

@@ -1,8 +1,8 @@
 /**
- * Report / coffee / sponsor, in the far-right corner of the app header.
+ * Report / sponsor, in the far-right corner of the app header.
  *
- * The three places the app asks the user for something rather than doing
- * something for them: a bug report, a tip, a sponsorship. They sit together and
+ * The two places the app asks the user for something rather than doing
+ * something for them: a bug report and a sponsorship. They sit together and
  * they sit last, because that is the honest weight of an ask inside a tool you
  * opened to move text between two machines.
  *
@@ -17,7 +17,7 @@
  */
 
 import { LINKS } from "../core/config.js";
-import { $, esc } from "./dom.js";
+import { $, esc, setHTML } from "./dom.js";
 
 /**
  * Each icon is a single path set, drawn on the same 24-grid and stroke weight
@@ -32,17 +32,6 @@ const ITEMS = [
     title: "Report a problem on GitHub",
     aria: "Report an issue on GitHub",
     icon: `<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.2h.01"/>`,
-  },
-  {
-    id: "lCoffee",
-    cls: "coffee",
-    href: LINKS.COFFEE,
-    label: "Buy me a coffee",
-    title: "Support the relay bill — buy me a coffee",
-    aria: "Buy me a coffee",
-    icon: `<path d="M4 8h13v5.5A4.5 4.5 0 0112.5 18h-4A4.5 4.5 0 014 13.5z"/>`
-        + `<path d="M17 9.5h1.5a2.5 2.5 0 010 5H17"/>`
-        + `<path d="M7.5 2.5v2.2M11 2.5v2.2M14.5 2.5v2.2"/>`,
   },
   {
     id: "lSponsor",
@@ -62,7 +51,7 @@ export function init() {
   // rel is spelled out even though target=_blank implies noopener in current
   // browsers — the page is also meta referrer=no-referrer, so no URL carrying a
   // session key travels with the click.
-  host.innerHTML = `
+  setHTML(host, `
     <nav class="applinks" aria-label="Project links">
       ${ITEMS.map(i => `
         <a class="alink${i.cls ? ` ${esc(i.cls)}` : ""}" id="${esc(i.id)}"
@@ -71,5 +60,5 @@ export function init() {
           <svg viewBox="0 0 24 24" aria-hidden="true">${i.icon}</svg>
           <span class="lbl">${esc(i.label)}</span>
         </a>`).join("")}
-    </nav>`;
+    </nav>`);
 }

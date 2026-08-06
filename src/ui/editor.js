@@ -5,12 +5,12 @@
  * traces and JSON, and line numbers are what make a shared error discussable.
  */
 
-import { TEXT } from "../core/config.js";
+import { TEXT, textBytes } from "../core/config.js";
 import { emit, on, EV } from "../core/bus.js";
 import * as state from "../core/state.js";
 import * as os from "../clipboard/os.js";
 import * as capture from "../clipboard/capture.js";
-import { $, on as bind } from "./dom.js";
+import { $, on as bind, setHTML } from "./dom.js";
 
 let ta, gutter;
 
@@ -79,8 +79,15 @@ export const isDirty = () => ta.value.trim() !== "" && ta.value !== lastAppliedT
 function send() {
   const value = ta.value.trim();
   if (!value) return emit(EV.TOAST, "Nothing to send");
-  if (value.length > TEXT.MAX_CHARS) {
-    return emit(EV.TOAST, `Over the ${TEXT.MAX_CHARS.toLocaleString()} character limit`);
+  // Characters for the message, bytes for the decision — see config.js TEXT.
+  // A CJK or emoji-heavy clip is inside the character count and still over the
+  // wire limit, and saying "over the 24,000 character limit" to someone who
+  // typed 9,000 characters is worse than not checking at all.
+  if (textBytes(value) > TEXT.MAX_BYTES) {
+    return emit(EV.TOAST, value.length > TEXT.MAX_CHARS
+      ? `Over the ${TEXT.MAX_CHARS.toLocaleString()} character limit`
+      : `Over the ${Math.floor(TEXT.MAX_BYTES / 1024)} KB limit — `
+        + `${value.length.toLocaleString()} characters, but non-Latin text is several bytes each`);
   }
   state.get().lastSent = value;
   emit(EV.TEXT_CAPTURED, { text: value, how: "Sent" });
@@ -98,7 +105,7 @@ function renderGutter() {
   }
   const lines = Math.max(ta.value.split("\n").length, 1);
   if (gutter.childElementCount !== lines) {
-    gutter.innerHTML = Array.from({ length: lines }, (_, i) => `<div>${i + 1}</div>`).join("");
+    setHTML(gutter, Array.from({ length: lines }, (_, i) => `<div>${i + 1}</div>`).join(""));
   }
   const current = ta.value.slice(0, ta.selectionStart).split("\n").length;
   [...gutter.children].forEach((el, i) => el.classList.toggle("cur", i === current - 1));
@@ -109,7 +116,11 @@ function renderCounts() {
   const n = ta.value.length;
   const chars = $("sbChars");
   chars.textContent = `${n.toLocaleString()} / ${TEXT.MAX_CHARS.toLocaleString()}`;
-  chars.classList.toggle("over", n > TEXT.MAX_CHARS);
+  // The counter reads in characters, but "over" has to mean "will not send",
+  // so it is decided on bytes. Encoding runs per keystroke and is measured in
+  // microseconds even at the cap; the cheap `n` test short-circuits the
+  // all-ASCII case, which is nearly all of them.
+  chars.classList.toggle("over", n > TEXT.MAX_CHARS || textBytes(ta.value) > TEXT.MAX_BYTES);
 
   const upto = ta.value.slice(0, ta.selectionStart).split("\n");
   $("sbLnCol").textContent = `Ln ${upto.length}, Col ${upto.at(-1).length + 1}`;

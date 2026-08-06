@@ -1,0 +1,72 @@
+# RealtimeClipboard relay, with TLS, in one command.
+#
+#   REALTIMECLIPBOARD_DOMAIN=relay.example.com docker compose up -d
+#
+# Caddy is here for one reason and it is not convenience: the client is served
+# over HTTPS, so a browser refuses a ws:// connection from it as mixed content,
+# and PRD §5.4 requires everything on 443 because that is the only port a
+# managed corporate network reliably lets out. So a relay without TLS is a relay
+# that only works on localhost. Caddy gets a certificate on its own, which makes
+# "self-host this" a real instruction rather than a paragraph about certbot.
+#
+# What is deliberately NOT here: any volume for the relay, and any database.
+# Room state is RAM and dies with the process, which is the product.
+
+services:
+  relay:
+    build: ../backend
+    image: ghcr.io/akshaynikhare/realtimeclipboard-relay:latest
+    restart: unless-stopped
+    # No published port. Caddy is the only thing that should reach it, and
+    # binding 8000 on the host is how a relay ends up quietly serving plaintext
+    # WebSockets to the internet next to the TLS one.
+    expose:
+      - "8000"
+    environment:
+      # Pin this to the origin your app is served from. The default is "*",
+      # which is safe here only because there are no credentials in the design
+      # — but a self-hoster who has a single origin should say so.
+      REALTIMECLIPBOARD_CORS_ORIGINS: ${REALTIMECLIPBOARD_CORS_ORIGINS:-*}
+      # Uncomment for a deployment that should not be an open relay for anyone
+      # who learns the hostname. Every client then needs ?org=<the same value>.
+      # REALTIMECLIPBOARD_JOIN_TOKEN: ${REALTIMECLIPBOARD_JOIN_TOKEN}
+      # Text between a person's own machines, but no file movement.
+      # REALTIMECLIPBOARD_DISABLE_FILES: "true"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).status == 200 else 1)"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    # !! PRD OI-3. Room state is a process-local dict, so two replicas means two
+    # devices can join the same room name, land on different processes, and
+    # never see each other. It presents as "sync just silently doesn't work",
+    # intermittently, under load — the worst class of bug to chase later.
+    #
+    # `deploy.replicas` is honoured by `docker stack deploy` and ignored by
+    # `docker compose up`, so this is documentation with teeth in one mode and
+    # documentation in the other. Do not raise it without also configuring the
+    # Redis backend (see deploy/helm/values.yaml `redis`). !!
+    deploy:
+      replicas: 1
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      REALTIMECLIPBOARD_DOMAIN: ${REALTIMECLIPBOARD_DOMAIN:?set REALTIMECLIPBOARD_DOMAIN to the hostname this relay answers on}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates only. Losing these costs a re-issue, not any user data —
+      # there is no user data anywhere in this stack.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      relay:
+        condition: service_healthy
+
+volumes:
+  caddy_data:
+  caddy_config:

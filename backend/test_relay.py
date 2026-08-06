@@ -1,4 +1,4 @@
-"""Protocol gate harness for the Hopboard relay.
+"""Protocol gate harness for the RealtimeClipboard relay.
 
 G1-G9 exercise every M0 exit criterion. G10-G13 cover the M7 additions: peer
 identity, targeted forwarding of WebRTC signalling, and the relay-chunk file
@@ -168,7 +168,7 @@ async def main():
     # User-Agent. The relay itself is fine — curl and browsers get through.
     req = urllib.request.Request(
         f"{HTTP}/health",
-        headers={"User-Agent": "Mozilla/5.0 (compatible; hopboard-test/1.0)"},
+        headers={"User-Agent": "Mozilla/5.0 (compatible; realtimeclipboard-test/1.0)"},
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as r:

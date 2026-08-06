@@ -1,0 +1,25 @@
+apiVersion: v2
+name: realtimeclipboard-relay
+description: >-
+  Blind fan-out relay for RealtimeClipboard. Holds ciphertext in memory, writes nothing
+  to disk, and has no database. Deploy it inside your own network so clipboard
+  text moving between your engineers' machines never leaves it.
+type: application
+
+# The chart's own version. Bumped when the templates change.
+version: 0.1.0
+
+# The relay it deploys. Kept in step with the app's release tag by
+# tools/release.mjs, so "which relay is this" has one answer.
+appVersion: "0.1.0"
+
+keywords:
+  - clipboard
+  - end-to-end-encrypted
+  - self-hosted
+home: https://github.com/akshaynikhare/RealtimeClipboard
+sources:
+  - https://github.com/akshaynikhare/RealtimeClipboard
+maintainers:
+  - name: akshaynikhare
+    url: https://github.com/akshaynikhare

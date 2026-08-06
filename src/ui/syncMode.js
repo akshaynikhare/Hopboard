@@ -20,7 +20,7 @@ import { emit, on, EV } from "../core/bus.js";
 import * as state from "../core/state.js";
 import * as storage from "../core/storage.js";
 import * as capture from "../clipboard/capture.js";
-import { $, esc } from "./dom.js";
+import { $, esc, setHTML } from "./dom.js";
 
 const OPTIONS = [
   { mode: SYNC_MODES.LIVE, label: "Live",
@@ -36,12 +36,12 @@ export function init() {
   // These values are local constants, not user input — but escaping them
   // unconditionally keeps the repo-wide rule true with no exceptions to
   // remember, and costs nothing.
-  host.innerHTML = `
+  setHTML(host, `
     <div class="modeswitch" role="radiogroup" aria-label="Clipboard sharing mode">
       ${OPTIONS.map(o => `
         <button class="modebtn" role="radio" data-mode="${esc(o.mode)}"
                 aria-checked="false" title="${esc(o.hint)}">${esc(o.label)}</button>`).join("")}
-    </div>`;
+    </div>`);
 
   host.addEventListener("click", e => {
     const btn = e.target.closest("[data-mode]");

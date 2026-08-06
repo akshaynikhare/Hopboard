@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+
+<!--
+  The other half of /download/. That page converts; this one ranks.
+
+  It exists separately because the searches are different questions. Somebody
+  typing "clipboard sync between mac and windows" has not decided to install
+  anything — they want to know whether the thing they want is possible. So this
+  answers that first, per platform, including where the answer is no, and only
+  then says what to install. docs/SEO.md §2 calls this the device-pair matrix.
+-->
+<title>How to install RealtimeClipboard on Windows, Mac, Linux, Android and iPhone</title>
+<meta name="description" content="Install the RealtimeClipboard clipboard on any device: the desktop app for Windows, macOS and Linux, add to home screen on Android and iPhone, and the command line for servers. What background clipboard capture can and cannot do on each.">
+<link rel="canonical" href="https://akshaynikhare.github.io/RealtimeClipboard/help/install/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="../../icons/icon.svg" type="image/svg+xml">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="RealtimeClipboard">
+<meta property="og:title" content="How to install RealtimeClipboard on any device">
+<meta property="og:description" content="Windows, macOS, Linux, Android, iPhone and the command line — and what background clipboard capture can actually do on each.">
+<meta property="og:url" content="https://akshaynikhare.github.io/RealtimeClipboard/help/install/">
+<meta property="og:image" content="https://akshaynikhare.github.io/RealtimeClipboard/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://akshaynikhare.github.io/RealtimeClipboard/help/install/#article",
+      "headline": "How to install RealtimeClipboard on Windows, Mac, Linux, Android and iPhone",
+      "description": "Every platform RealtimeClipboard runs on, what to install on each, and what background clipboard capture can and cannot do.",
+      "isPartOf": { "@id": "https://akshaynikhare.github.io/RealtimeClipboard/#website" },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "RealtimeClipboard", "item": "https://akshaynikhare.github.io/RealtimeClipboard/" },
+        { "@type": "ListItem", "position": 2, "name": "Help", "item": "https://akshaynikhare.github.io/RealtimeClipboard/help/" },
+        { "@type": "ListItem", "position": 3, "name": "Installing" }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="../../src/landing/landing.css">
+</head>
+<body>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="../../">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <rect x="8" y="3" width="8" height="4" rx="1"/>
+          <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
+          <path d="M9 13l2 2 4-4"/>
+        </svg>
+        <b>RealtimeClipboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="../../download/">Download</a>
+      <a class="tlink" href="../">Help</a>
+      <a class="tlink" href="../../blog/">Blog</a>
+      <a class="tlink strong" href="../../app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="sec">
+    <div class="in">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="../../">RealtimeClipboard</a> <span aria-hidden="true">/</span>
+        <a href="../">Help</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">Installing</span>
+      </nav>
+
+      <div class="article">
+        <h1>Installing RealtimeClipboard</h1>
+        <p class="lede">
+          RealtimeClipboard runs in a browser on every device you own, and nothing needs
+          installing for that. What installing buys you is one specific thing,
+          on some platforms only: the app noticing what you copied while you were
+          working in a different window.
+        </p>
+
+        <h2>Start here: do you need to install anything?</h2>
+        <p>
+          Probably not. Open <a href="../../app.html">the app</a> on two devices,
+          type the same five-character key on each, and they share a clipboard.
+          Everything below is about one feature — <b>background capture</b> —
+          and whether your platform can do it.
+        </p>
+
+        <div class="tablewrap">
+          <table>
+            <thead>
+              <tr><th>Platform</th><th>Install</th><th>Background capture</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Windows 10 / 11</td><td>Desktop app</td><td><b>Yes</b></td></tr>
+              <tr><td>macOS 11+</td><td>Desktop app</td><td><b>Yes</b></td></tr>
+              <tr><td>Linux, X11</td><td>Desktop app</td><td><b>Yes</b></td></tr>
+              <tr><td>Linux, Wayland</td><td>Desktop app</td><td>KDE and wlroots yes; GNOME no</td></tr>
+              <tr><td>Android / ChromeOS</td><td>Add to home screen</td><td><b>No</b> — blocked by Android</td></tr>
+              <tr><td>iPhone / iPad</td><td>Add to home screen</td><td><b>No</b> — blocked by iOS</td></tr>
+              <tr><td>Servers, SSH</td><td><code>npx realtimeclipboard</code></td><td>Not applicable — it pipes</td></tr>
+              <tr><td>Anything else</td><td>Nothing — use a browser</td><td>No</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="what">What "background capture" actually means</h2>
+        <p>
+          In a browser, RealtimeClipboard can only read your clipboard while its window is
+          focused. That is not a limitation of this app — it is a rule every
+          browser enforces on every website, because a page that could silently
+          read your clipboard would harvest every password you copy. So the
+          browser version works like this: you copy something, you switch to
+          RealtimeClipboard, and it picks it up as it comes into focus.
+        </p>
+        <p>
+          A native desktop app is not bound by that rule. The Windows, macOS and
+          Linux app watches the system clipboard continuously, so copying in any
+          application sends it immediately, with no switching.
+        </p>
+        <p class="honest">
+          Which means the desktop app reads every copy you make while it is
+          running — including passwords you copy for unrelated reasons. It is
+          encrypted before it leaves your machine and never written to disk, but
+          that is a real thing to agree to. It ships set to <b>Manual</b> for
+          that reason: nothing leaves the machine until you press send. Turn on
+          <b>Live</b> when you want the automatic behaviour.
+        </p>
+
+        <h2 id="windows">Windows</h2>
+        <p>Download the <code>.msi</code> from <a href="../../download/">the download page</a>, or:</p>
+        <pre><code>winget install RealtimeClipboard.RealtimeClipboard</code></pre>
+        <p>
+          If Windows SmartScreen warns you about the installer, that is worth
+          taking seriously in general. Check that the publisher matches and that
+          you got the file from the
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/releases/latest">official releases page</a>.
+        </p>
+        <p>
+          <b>On a work machine:</b> the app needs no administrator rights and
+          installs no driver or service. It makes outbound connections on 443
+          only, to a single hostname, which is the shape IT departments allowlist.
+          If yours blocks it, the browser version needs nothing at all.
+        </p>
+
+        <h2 id="mac">macOS</h2>
+        <p>Download the <code>.dmg</code>, or:</p>
+        <pre><code>brew install --cask realtimeclipboard</code></pre>
+        <p>
+          One download covers both Intel and Apple Silicon. macOS needs no
+          special permission to read the clipboard, so there is no prompt to
+          grant — which cuts both ways, and is why the app defaults to Manual.
+        </p>
+
+        <h2 id="linux">Linux</h2>
+        <pre><code>flatpak install flathub io.github.akshaynikhare.RealtimeClipboard</code></pre>
+        <p>Or a <code>.deb</code>, <code>.rpm</code> or AppImage from the releases page, or <code>yay -S realtimeclipboard</code> on Arch.</p>
+        <p>
+          <b>The Wayland caveat, stated plainly.</b> On X11 the app is told when
+          the clipboard changes and background capture works. On Wayland it
+          depends on your compositor: KDE and the wlroots-based ones expose a
+          protocol for it, and GNOME does not — there is no way for any
+          application to monitor the clipboard on GNOME Wayland. The app detects
+          this and says so in its status bar rather than silently doing nothing,
+          and falls back to capturing on focus, exactly like the browser.
+        </p>
+        <p>
+          <b>Older distributions.</b> The desktop app needs webkit2gtk 4.1, which
+          means roughly Ubuntu 22.04 or Fedora 36 and newer. On anything older,
+          use the browser or the command-line client.
+        </p>
+
+        <h2 id="android">Android and ChromeOS</h2>
+        <p>
+          There is no Android app, and there is not going to be one. Since
+          Android 10, only the app you are currently using, the active keyboard,
+          or an accessibility service may read the clipboard. A RealtimeClipboard app
+          would therefore be a share-sheet button and an icon — everything else
+          it could do, the installed web app already does.
+        </p>
+        <ol>
+          <li>Open <a href="../../app.html">the app</a> in Chrome.</li>
+          <li>Tap the menu, then <b>Add to Home screen</b>.</li>
+        </ol>
+        <p>It then has its own icon and window, and works offline. To send something, paste it into the app or use Android's share menu.</p>
+
+        <h2 id="ios">iPhone and iPad</h2>
+        <p>
+          Same answer, for the same reason: iOS has never permitted background
+          pasteboard reads, and since iOS 16 it shows a banner every time any app
+          reads the clipboard at all.
+        </p>
+        <ol>
+          <li>Open <a href="../../app.html">the app</a> in <b>Safari</b>. Chrome and Firefox on iOS cannot install a web app.</li>
+          <li>Tap <b>Share</b>, then <b>Add to Home Screen</b>.</li>
+        </ol>
+        <p>
+          iOS shows no install prompt of its own, so if you are waiting for one
+          to appear, it will not. The Share menu is the whole mechanism.
+        </p>
+
+        <h2 id="cli">Servers, SSH sessions and scripts</h2>
+        <pre><code>npx realtimeclipboard D75LV</code></pre>
+        <p>
+          For machines with no clipboard and no screen. It reads standard input
+          and writes standard output, so it composes with everything else:
+        </p>
+        <pre><code>echo "deploy key" | npx realtimeclipboard send D75LV
+npx realtimeclipboard watch D75LV --once &gt; token.txt</code></pre>
+        <p>
+          It needs Node 22 or newer. It is not a separate implementation — it
+          imports the same encryption and transport files the browser runs, so a
+          clip sent from a server is indistinguishable from one sent by a laptop.
+        </p>
+
+        <h2 id="relay">Running your own relay</h2>
+        <p>
+          The relay passes encrypted clips between your devices. It cannot read
+          them — it only ever sees a room hash and ciphertext — but if you would
+          rather not take that on trust, run it yourself:
+        </p>
+        <pre><code>docker run -p 8000:8000 ghcr.io/akshaynikhare/realtimeclipboard-relay</code></pre>
+        <p>
+          Then point the app at it under <b>Settings → Relay</b>. There is a
+          <code>docker-compose.yml</code> with automatic TLS and a Helm chart in
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/tree/main/deploy">the deploy directory</a>.
+        </p>
+
+        <p class="hint">
+          Ready to install: <a href="../../download/">the download page</a>.
+          Something wrong or out of date here?
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/issues">Open an issue</a>.
+        </p>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <p><a href="../../">Home</a> · <a href="../../download/">Download</a> · <a href="../">Help</a> · <a href="../../blog/">Blog</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -3,9 +3,9 @@
  * throwing. Clipboard *content* never comes near this — only preferences.
  */
 
-import { NET } from "./config.js";
+import { NET, STORAGE_PREFIX, normaliseRelay } from "./config.js";
 
-const PREFIX = "hopboard.";
+const PREFIX = STORAGE_PREFIX;
 
 export function read(name, fallback = null) {
   try {
@@ -25,6 +25,27 @@ export function remove(name) {
 
 export const loadSettings = () => read("settings", null);
 export const saveSettings = s => write("settings", s);
+
+/**
+ * The relay this device talks to, when it is not the one the build ships with.
+ *
+ * A preference, not session content, so it belongs here — nothing about a clip
+ * or a key is being written. core/config.js READS this key directly at module
+ * evaluation, because the URL has to be resolved before anything imports it;
+ * this pair is for changing it afterwards.
+ *
+ * Normalised on the way in as well as on the way out. A value that got into
+ * storage malformed would otherwise be re-read as malformed on every launch,
+ * and the symptom — every connection refused — looks nothing like its cause.
+ */
+export const loadRelayUrl = () => normaliseRelay(read("relayUrl", null));
+
+export function saveRelayUrl(url) {
+  const clean = normaliseRelay(url);
+  if (!clean) { remove("relayUrl"); return null; }
+  write("relayUrl", clean);
+  return clean;
+}
 
 /**
  * The last room, so a relaunch can offer it back (FR-1.7, OI-10).

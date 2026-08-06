@@ -37,7 +37,7 @@
  * flow of every task in the app.
  */
 
-import { $, esc } from "./dom.js";
+import { $, esc, setHTML } from "./dom.js";
 
 /**
  * A leaderboard on desktop, a mobile banner below it. Fixing the height in CSS
@@ -50,7 +50,7 @@ export function init() {
   const host = $("mount-ad");
   if (!host) return;
 
-  host.innerHTML = `
+  setHTML(host, `
     <aside class="adslot" id="adSlot" aria-label="Sponsor">
       <div class="adslot-tag">Sponsored</div>
 
@@ -69,7 +69,7 @@ export function init() {
         This space pays for the relay. It runs no third-party code and never
         sees your clipboard.
       </p>
-    </aside>`;
+    </aside>`);
 }
 
 /* ------------------------------------------------------------------

@@ -12,7 +12,7 @@ reader is told.
 
 ## 1. Verdict
 
-**No. Hopboard is not usable without a mouse today** — and the reason is a
+**No. RealtimeClipboard is not usable without a mouse today** — and the reason is a
 short, fixable list, not a rewrite.
 
 The bones are unusually good for a hand-rolled app. Every settings control is a

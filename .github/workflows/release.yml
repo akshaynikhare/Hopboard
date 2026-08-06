@@ -1,0 +1,168 @@
+name: Release
+
+# One tag produces every artifact and updates every manifest.
+#
+# This is the whole reason the file exists. Each distribution channel below is a
+# version string and a SHA256 in a file somewhere — trivially easy to write by
+# hand, and therefore trivially easy to forget for one channel out of eight. Do
+# that twice and `winget install` gives someone 0.3.0 while `brew install` gives
+# them 0.5.0 and the bug reports become unreadable. It is the same duplication
+# the codebase already refuses elsewhere: RELAY_HTTP_URL is derived rather than
+# written twice, LINKS comes from one constant, the service worker's precache
+# list is generated rather than maintained.
+#
+# Triggered by the same `v*` tag that deploys the site, so the app, the CLI, the
+# desktop builds and the relay image all carry one version.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  # Nothing is published before the tests that need no browser have passed.
+  # A bad release can be yanked from npm; it cannot be un-downloaded from a
+  # GitHub release page that Google has already indexed.
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run verify
+      - run: node tests/bundle.mjs
+      - run: node tests/e2e.mjs
+      - run: node tests/cli.mjs
+
+  desktop:
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: ""
+          - os: macos-latest
+            # One binary for Intel and Apple Silicon. Two separate downloads on
+            # a page that says "download for Mac" is a question nobody should
+            # have to answer about their own laptop.
+            target: "--target universal-apple-darwin"
+          - os: ubuntu-22.04
+            # 22.04, not latest: the oldest runner with webkit2gtk 4.1. Building
+            # on a newer one silently raises the glibc floor and the binary then
+            # refuses to start on the distributions we claim to support.
+            target: ""
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Linux build dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev \
+                                  librsvg2-dev patchelf
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signing. Absent on a fork, where the build still runs and produces
+          # unsigned artifacts — useful for testing, and clearly labelled as a
+          # draft release rather than published.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_KEY_PASSWORD }}
+          # macOS: notarization is mandatory, not advisory. Without it Gatekeeper
+          # refuses the download outright rather than warning.
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          configPath: desktop/src-tauri/tauri.conf.json
+          tagName: ${{ github.ref_name }}
+          releaseName: RealtimeClipboard ${{ github.ref_name }}
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.target }}
+
+  npm:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, registry-url: "https://registry.npmjs.org" }
+      - run: npm ci
+      # `npx realtimeclipboard` installs src/core and src/transport — the same modules the
+      # browser runs. There is nothing to build, which is the point.
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  relay-image:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          # arm64 as well as amd64: a meaningful share of self-hosters are
+          # running this on a Raspberry Pi or an ARM VPS, which is exactly the
+          # audience for a relay you host yourself.
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/realtimeclipboard-relay:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/realtimeclipboard-relay:latest
+
+  # ── the manifests ────────────────────────────────────────────────────────
+  # Each of these is a version and a checksum. They run after the artifacts
+  # exist, and they are the step that would otherwise be done by hand, once,
+  # per channel, and then forgotten for one of them.
+  manifests:
+    needs: [desktop, npm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Scoop bucket
+        # The easiest Windows channel by a distance: no signing, no review, no
+        # waiting. Shipped before winget for exactly that reason.
+        run: node tools/manifest.mjs scoop ${{ github.ref_name }}
+
+      - name: Homebrew tap
+        run: node tools/manifest.mjs homebrew ${{ github.ref_name }}
+
+      - name: AUR PKGBUILD
+        run: node tools/manifest.mjs aur ${{ github.ref_name }}
+
+      - name: Open the manifest updates
+        env:
+          GH_TOKEN: ${{ secrets.TAP_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          # Deliberately pull requests rather than direct pushes. These land in
+          # repositories other people also touch, and a bot force-pushing a tap
+          # is how a tap acquires a reputation.
+          node tools/manifest.mjs publish ${{ github.ref_name }}

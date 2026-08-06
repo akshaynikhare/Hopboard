@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512"
-     role="img" aria-label="Hopboard">
-  <title>Hopboard</title>
+     role="img" aria-label="RealtimeClipboard">
+  <title>RealtimeClipboard</title>
   <!-- Colours are the tokens.css values: --editor #1e1e1e, --blue #007acc.
        The glyph is the same clipboard mark as the titlebar logo in index.html,
        authored in a 24x24 box and scaled 20x about the centre (12,12). -->

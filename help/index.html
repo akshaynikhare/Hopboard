@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html, which is the page that
+     actually needs them. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+
+<!--
+  The help hub. Two jobs, and they pull in different directions:
+
+  For a reader, this is a contents page — it should be short and let them leave
+  for the page they actually want.
+
+  For a crawler, it is the hub that makes every help page reachable in two hops
+  from the homepage. That is the whole reason it exists as a real page rather
+  than a footer link per article: as this set grows past a dozen, a flat list of
+  footer links stops being a structure and starts being noise.
+
+  Each entry carries a one-line summary rather than a bare title, because the
+  summary is what tells a reader (and an answer engine) which page answers their
+  question without opening all of them.
+-->
+<title>Help — clipboard sync guides and fixes | RealtimeClipboard</title>
+<meta name="description" content="Guides for getting the clipboard working between your devices: why clipboard sync is greyed out on Windows, and how to copy and paste between Android, Mac, iPhone and PC.">
+<link rel="canonical" href="https://akshaynikhare.github.io/RealtimeClipboard/help/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="../icons/icon.svg" type="image/svg+xml">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="RealtimeClipboard">
+<meta property="og:title" content="Help — clipboard sync guides and fixes">
+<meta property="og:description" content="Why clipboard sync is greyed out, and how to copy and paste between any two devices.">
+<meta property="og:url" content="https://akshaynikhare.github.io/RealtimeClipboard/help/">
+<meta property="og:image" content="https://akshaynikhare.github.io/RealtimeClipboard/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "CollectionPage",
+      "@id": "https://akshaynikhare.github.io/RealtimeClipboard/help/#page",
+      "url": "https://akshaynikhare.github.io/RealtimeClipboard/help/",
+      "name": "Help — clipboard sync guides and fixes",
+      "description": "Guides for getting the clipboard working between your devices.",
+      "isPartOf": { "@id": "https://akshaynikhare.github.io/RealtimeClipboard/#website" },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "RealtimeClipboard",
+          "item": "https://akshaynikhare.github.io/RealtimeClipboard/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Help"
+        }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="../src/landing/landing.css">
+</head>
+<body>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="../">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <rect x="8" y="3" width="8" height="4" rx="1"/>
+          <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
+          <path d="M9 13l2 2 4-4"/>
+        </svg>
+        <b>RealtimeClipboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="../download/">Download</a>
+      <a class="tlink" href="../blog/">Blog</a>
+      <a class="tlink" href="https://github.com/akshaynikhare/RealtimeClipboard">GitHub</a>
+      <a class="tlink strong" href="../app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="sec">
+    <div class="in">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="../">RealtimeClipboard</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">Help</span>
+      </nav>
+
+      <div class="article">
+        <h1>Help</h1>
+        <p class="lede">
+          Getting the clipboard to move between two machines is more fiddly than
+          it should be, and most of the reasons are not obvious. These pages fix
+          the built-in features first, and say plainly where there is no fix.
+        </p>
+      </div>
+
+      <ul class="hublist">
+        <li>
+          <a href="./install/">Installing RealtimeClipboard on any device</a>
+          <p>
+            Windows, macOS, Linux, Android, iPhone and the command line — what to
+            install on each, and which of them can watch the clipboard in the
+            background. Two of them cannot, and the reason is not this app.
+          </p>
+        </li>
+        <li>
+          <a href="./clipboard-sync-not-working/">Clipboard sync not working?</a>
+          <p>
+            Why “Sync across your devices” is greyed out on Windows 11 — the
+            cause almost every guide skips — plus fixes for Samsung, Android,
+            Mac and iPhone, and what your employer can block.
+          </p>
+        </li>
+      </ul>
+
+      <p class="hint">
+        More guides are on the way. If something here is wrong or out of date,
+        <a href="https://github.com/akshaynikhare/RealtimeClipboard/issues">open an issue</a>.
+      </p>
+
+    </div>
+  </section>
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <p><a href="../">Home</a> · <a href="../download/">Download</a> · <a href="./">Help</a> · <a href="../blog/">Blog</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

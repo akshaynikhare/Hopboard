@@ -41,7 +41,7 @@ to. So capture happens at moments we *are* allowed to look:
             ▼
   ┌───────────────────────────────────────────────────────┐
   │  The OS clipboard now holds your text.                │
-  │  Hopboard cannot see it yet — it isn't focused.       │
+  │  RealtimeClipboard cannot see it yet — it isn't focused.       │
   └───────────────────────────────────────────────────────┘
             │
             │   ... one of these three things happens ...
@@ -68,7 +68,7 @@ to. So capture happens at moments we *are* allowed to look:
 floor the product stands on, not a fallback for edge cases.
 
 **T2 is the everyday path** on desktop once permission is granted: copy, Alt-Tab
-to Hopboard, and it is already sent by the time you look at it.
+to RealtimeClipboard, and it is already sent by the time you look at it.
 
 **T3 only helps while the window is already focused**, which is a narrower case
 than it sounds — mostly copying from one part of a page to another.
@@ -136,7 +136,7 @@ background — but extensions are blocked in the target corporate environment
 
 **The honest mental model to build into the UI:**
 
-> *"Switch to Hopboard and it grabs what you copied"* — **not** *"it watches my
+> *"Switch to RealtimeClipboard and it grabs what you copied"* — **not** *"it watches my
 > clipboard."*
 
 The app must never render a state implying background capture. If the last

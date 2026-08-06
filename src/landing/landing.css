@@ -1,5 +1,5 @@
 /**
- * Hopboard — landing page.
+ * RealtimeClipboard — landing page.
  *
  * Editorial structure, developer-tool skin. Two ideas do most of the work:
  *
@@ -435,18 +435,36 @@ h3 {
 }
 .flowsvg { display:block; width:100%; height:auto; overflow:visible; }
 
+/* The two routes are COLOURED, not just shaped.
+
+   They were both --rule2, which is the page's component-edge grey — three
+   shades off the background and, at a 2px dot with a 9-unit gap, effectively
+   invisible. Worse, drawing the two routes identically threw away the one thing
+   this diagram exists to say: text goes through the relay, files do not. So the
+   text path takes the accent the endpoint nodes already use, and the files path
+   takes the teal this page uses everywhere for peer-to-peer. Now you can tell
+   them apart from across the room, which is the whole job. */
 .fpath {
-  stroke:var(--rule2);
-  stroke-width:1.6;
+  stroke-width:1.9;
   stroke-linecap:round;
 }
-.fpath.text  { stroke-dasharray:0.1 9; }
-.fpath.files { stroke-dasharray:6 8; stroke-width:1.2; opacity:.6; }
+.fpath.text {
+  stroke:var(--link);
+  stroke-dasharray:0.1 9;
+}
+.fpath.files {
+  stroke:var(--ok);
+  stroke-dasharray:5 8;
+  stroke-width:1.4;
+  opacity:.75;
+}
 .stage[data-ready] .fpath.text { animation:march 2.4s linear infinite; }
 @keyframes march { to { stroke-dashoffset:-18; } }
 
 .fnode { fill:var(--blue); }
-.fnode.relay { fill:none; stroke:var(--rule2); stroke-width:1.4; }
+/* Hollow because nothing of yours stays in it — but hollow in --dim, not in the
+   edge grey, or the one node that matters is the one you cannot see. */
+.fnode.relay { fill:none; stroke:var(--dim); stroke-width:1.5; }
 
 /* Labels and the pill are HTML positioned over the SVG rather than <text>
    inside it: the viewBox scales by a factor of three between a phone and a
@@ -464,6 +482,8 @@ h3 {
   text-align:center;
 }
 .flabel b { display:block; color:var(--text); font-weight:600; }
+/* The legend for the lower curve, in the lower curve's colour. */
+.flabel.files { color:var(--ok); opacity:.85; }
 
 .fpill {
   display:inline-flex;
@@ -569,14 +589,19 @@ h3 {
   padding-bottom:clamp(40px,6vw,66px);
   gap:0;
 }
-.livereadout { grid-column:1 / span 2; padding-left:var(--gut); padding-right:clamp(26px,3vw,48px); }
-.globewrap   { grid-column:3 / span 1; padding:0 var(--gut); }
+/* The globe takes two of the three columns and the readout takes one — the
+   reverse of every other section on the page, and deliberately so. This is the
+   only place with something to LOOK at rather than read, and at one column it
+   was a thumbnail of a planet sitting next to the numbers it was supposed to be
+   illustrating. */
+.livereadout { grid-column:1 / span 1; padding:0 var(--gut); }
+.globewrap   { grid-column:2 / -1; padding:0 var(--gut); }
 
-/* Three equal columns rather than a flex row: the readout spans two of the
-   page's columns, so thirds of it are a rhythm of their own instead of three
-   numbers huddled at the left edge with the rest of the span empty. */
-.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px 0; }
-.stat { display:flex; flex-direction:column; gap:2px; padding-right:20px; }
+/* Stacked, now that the readout has one column to live in. Three big numbers
+   side by side in 300px would each get 100px, and "CLIPBOARDS OPEN" does not
+   fit in 100px — it wraps to two lines and the row stops being a row. */
+.stats { display:grid; gap:18px 0; }
+.stat { display:flex; flex-direction:column; gap:2px; }
 .statn {
   font:650 clamp(30px,4vw,44px)/1 var(--mono);
   letter-spacing:-.02em;
@@ -619,21 +644,26 @@ h3 {
 
 /* The globe sits in a faint well rather than floating on the page background:
    at the limb the dots fade to nothing, and without something behind them the
-   sphere loses its edge on a dark screen. */
+   sphere loses its edge on a dark screen.
+
+   600px is roughly half the 1180px page, which is the size at which this stops
+   being a diagram beside the numbers and starts being the thing the section is
+   about. The canvas scales the dot field to match, so density holds. */
 .globewrap { margin:0; }
 .globewrap .globefield {
   position:relative;
-  max-width:340px;
+  max-width:600px;
   margin:0 auto;
 }
 .globewrap .globefield::before {
   content:"";
   position:absolute;
-  inset:6%;
+  inset:-4%;
   border-radius:50%;
   background:radial-gradient(circle at 50% 42%,
-    color-mix(in srgb,var(--blue) 13%,transparent),
-    transparent 68%);
+    color-mix(in srgb,var(--blue) 18%,transparent) 0%,
+    color-mix(in srgb,var(--blue) 7%,transparent) 45%,
+    transparent 70%);
 }
 /* On white the same wash is a blue smudge rather than a well — and while the
    globe is still loading it is the ONLY thing in that column. */
@@ -706,7 +736,7 @@ h3 {
 .cmp tbody tr { transition:background-color .15s var(--ease); }
 .cmp tbody tr:hover th, .cmp tbody tr:hover td { background:color-mix(in srgb,var(--rule2) 30%,transparent); }
 
-/* Hopboard's own row. Marked with the accent rather than a "best" badge — the
+/* RealtimeClipboard's own row. Marked with the accent rather than a "best" badge — the
    table should still read as a comparison, not a scoreboard. */
 .cmp tr.me th, .cmp tr.me td { background:var(--sunk); color:var(--text); }
 .cmp tr.me th { color:var(--bright); box-shadow:inset 3px 0 0 var(--blue); }
@@ -769,6 +799,23 @@ h3 {
 .article .tablewrap { margin:clamp(22px,3vw,30px) 0; }
 .article .btn { margin-top:10px; }
 
+/* Hub lists — the contents of /help/ and /blog/. Each row is a link plus the
+   one line that tells you whether it is the page you wanted. */
+.hublist { list-style:none; max-width:72ch; }
+.hublist li {
+  padding:18px 0;
+  border-top:1px solid var(--rule);
+}
+.hublist li:last-child { border-bottom:1px solid var(--rule); }
+.hublist a {
+  font-size:clamp(16px,1.8vw,19px);
+  font-weight:650;
+  letter-spacing:-.012em;
+  text-decoration:none;
+}
+.hublist a:hover { text-decoration:underline; }
+.hublist p { margin:6px 0 0; color:var(--dim); font-size:14.5px; }
+
 /* kbd reads as a physical key rather than as code, which <code> already owns. */
 kbd {
   font:0.88em/1 var(--mono);
@@ -802,13 +849,108 @@ kbd {
   max-width:calc(200% / 3);      /* two columns */
   padding:0 var(--gut) clamp(40px,6vw,66px);
 }
-.faq h3 {
-  margin-top:clamp(26px,3.4vw,38px);
-  margin-bottom:8px;
-  font-size:clamp(16px,1.7vw,18px);
+
+/* Each question is a <details>, so the accordion needs no JavaScript at all —
+   it opens, it is keyboard-operable, and it is announced correctly, none of
+   which a div-and-click-handler gets for free.
+
+   The answers are still in the HTML when collapsed, which is what makes this
+   safe here: Google indexes content inside <details> and will quote it in a
+   snippet. Hiding these behind a click costs nothing in search. Building the
+   same thing by injecting answers on click WOULD cost it. */
+.qa {
+  border-top:1px solid var(--rule);
 }
-.faq h3:first-child { margin-top:0; }
-.faq p { color:var(--dim); font-size:14.5px; }
+.qa:last-child { border-bottom:1px solid var(--rule); }
+
+.qa summary {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:13px 0;
+  cursor:pointer;
+  /* Both are needed: Safari uses the WebKit pseudo-element, everyone else
+     honours list-style. Without them the native triangle sits beside ours. */
+  list-style:none;
+}
+.qa summary::-webkit-details-marker { display:none; }
+.qa summary:hover h3 { color:var(--link); }
+/* The focus ring belongs on the whole row, not on the text inside it. */
+.qa summary:focus-visible { outline:2px solid var(--link); outline-offset:-2px; }
+
+.qa summary h3 {
+  display:inline;
+  margin:0;
+  font-size:15px;
+  font-weight:650;
+}
+
+/* The plus. Two bars rather than a "+" glyph so the strokes line up with the
+   hairlines above and below; on open the upright rotates onto the crossbar and
+   leaves a minus. */
+.qa-i {
+  position:relative;
+  flex:none;
+  width:11px; height:11px;
+  margin-left:auto;
+}
+.qa-i::before, .qa-i::after {
+  content:"";
+  position:absolute;
+  inset:50% 0 auto;
+  height:1.5px;
+  background:var(--dim);
+  transition:transform .18s var(--ease),background-color .18s var(--ease);
+}
+.qa-i::after { transform:rotate(90deg); }
+.qa[open] .qa-i::after { transform:rotate(0deg); }
+.qa[open] .qa-i::before,
+.qa[open] .qa-i::after,
+.qa summary:hover .qa-i::before,
+.qa summary:hover .qa-i::after { background:var(--link); }
+
+.qa-a { padding:0 0 16px; }
+.qa-a p { color:var(--dim); font-size:14.5px; margin:0 0 12px; }
+.qa-a p:last-child { margin-bottom:0; }
+
+/* The expand-all control. Sits with the heading rather than above the list so
+   it reads as part of the section title, not as a first row of the accordion. */
+.faqhead {
+  display:flex;
+  align-items:baseline;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.faqall {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  margin-top:12px;
+  padding:6px 11px;
+  background:none;
+  border:1px solid var(--rule2);
+  color:var(--dim);
+  font:11.5px/1 var(--mono);
+  text-transform:uppercase;
+  letter-spacing:.11em;
+  cursor:pointer;
+  transition:border-color .18s var(--ease),color .18s var(--ease);
+}
+.faqall:hover { border-color:var(--link); color:var(--link); }
+.faqall-i {
+  position:relative;
+  width:9px; height:9px;
+}
+.faqall-i::before, .faqall-i::after {
+  content:"";
+  position:absolute;
+  inset:50% 0 auto;
+  height:1.5px;
+  background:currentColor;
+  transition:transform .18s var(--ease);
+}
+.faqall-i::after { transform:rotate(90deg); }
+.faqall[aria-expanded="true"] .faqall-i::after { transform:rotate(0deg); }
 
 /* ----------------------------------------------------------------- honest */
 
@@ -868,8 +1010,12 @@ footer a:hover { color:var(--link); }
   .steps li:nth-child(3) { padding-top:28px; }
   .card:nth-child(-n+3) { border-top:1px solid var(--rule); }
   .card:nth-child(-n+2) { border-top:0; }
+  /* Stacked rather than side by side, so the readout gets the full width back
+     — and with it, the stats go back to a row. auto-fit rather than a fixed
+     three, because the same rule has to survive down to a 360px phone. */
   .livereadout { grid-column:1 / -1; padding-right:var(--gut); }
-  .globewrap   { grid-column:1 / -1; padding-top:34px; }
+  .globewrap   { grid-column:1 / -1; padding-top:38px; }
+  .stats { grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:16px 24px; }
   .closing h2, .closing p, .closing .btn { grid-column:1 / -1; }
   .closing h2, .closing p { padding-right:var(--gut); }
   .closing .btn { justify-self:start; padding-left:30px; padding-right:30px; }
@@ -897,7 +1043,7 @@ footer a:hover { color:var(--link); }
   .steps li:nth-child(3), .steps li:nth-child(4) { padding-top:0; }
   .card:nth-child(-n+3), .card:nth-child(-n+2) { border-top:1px solid var(--rule); }
   .card:first-child { border-top:0; }
-  .stats { gap:18px 30px; }
+  .stats { gap:18px 20px; }
   .topbar .row { height:54px; gap:9px; }
   .tlink.strong { padding:6px 10px; }
   .tag { display:none; }

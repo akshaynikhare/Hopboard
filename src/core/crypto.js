@@ -4,14 +4,14 @@
  * OPEN SESSION — the key the user types serves two purposes without the server
  * learning it:
  *
- *   roomHash = SHA-256("hopboard:" + KEY)[0..16]   -> sent, routes the room
+ *   roomHash = SHA-256("realtimeclipboard:" + KEY)[0..16]   -> sent, routes the room
  *   aesKey   = PBKDF2(KEY, salt, 250k)             -> never leaves this browser
  *
  * LOCKED SESSION — a PIN that is never in the link, never on disk and never
  * sent anywhere. It is folded into ONE PBKDF2 run whose output is expanded by
  * HKDF into three independent values:
  *
- *   prk       = PBKDF2(PIN, salt = "hopboard-lock-v1:" + KEY, 600k)
+ *   prk       = PBKDF2(PIN, salt = "realtimeclipboard-lock-v1:" + KEY, 600k)
  *   aesKey    = HKDF(prk, "…/aes")    -> AES-GCM-256
  *   roomHash  = HKDF(prk, "…/room")   -> sent, routes the room
  *   authToken = HKDF(prk, "…/auth")   -> sent, proves PIN knowledge to the relay
@@ -37,7 +37,7 @@ const dec = new TextDecoder();
 let cached = { id: null, aesKey: null };
 
 export async function roomHash(key) {
-  const digest = await crypto.subtle.digest("SHA-256", enc.encode("hopboard:" + key));
+  const digest = await crypto.subtle.digest("SHA-256", enc.encode("realtimeclipboard:" + key));
   return hex(new Uint8Array(digest).slice(0, CRYPTO.ROOM_HASH_BYTES));
 }
 

@@ -13,10 +13,8 @@
  * is answered the app has no session at all, so a focus trap is describing the
  * truth rather than imposing it.
  *
- * The pattern — inert shell, tab ring, Escape, focus restore — is ui/qr.js's,
- * duplicated rather than shared. A third one of these should become
- * ui/modal.js; two is not yet enough to know what the shared shape is, and the
- * duplication is visible from here.
+ * The trap itself lives in ui/modal.js — shell inert, tab ring, Escape, focus
+ * restore — so this file is only the form.
  *
  * THE PIN NEVER TOUCHES MARKUP. It is read from `input.value` at submit and the
  * field is cleared on close. It is never interpolated into innerHTML, never put
@@ -26,15 +24,14 @@
 
 import { LOCK } from "../core/config.js";
 import { pinEntropyBits } from "../core/keys.js";
+import * as modal from "./modal.js";
 import { esc } from "./dom.js";
-
-const SHELL = ".vs";
+import { styleHref } from "../core/paths.js";
 
 /* Loaded on first use rather than from main.css: the dialog is rare and its
-   stylesheet is dead weight on every session that never locks. Same mechanism
-   as ui/qr.js — resolved against this module so it survives being served from
-   a subpath. */
-const STYLE_HREF = new URL("../styles/lock.css", import.meta.url).href;
+   stylesheet is dead weight on every session that never locks. Resolved against
+   this module so it survives being served from a subpath. */
+const STYLE_HREF = styleHref("lock.css");
 
 function ensureStyles() {
   if (document.querySelector('link[data-hb-style="lock"]')) return;
@@ -68,8 +65,6 @@ const COPY = {
   },
 };
 
-let open = null;
-
 /**
  * Ask for a PIN. Resolves to the string, or to null on cancel/Escape.
  *
@@ -80,27 +75,25 @@ let open = null;
 export function ask({ mode = "join", key = "" } = {}) {
   const copy = COPY[mode] ?? COPY.join;
   ensureStyles();
-  close();                    // never stack two; the old promise resolves null
 
   return new Promise(resolve => {
-    const el = document.createElement("div");
-    el.className = "lockmodal";
-    el.innerHTML = `
-      <div class="lockback" data-cancel></div>
-      <div class="lockdlg" role="dialog" aria-modal="true" tabindex="-1"
-           aria-labelledby="lockTitle" aria-describedby="lockIntro">
+    const { el } = modal.show({
+      className: "lockmodal",
+      labelledBy: "lockTitle",
+      onClose: resolve,
+      html: `
         <h2 id="lockTitle">${esc(copy.title)}</h2>
         <p id="lockIntro">${esc(copy.intro)}</p>
         ${key ? `<p class="lockkey">Session <b>${esc(key)}</b></p>` : ""}
 
         <label class="locklbl" for="lockPin">PIN</label>
-        <input id="lockPin" class="lockinput" type="password" name="hopboard-pin"
+        <input id="lockPin" class="lockinput" type="password" name="realtimeclipboard-pin"
                autocomplete="off" autocapitalize="none" autocorrect="off"
                spellcheck="false" enterkeyhint="go"
                aria-describedby="lockStrength">
         ${copy.confirm ? `
         <label class="locklbl" for="lockPin2">Repeat it</label>
-        <input id="lockPin2" class="lockinput" type="password" name="hopboard-pin2"
+        <input id="lockPin2" class="lockinput" type="password" name="realtimeclipboard-pin2"
                autocomplete="off" autocapitalize="none" autocorrect="off"
                spellcheck="false" enterkeyhint="go">` : ""}
 
@@ -108,17 +101,14 @@ export function ask({ mode = "join", key = "" } = {}) {
         <div class="lockerr" role="alert"></div>
 
         <div class="lockrow">
-          <button class="btn ghost" type="button" data-cancel>Cancel</button>
+          <button class="btn ghost" type="button" data-modal-dismiss>Cancel</button>
           <button class="btn" type="button" data-ok>${esc(copy.submit)}</button>
         </div>
 
         <p class="locknote">Anyone with the link and the PIN can read this
-        session. The PIN is not stored on this device beyond this browser tab.</p>
-      </div>`;
+        session. The PIN is not stored on this device beyond this browser tab.</p>`,
+    });
 
-    document.body.appendChild(el);
-
-    const dlg      = el.querySelector(".lockdlg");
     const pin      = el.querySelector("#lockPin");
     const pin2     = el.querySelector("#lockPin2");
     const strength = el.querySelector(".lockstrength");
@@ -152,15 +142,12 @@ export function ask({ mode = "join", key = "" } = {}) {
       if (copy.confirm && value !== pin2.value) {
         return say("The two PINs do not match.");
       }
-      close(value);
+      modal.close(value);
     };
-
-    const finish = answer => close(answer);
 
     el.addEventListener("input", rate);
     el.addEventListener("click", e => {
-      if (e.target.closest("[data-ok]")) return submit();
-      if (e.target.closest("[data-cancel]")) return finish(null);
+      if (e.target.closest("[data-ok]")) submit();
     });
     // Enter submits from either field: this is a form in everything but the
     // element, and a <form> here would try to navigate.
@@ -168,71 +155,8 @@ export function ask({ mode = "join", key = "" } = {}) {
       if (e.key === "Enter") { e.preventDefault(); submit(); }
     });
 
-    const onKey = e => {
-      if (e.key === "Escape") { e.preventDefault(); finish(null); return; }
-      if (e.key === "Tab") trapTab(e, el);
-    };
-    document.addEventListener("keydown", onKey, true);
-
-    open = {
-      el, onKey, resolve,
-      restoreFocus: document.activeElement,
-      inerted: setShellInert(true),
-    };
-    (pin ?? dlg)?.focus?.();
+    pin.focus();
   });
 }
 
-/**
- * Tear down and settle the promise. Always settles — a caller awaiting a PIN
- * that got replaced by a second prompt would otherwise wait forever.
- *
- * The inputs are blanked before the node is dropped. Removing an element does
- * not scrub the string it held, but it costs nothing to avoid leaving the PIN
- * in a detached DOM node waiting on the garbage collector.
- */
-function close(answer = null) {
-  if (!open) return;
-  const { el, onKey, restoreFocus, inerted, resolve } = open;
-  open = null;
-  el.querySelectorAll("input").forEach(i => { i.value = ""; });
-  document.removeEventListener("keydown", onKey, true);
-  if (inerted) setShellInert(false);
-  el.remove();
-  if (restoreFocus && document.contains(restoreFocus)) restoreFocus.focus?.();
-  resolve(answer);
-}
-
-/** Is a prompt on screen? main.js uses this to avoid stacking two. */
-export const isOpen = () => open !== null;
-
-/* ---- focus plumbing, mirroring ui/qr.js ---- */
-
-function setShellInert(on) {
-  const shell = document.querySelector(SHELL);
-  if (!shell) return false;
-  const supported = "inert" in shell;
-  if (on) {
-    shell.inert = true;
-    if (!supported) shell.setAttribute("aria-hidden", "true");
-  } else {
-    shell.inert = false;
-    shell.removeAttribute("aria-hidden");
-  }
-  return true;
-}
-
-const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-
-function trapTab(e, el) {
-  const items = [...el.querySelectorAll(FOCUSABLE)]
-    .filter(n => !n.hasAttribute("disabled") && !n.hidden && n.tabIndex !== -1);
-  if (!items.length) { e.preventDefault(); return; }
-
-  const first = items[0];
-  const last = items[items.length - 1];
-  const at = items.indexOf(document.activeElement);
-  if (at === -1) { e.preventDefault(); (e.shiftKey ? last : first).focus(); return; }
-  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-}
+export const isOpen = modal.isOpen;

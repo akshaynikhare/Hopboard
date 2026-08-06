@@ -1,5 +1,5 @@
 /**
- * Hopboard — live globe.
+ * RealtimeClipboard — live globe.
  *
  * A rotating wireframe globe with a marker on every country that currently has
  * a session, and a counter that says exactly what the relay says. Canvas 2D,
@@ -148,7 +148,31 @@ function readColours() {
   colour.panelRGB = toRGB(colour.panel) || [37, 37, 38];
   colour.dimRGB = toRGB(colour.dim) || [133, 133, 133];
   colour.textRGB = toRGB(colour.text) || [204, 204, 204];
+  colour.markRGB = toRGB(colour.mark) || [78, 201, 176];
+
+  /**
+   * The sphere's own three tones, mixed FROM the page's accent rather than
+   * picked next to it — so the globe still belongs to this palette when the
+   * accent is retuned, and a light theme gets a light planet for free.
+   *
+   *   lit   the sunward crescent, accent pulled toward the section's teal
+   *   deep  the shaded limb and the terminator
+   *   air   the halo outside the sphere
+   */
+  const dark = isDark();
+  colour.litRGB = mix(colour.blueRGB, colour.markRGB, dark ? 0.34 : 0.22);
+  colour.deepRGB = dark ? mix(colour.blueRGB, [10, 14, 44], 0.72) : mix(colour.blueRGB, [255, 255, 255], 0.55);
+  colour.airRGB = mix(colour.blueRGB, colour.markRGB, dark ? 0.42 : 0.30);
   colour.dotStyles = buildDotStyles();
+}
+
+/** The stylesheet is the authority on the theme, not the media query: a forced
+ *  theme or a future toggle changes the tokens, and everything here is derived
+ *  from those. Read the page background and ask whether it is dark. */
+function isDark() {
+  const bg = toRGB(getComputedStyle(document.documentElement)
+    .getPropertyValue("--bg").trim()) || [30, 30, 30];
+  return bg[0] + bg[1] + bg[2] < 384;
 }
 
 const mix = (a, b, t) => [
@@ -171,11 +195,22 @@ const mix = (a, b, t) => [
  * at any alpha.
  */
 function buildDotStyles() {
-  const lit = mix(colour.textRGB, colour.blueRGB, 0.38);
+  const dark = isDark();
+  // Land has to win against the ocean under it, and the ocean is now a real
+  // blue. On a dark page that means the lit side goes almost white with a
+  // breath of the section's teal in it; on a light page it goes the other way,
+  // because "more visible" there means darker.
+  const lit = dark
+    ? mix([255, 255, 255], colour.markRGB, 0.20)
+    : mix(colour.textRGB, colour.blueRGB, 0.34);
+  const shade = dark
+    ? mix(colour.dimRGB, colour.deepRGB, 0.58)
+    : mix(colour.dimRGB, colour.blueRGB, 0.40);
+
   const out = [];
   for (let i = 0; i < BUCKETS; i++) {
     const t = (i + 0.5) / BUCKETS;
-    out.push(rgba(mix(colour.dimRGB, lit, t), 0.16 + 0.84 * t));
+    out.push(rgba(mix(shade, lit, t), 0.24 + 0.76 * t));
   }
   return out;
 }
@@ -373,20 +408,38 @@ function isLand(lat, lon) {
  * cosines. Across ~3,000 points at 60 frames a second that is the difference
  * between a rounding error and a measurable slice of the frame.
  */
-const DOT_STEP = 2;       // degrees between dots, along and between parallels
+/**
+ * Dot spacing is chosen from the RADIUS, not fixed.
+ *
+ * A step that looks right on a 300px globe leaves 8px gaps on a 600px one, and
+ * the continents come apart into confetti. So aim for a constant spacing in
+ * PIXELS — the same visual density at any size — and quantise the result so a
+ * window drag rebuilds the field a handful of times rather than every frame.
+ *
+ * The floor is the mask's own resolution: sampling finer than the source data
+ * just draws the same cell twice and gives coastlines a staircase.
+ */
+const DOT_PX = 5.4;       // target gap between neighbouring dots
 let FIELD = null;
+let fieldStep = 0;
 
-function buildField() {
+function stepFor(r) {
+  const deg = (DOT_PX / Math.max(1, r)) * (180 / Math.PI);
+  return Math.min(2.6, Math.max(LAND.step, Math.round(deg * 4) / 4));
+}
+
+function buildField(step) {
+  fieldStep = step;
   const cosLa = [], sinLa = [], cosLon = [], sinLon = [], weight = [];
-  for (let lat = -88; lat <= 88; lat += DOT_STEP) {
+  for (let lat = -88; lat <= 88; lat += step) {
     const la = lat * RAD;
     const cla = Math.cos(la), sla = Math.sin(la);
     // Constant arc spacing: the closer to a pole, the fewer dots a ring needs to
     // look as dense as the equator.
-    const count = Math.max(4, Math.round((360 / DOT_STEP) * cla));
-    const step = 360 / count;
+    const count = Math.max(4, Math.round((360 / step) * cla));
+    const gap = 360 / count;
     for (let i = 0; i < count; i++) {
-      const lon = -180 + i * step;
+      const lon = -180 + i * gap;
       if (!isLand(lat, lon)) continue;
       const coast =
         !isLand(lat + LAND.step, lon) || !isLand(lat - LAND.step, lon) ||
@@ -416,38 +469,55 @@ const bucket = Array.from({ length: BUCKETS }, () => []);
 
 function draw() {
   if (!ctx || !size) return;
-  if (!FIELD) buildField();
 
   // 0.405 rather than a rounder number: a highlighted marker's halo reaches
   // about 36px past its centre, and at the limb that has to stay inside the
   // canvas or the glow gets a straight edge cut across it.
   const cx = size / 2, cy = size / 2, r = size * 0.405;
+
+  const step = stepFor(r);
+  if (!FIELD || step !== fieldStep) buildField(step);
+
   ctx.clearRect(0, 0, size, size);
 
-  // Volume before detail: a wash inside the sphere, brightest where the light
-  // is. With the dots on land only this is also the OCEAN — it has to carry the
-  // whole surface between the continents, so it is stronger than it was when a
-  // graticule covered the sphere edge to edge.
+  // ATMOSPHERE — outside the sphere, so the planet sits in something rather
+  // than being pasted onto the page. It is the one part of this drawing that is
+  // purely for effect, which is why it is kept to a thin band: a wide glow round
+  // a small disc reads as a lens flare, not as air.
+  const air = ctx.createRadialGradient(cx, cy, r * 0.94, cx, cy, r * 1.16);
+  air.addColorStop(0, rgba(colour.airRGB, 0));
+  air.addColorStop(0.38, rgba(colour.airRGB, 0.26));
+  air.addColorStop(1, rgba(colour.airRGB, 0));
+  ctx.fillStyle = air;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 1.16, 0, Math.PI * 2);
+  ctx.fill();
+
+  // OCEAN. With the dots on land only, this carries the entire surface between
+  // the continents, so it is a real gradient and not a wash: a bright cyan-lit
+  // crescent where the light is, falling through the accent blue to a deep
+  // indigo at the terminator. Three stops, because two make a vignette and four
+  // make a beach ball.
   const body = ctx.createRadialGradient(
-    cx + LX * r * 0.55, cy - LY * r * 0.55, r * 0.05,
-    cx, cy, r);
-  body.addColorStop(0, rgba(colour.blueRGB, 0.19));
-  body.addColorStop(0.62, rgba(colour.blueRGB, 0.075));
-  body.addColorStop(1, rgba(colour.blueRGB, 0.02));
+    cx + LX * r * 0.6, cy - LY * r * 0.6, r * 0.04,
+    cx, cy, r * 1.02);
+  body.addColorStop(0, rgba(colour.litRGB, 0.42));
+  body.addColorStop(0.45, rgba(colour.blueRGB, 0.30));
+  body.addColorStop(1, rgba(colour.deepRGB, 0.36));
   ctx.fillStyle = body;
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.fill();
 
-  // The edge, so the object closes. Drawn as a gradient rather than a flat
-  // hairline: a rim that is brightest on the lit side reads as curvature, and a
-  // uniform ring reads as a sticker.
+  // The edge, so the object closes. A gradient rather than a flat hairline: a
+  // rim brightest on the lit side reads as curvature, a uniform ring reads as a
+  // sticker.
   const rim = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
-  rim.addColorStop(0, rgba(colour.blueRGB, 0.55));
-  rim.addColorStop(0.5, rgba(colour.gridRGB, 0.45));
-  rim.addColorStop(1, rgba(colour.gridRGB, 0.16));
+  rim.addColorStop(0, rgba(colour.litRGB, 0.75));
+  rim.addColorStop(0.5, rgba(colour.blueRGB, 0.40));
+  rim.addColorStop(1, rgba(colour.deepRGB, 0.30));
   ctx.strokeStyle = rim;
-  ctx.lineWidth = 1;
+  ctx.lineWidth = Math.max(1, size / 420);
   ctx.beginPath();
   ctx.arc(cx, cy, r - 0.5, 0, Math.PI * 2);
   ctx.stroke();
@@ -461,7 +531,10 @@ function drawField(r, cx, cy) {
   const sp = spin * RAD;
   const cs = Math.cos(sp), ss = Math.sin(sp);
   const ct = Math.cos(TILT), st = Math.sin(TILT);
-  const base = size < 220 ? 1.2 : size < 300 ? 1.6 : 2;
+  // Near-constant, because the SPACING is near-constant: stepFor() already
+  // holds the gap between dots at roughly 5px whatever the sphere's size, so
+  // scaling the dots as well would only close that gap back up.
+  const base = size < 260 ? 1.7 : 2.3;
   const px = 1 / dpr;                       // one device pixel, in CSS units
 
   for (const b of bucket) b.length = 0;
@@ -516,7 +589,7 @@ function drawMarkers(r, cx, cy) {
 
   let max = 1;
   for (const m of marks.values()) if (m.n > max) max = m.n;
-  const markRGB = toRGB(colour.mark) || [78, 201, 176];
+  const markRGB = colour.markRGB;
   const px = 1 / dpr;
 
   // Back to front, so a marker near the limb cannot paint over one in front of

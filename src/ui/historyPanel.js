@@ -25,12 +25,13 @@ import { emit, on, EV } from "../core/bus.js";
 import * as history from "../core/history.js";
 import { write as writeClipboard } from "../clipboard/os.js";
 import { upgrade as upgradeHeader, sync as syncHeader } from "./panes.js";
-import { $, esc, on as bind } from "./dom.js";
+import { $, esc, on as bind, setHTML } from "./dom.js";
+import { styleHref } from "../core/paths.js";
 
 const PREVIEW_CHARS = 70;
 const TITLE_CHARS = 300;
 
-const STYLE_HREF = new URL("../styles/history.css", import.meta.url).href;
+const STYLE_HREF = styleHref("history.css");
 
 /** Idempotent stylesheet injection — the module owns its own CSS so main.css
  *  needs no edit, and a double init() must not produce a duplicate <link>. */
@@ -95,7 +96,7 @@ function mount() {
   const pane = document.createElement("section");
   pane.className = "pane";
   pane.id = "paneHistory";
-  pane.innerHTML = `
+  setHTML(pane, `
     <div class="paneh" id="histHead">
       <span class="chev">⌄</span> History
       <span class="spacer"></span>
@@ -110,7 +111,7 @@ function mount() {
         Clips you send and receive appear here. Memory and <code>sessionStorage</code>
         only — history is gone when this tab closes, and cleared when the key changes.
       </div>
-    </div>`;
+    </div>`);
 
   host.appendChild(pane);
 
@@ -151,7 +152,7 @@ function render() {
   // thing a button's name is for. Each copy button is named with its clip too,
   // because twenty buttons all called "Copy this clip" is a list you cannot
   // navigate by name.
-  list.innerHTML = items.map(c => {
+  setHTML(list, items.map(c => {
     const sent = c.direction === "sent";
     const at = hhmm(c.at);
     const gist = preview(c.text);
@@ -168,7 +169,7 @@ function render() {
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg>
       </button>
     </div>`;
-  }).join("");
+  }).join(""));
 }
 
 /** One line, no runs of whitespace, ellipsised — a clip is often a stack trace. */

@@ -1,0 +1,9 @@
+# Drives the "Sponsor" button GitHub puts at the top of the repo.
+#
+# One platform, not the usual list of six. The relay costs about $10/yr to run
+# and that is the whole ask; a row of funding badges for a bill that size reads
+# as a business rather than as someone covering a hosting invoice.
+#
+# Buy Me a Coffee used to sit beside this and was removed — see LINKS in
+# src/core/config.js, which is where the in-app version of these links lives.
+github: akshaynikhare

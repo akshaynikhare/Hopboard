@@ -53,8 +53,8 @@ document.getElementById("opener").focus();
 
 const joining = dlg.ask({ mode: "join", key: "D75LV" });
 
-check("a dialog mounts", !!$(".lockdlg"));
-check("it is a modal dialog", $(".lockdlg").getAttribute("aria-modal") === "true");
+check("a dialog mounts", !!$(".lockmodal-dlg"));
+check("it is a modal dialog", $(".lockmodal-dlg").getAttribute("aria-modal") === "true");
 check("the app shell is made inert behind it", $(".vs").inert === true);
 check("focus lands in the PIN field", document.activeElement?.id === "lockPin");
 
@@ -68,7 +68,7 @@ check("the session key is shown", $(".lockkey")?.textContent.includes("D75LV"));
 $("#lockPin").value = "abc";
 click("[data-ok]");
 check("a PIN under the minimum is refused", !!$(".lockerr").textContent);
-check("and the dialog stays open", !!$(".lockdlg"));
+check("and the dialog stays open", !!$(".lockmodal-dlg"));
 
 $("#lockPin").value = "hunter2!";
 $("#lockPin").dispatchEvent(new window.Event("input", { bubbles: true }));
@@ -78,7 +78,7 @@ check("the strength line reports bits, not an adjective",
 
 click("[data-ok]");
 check("the PIN is handed back to the caller", await joining === "hunter2!");
-check("the dialog is gone", !$(".lockdlg"));
+check("the dialog is gone", !$(".lockmodal-dlg"));
 check("the shell is interactive again", $(".vs").inert === false);
 check("focus is returned to whatever opened it", document.activeElement?.id === "opener");
 check("no field holding the typed PIN is left behind",
@@ -94,7 +94,7 @@ $("#lockPin2").value = "different";
 click("[data-ok]");
 check("a mismatch is refused", $(".lockerr").textContent.includes("do not match"));
 
-click("[data-cancel]");
+click("[data-modal-dismiss]");
 check("cancelling resolves null, not a value", await creating === null);
 
 /* ---- getting out ---- */
@@ -108,7 +108,7 @@ check("Escape resolves null", await escaping === null);
 const first = dlg.ask({ mode: "join" });
 const second = dlg.ask({ mode: "join" });
 check("a superseded prompt still settles", await first === null);
-click("[data-cancel]");
+click("[data-modal-dismiss]");
 check("and so does the one that replaced it", await second === null);
 check("nothing is left mounted", !$(".lockmodal"));
 

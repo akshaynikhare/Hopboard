@@ -17,9 +17,73 @@
 const IS_LOCAL = typeof location !== "undefined" &&
   ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 
-export const RELAY_URL = IS_LOCAL
-  ? "ws://127.0.0.1:8000"
-  : "wss://hopboard.fastapicloud.dev";
+/** The relay this build ships pointed at. Self-hosters change this one line. */
+export const DEFAULT_RELAY_URL = "wss://realtimeclipboard.fastapicloud.dev";
+const LOCAL_RELAY_URL = "ws://127.0.0.1:8000";
+
+/**
+ * Key under which the chosen relay is remembered.
+ *
+ * The storage PREFIX lives here rather than in core/storage.js so that this
+ * module can read a setting without importing storage.js — which imports this
+ * one, and a cycle between "every constant" and "the thing that persists them"
+ * is the sort that works until someone moves a line to module scope.
+ */
+export const STORAGE_PREFIX = "realtimeclipboard.";
+const RELAY_KEY = "relayUrl";
+
+/**
+ * Accept only something that can actually be a relay, and normalise it.
+ *
+ * `http(s)://` is accepted and converted, because that is what a person copies
+ * out of a browser bar when their IT department gives them an address, and
+ * rejecting it would be pedantry with a support ticket attached.
+ */
+export function normaliseRelay(raw) {
+  if (!raw || typeof raw !== "string") return null;
+  try {
+    const u = new URL(raw.trim());
+    const scheme = { "http:": "ws:", "https:": "wss:", "ws:": "ws:", "wss:": "wss:" }[u.protocol];
+    if (!scheme) return null;
+    // Path, query and hash are meaningless here — the routes are fixed (/ws,
+    // /sse, /pub, /health) and a trailing slash would produce "//ws/<room>".
+    return `${scheme}//${u.host}`;
+  } catch { return null; }
+}
+
+const stored = () => {
+  try { return JSON.parse(localStorage.getItem(STORAGE_PREFIX + RELAY_KEY)); }
+  catch { return null; }
+};
+
+/**
+ * `?relay=` in the address, for builds that are deployed rather than visited:
+ * a corporate MSI transform, a macOS config profile, or a desktop shell that
+ * launches the webview at its own relay.
+ *
+ * It wins over the stored setting on purpose — the deployment is more current
+ * than whatever the machine remembers — and main.js persists it, so the switch
+ * survives the next launch without the flag.
+ *
+ * !! This is NOT an attack surface on the hosted site, and the reason is worth
+ * knowing: the CSP pins `connect-src` to this origin and the default relay, so
+ * a link carrying `?relay=` to anywhere else cannot open a connection at all.
+ * The override only does anything on a build whose operator also edited that
+ * meta tag — which is precisely the self-hosting case it exists for. The CSP is
+ * the enforcement; this is only the plumbing. !!
+ */
+const fromQuery = () => {
+  try { return new URLSearchParams(location.search).get("relay"); }
+  catch { return null; }
+};
+
+export const RELAY_URL =
+  normaliseRelay(fromQuery())
+  ?? normaliseRelay(stored())
+  ?? (IS_LOCAL ? LOCAL_RELAY_URL : DEFAULT_RELAY_URL);
+
+/** True when the app is not talking to the relay it was built against. */
+export const RELAY_IS_CUSTOM = RELAY_URL !== DEFAULT_RELAY_URL && RELAY_URL !== LOCAL_RELAY_URL;
 
 /**
  * The same relay over plain HTTP, for the SSE+POST fallback and /stats.
@@ -42,8 +106,52 @@ export const RELAY_HTTP_URL = RELAY_URL.replace(/^ws/i, "http");
  */
 export const TRANSPORT = { WS: "ws", SSE: "sse" };
 
+/**
+ * Clip size, derived — not chosen.
+ *
+ * A clip does not go on the wire as text. It is UTF-8 encoded, sealed with
+ * AES-GCM (which appends a 16-byte tag), base64'd, and dropped into a JSON
+ * envelope — and the relay rejects any frame over MAX_FRAME_BYTES
+ * (backend/main.py, 32 KB). Base64 alone inflates by a third, so the real
+ * limit is a BYTE budget on the wire and a character count is only an
+ * approximation of it.
+ *
+ * This is the same arithmetic files/chunker.js does for RELAY_CHUNK_BYTES, and
+ * it is here for the same reason: a hand-tuned second number drifts out of
+ * sync with the relay's cap, and the failure mode is silent.
+ *
+ * It had. MAX_CHARS was 50,000 — 66 KB on the wire against a 32 KB frame — and
+ * the constant cited FR-2.8 while contradicting it, because "max payload 32 KB"
+ * had been transcribed into a character count once and never recomputed. Every
+ * clip over ~24 KB was accepted by the editor, encrypted, sent, and dropped by
+ * the relay, with the rejection arriving as an async `error` frame long after
+ * the UI had said it went. Deriving the number is what stops that recurring;
+ * tests/clipsize.mjs is what proves the derivation.
+ *
+ * MAX_CHARS is what the counter shows and what the editor guards on, because
+ * users think in characters and one ASCII character is one byte. MAX_BYTES is
+ * the truth, and is what the send path enforces: 24,000 CJK characters are
+ * 72,000 bytes and will not fit, whatever the counter says.
+ */
+const RELAY_FRAME_BYTES  = 32 * 1024;   // backend/main.py MAX_FRAME_BYTES
+const CLIP_ENVELOPE_BYTES = 512;        // {"t","originId","iv","payload"} + slack
+const BASE64_EXPANSION    = 4 / 3;
+const GCM_TAG_BYTES       = 16;
+
+const CLIP_MAX_BYTES = Math.floor(
+  (RELAY_FRAME_BYTES - CLIP_ENVELOPE_BYTES) / BASE64_EXPANSION - GCM_TAG_BYTES,
+);
+
+/**
+ * Wire size of a string. Exported beside the limit it is measured against so
+ * the editor and the send path cannot disagree about what "too big" means —
+ * `String.length` counts UTF-16 units, which is not what the relay counts.
+ */
+export const textBytes = (s) => new TextEncoder().encode(s).length;
+
 export const TEXT = {
-  MAX_CHARS: 50_000,          // PRD FR-2.8
+  MAX_BYTES: CLIP_MAX_BYTES,                          // the wire limit — authoritative
+  MAX_CHARS: Math.floor(CLIP_MAX_BYTES / 1000) * 1000, // the friendly one, for the counter
   SUPPRESS_MS: 1500,          // loop-suppression window after applying a remote clip (FR-2.6)
 };
 
@@ -89,7 +197,7 @@ export const KEY = {
 };
 
 export const CRYPTO = {
-  SALT: "hopboard-v1",
+  SALT: "realtimeclipboard-v1",
   ITERATIONS: 250_000,        // PBKDF2; derive once per session and cache (OI-8)
   ROOM_HASH_BYTES: 16,
 
@@ -107,7 +215,7 @@ export const CRYPTO = {
    * whole defence and every doubling of the iteration count is a doubling of
    * their cost. It is paid once per session, behind the "unlocking" state.
    */
-  LOCK_SALT: "hopboard-lock-v1:",
+  LOCK_SALT: "realtimeclipboard-lock-v1:",
   LOCK_ITERATIONS: 600_000,
 
   /**
@@ -118,9 +226,9 @@ export const CRYPTO = {
    * cost on a low-end Android. HKDF expansion is a couple of HMACs.
    */
   LOCK_INFO: {
-    AES:  "hopboard-lock/aes",
-    ROOM: "hopboard-lock/room",
-    AUTH: "hopboard-lock/auth",
+    AES:  "realtimeclipboard-lock/aes",
+    ROOM: "realtimeclipboard-lock/room",
+    AUTH: "realtimeclipboard-lock/auth",
   },
 };
 
@@ -154,7 +262,7 @@ export const LOCK = {
    * from "first one here" by whether it decrypts. Receivers drop it instead of
    * rendering it. See core/crypto.js and the beacon note in main.js.
    */
-  BEACON: String.fromCharCode(0) + "hopboard-lock-v1",
+  BEACON: String.fromCharCode(0) + "realtimeclipboard-lock-v1",
 };
 
 export const NET = {
@@ -224,28 +332,32 @@ export const DEFAULT_SYNC_MODE = SYNC_MODES.LIVE;
  * moved account is then one edit, and the four links cannot drift into pointing
  * at three different projects.
  *
- * COFFEE_HANDLE is separate because it is a different service's account name
- * and only happens to match today.
- *
- * !! UNVERIFIED: OWNER is real (the repo is at github.com/akshaynikhare/
- * Hopboard); the sponsors page and the Buy Me a Coffee handle were guessed from
- * it and have NOT been confirmed to exist. Check both before this ships — a
- * donate link that 404s costs more goodwill than no donate link. !!
+ * Every link below was checked against a live GitHub on 2026-08-07 and returned
+ * 200: the repo, the issue chooser, and the sponsors page. Re-check the sponsors
+ * page if the account ever moves — a donate link that 404s costs more goodwill
+ * than no donate link. The .github/FUNDING.yml button is the same destination
+ * and has to move with it.
  */
 export const REPO = {
   OWNER: "akshaynikhare",
-  NAME: "Hopboard",
-  COFFEE_HANDLE: "akshaynikhare",
+  NAME: "RealtimeClipboard",
 };
 
 export const LINKS = {
   REPO:    `https://github.com/${REPO.OWNER}/${REPO.NAME}`,
   ISSUES:  `https://github.com/${REPO.OWNER}/${REPO.NAME}/issues`,
-  /** Straight to the form: "report" that lands on a list of other people's
-      bugs asks the user to find the button themselves. */
-  NEW_ISSUE: `https://github.com/${REPO.OWNER}/${REPO.NAME}/issues/new`,
+  /**
+   * The chooser, not a blank issue: "report" that lands on a list of other
+   * people's bugs asks the user to find the button themselves, and a blank box
+   * asks them to guess what we need.
+   *
+   * `/new/choose` picks between the bug and feature forms in
+   * .github/ISSUE_TEMPLATE/ — which is also where the "do not paste your share
+   * key" warning lives, and that warning is the single most valuable thing on
+   * the page for this product.
+   */
+  NEW_ISSUE: `https://github.com/${REPO.OWNER}/${REPO.NAME}/issues/new/choose`,
   SPONSOR: `https://github.com/sponsors/${REPO.OWNER}`,
-  COFFEE:  `https://www.buymeacoffee.com/${REPO.COFFEE_HANDLE}`,
 };
 
 export const IMAGES = {

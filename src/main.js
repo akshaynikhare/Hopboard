@@ -6,7 +6,9 @@
  * transport stay swappable while the rest of the app was being built.
  */
 
-import { TEXT, SYNC_MODES, LOCK } from "./core/config.js";
+import {
+  TEXT, SYNC_MODES, LOCK, textBytes, RELAY_URL, RELAY_IS_CUSTOM,
+} from "./core/config.js";
 import { emit, on, EV } from "./core/bus.js";
 import * as state from "./core/state.js";
 import * as keys from "./core/keys.js";
@@ -36,6 +38,7 @@ import * as resizer from "./ui/resizer.js";
 import * as syncMode from "./ui/syncMode.js";
 import * as appLinks from "./ui/appLinks.js";
 import * as lockDialog from "./ui/lockDialog.js";
+import * as whatsNew from "./ui/whatsNew.js";
 import * as hints from "./ui/hints.js";
 import * as cursors from "./ui/cursors.js";
 import * as ads from "./ui/ads.js";
@@ -135,7 +138,7 @@ async function openSession(key, intent, { locked = false, pin = null, prk = null
  * needless to say, appears nowhere at all.
  */
 function announce(roomHash, locked) {
-  console.info(`[hopboard] session · room=${roomHash} locked=${locked}`);
+  console.info(`[realtimeclipboard] session · room=${roomHash} locked=${locked}`);
 }
 
 /**
@@ -147,10 +150,8 @@ function announce(roomHash, locked) {
  * same name, which is a real room, joinable by anyone holding the link, and
  * would hand the user a session that looks private and is not.
  *
- * A refresh skips the prompt: the stretched PIN is in sessionStorage against
- * the room it unlocks. Which room that is depends on the PIN, so this has to
- * derive to find out — hence the stored value being tried by re-deriving
- * rather than looked up by key.
+ * A refresh skips the prompt: this tab's stretched PIN is in sessionStorage,
+ * filed under the share key, so a reload is silent while a new tab is not.
  */
 async function startSession(key, intent, locked) {
   if (!locked) return openSession(key, intent);
@@ -160,22 +161,41 @@ async function startSession(key, intent, locked) {
 
   const pin = await lockDialog.ask({ mode: intent === "create" ? "create" : "join", key });
   if (!pin) {
+    // Backing out is allowed, but it must not be a dead end. Nothing is
+    // connected and state.key was never set, so the key is parked here for the
+    // "Enter PIN" action to pick up — see retryLock().
+    pendingLock = { key, intent };
+    // No LOCK_STATE here on purpose: `state.locked` is still false because no
+    // session was ever opened, and announcing a lock state the state object
+    // does not hold would put a padlock on a session that does not exist.
     state.setConnection("idle", "locked — PIN required");
-    emit(EV.LOCK_STATE, { locked: true, verified: false });
     return;
   }
   return openSession(key, intent, { locked: true, pin });
 }
 
-/** Re-open the current locked link, asking for the PIN again. */
+/**
+ * The session we are standing outside of, if the prompt was cancelled.
+ *
+ * Only meaningful before a first successful open: after that the key lives in
+ * state like any other session's.
+ */
+let pendingLock = null;
+
+/** Ask for the PIN again, whether we are in the wrong room or in none at all. */
 async function retryLock() {
-  const { key } = state.get();
+  const key = state.get().key ?? pendingLock?.key;
+  const intent = state.get().key ? "join" : (pendingLock?.intent ?? "join");
+  if (!key) return;
+
   const pin = await lockDialog.ask({ mode: "retry", key });
   if (!pin) return;
+
   relay.close();
   cryptoBox.clearCache();
   state.resetRoster();
-  await openSession(key, "join", { locked: true, pin });
+  pendingLock = null;
+  await openSession(key, intent, { locked: true, pin });
 }
 
 /* ------------------------------------------------------------------
@@ -299,7 +319,7 @@ async function decryptFrame(frame) {
   } catch {
     // A peer in this room shares the key by construction, so this should be
     // unreachable — drop rather than hand the files layer a half-frame.
-    console.warn("[hopboard] undecryptable signalling frame", frame.t);
+    console.warn("[realtimeclipboard] undecryptable signalling frame", frame.t);
     return null;
   }
 }
@@ -310,7 +330,19 @@ async function decryptFrame(frame) {
 async function sendText(text) {
   const { aesKey, originId } = state.get();
   if (!aesKey || !relay.isOpen()) return;
-  if (text.length > TEXT.MAX_CHARS) return;
+
+  // Bytes, not characters. The relay counts the encoded frame, so multibyte
+  // text can sit well inside MAX_CHARS and still be too large to send.
+  //
+  // This is also the last gate before the wire, and it must be loud. The
+  // editor's own check only covers text a human typed; this path is where an
+  // auto-captured clipboard arrives, and a silent `return` here was a clip
+  // that appeared to sync and never did.
+  const bytes = textBytes(text);
+  if (bytes > TEXT.MAX_BYTES) {
+    return emit(EV.TOAST, `Too big to send — ${Math.ceil(bytes / 1024)} KB, `
+      + `limit ${Math.floor(TEXT.MAX_BYTES / 1024)} KB`);
+  }
 
   const { payload, iv } = await cryptoBox.encrypt(aesKey, text);
   relay.send(proto.clip({ payload, iv, originId }));
@@ -326,7 +358,7 @@ function wire() {
     if (!relay.isOpen()) return false;
     encryptFrame(frame)
       .then(sealed => relay.send(sealed))
-      .catch(err => console.error("[hopboard] could not send cursor frame", err));
+      .catch(err => console.error("[realtimeclipboard] could not send cursor frame", err));
     return true;
   });
 
@@ -390,7 +422,7 @@ function wire() {
       if (added) emit(EV.TOAST, `${how} · ${name}`);
       rejected.forEach(r => emit(EV.TOAST, `${r.name}: ${r.reason}`));
     } catch (err) {
-      console.warn("[hopboard] could not add clipboard image", err);
+      console.warn("[realtimeclipboard] could not add clipboard image", err);
       emit(EV.TOAST, "Could not read that image");
     }
   });
@@ -517,6 +549,8 @@ function wire() {
 
   on("session:relock", () => retryLock());
 
+  on("ui:whatsnew", () => whatsNew.open());
+
   // A relay restart drops every socket (OI-13) and its rooms with them. On
   // reconnect the roster is rebuilt from scratch, so the peers we already knew
   // about would each be reported as a fresh arrival and fire the "a device
@@ -561,7 +595,7 @@ async function wireFiles() {
       if (!relay.isOpen()) return false;
       encryptFrame(frame)
         .then(sealed => relay.send(sealed))
-        .catch(err => console.error("[hopboard] could not retract a file", err));
+        .catch(err => console.error("[realtimeclipboard] could not retract a file", err));
       return true;
     });
 
@@ -577,11 +611,11 @@ async function wireFiles() {
       if (!relay.isOpen()) return false;
       encryptFrame(frame)
         .then(sealed => relay.send(sealed))
-        .catch(err => console.error("[hopboard] could not send signalling frame", err));
+        .catch(err => console.error("[realtimeclipboard] could not send signalling frame", err));
       return true;
     });
   } catch (err) {
-    console.warn("[hopboard] files transfer layer unavailable", err);
+    console.warn("[realtimeclipboard] files transfer layer unavailable", err);
   }
 }
 
@@ -594,16 +628,22 @@ async function wireFiles() {
 async function loadOptional() {
   // install.js is initialised directly in boot(); listing it here too would
   // register the service worker twice.
+  // Thunks, not path strings. `import(variable)` is opaque to a bundler: it
+  // cannot know what to emit, so it leaves the specifier alone and the deploy
+  // asks for ./ui/qr.js, which the bundle does not contain. Both panels then
+  // fail to load — caught, warned, and degraded exactly as designed, which is
+  // precisely why nobody would notice. A literal specifier inside a thunk keeps
+  // the laziness AND lets tools/build.mjs split each one into its own chunk.
   const features = [
-    ["./ui/historyPanel.js", "history"],
-    ["./ui/qr.js",           "qr"],
+    [() => import("./ui/historyPanel.js"), "history"],
+    [() => import("./ui/qr.js"),           "qr"],
   ];
-  for (const [path, label] of features) {
+  for (const [load, label] of features) {
     try {
-      const mod = await import(path);
+      const mod = await load();
       await mod.init?.();
     } catch (err) {
-      console.warn(`[hopboard] optional feature "${label}" not loaded:`, err.message);
+      console.warn(`[realtimeclipboard] optional feature "${label}" not loaded:`, err.message);
     }
   }
 }
@@ -622,10 +662,20 @@ async function loadOptional() {
  */
 function safeInit(label, fn) {
   try { fn(); }
-  catch (err) { console.warn(`[hopboard] "${label}" failed to init:`, err.message); }
+  catch (err) { console.warn(`[realtimeclipboard] "${label}" failed to init:`, err.message); }
 }
 
 async function boot() {
+  // A relay handed to us in `?relay=` has already been resolved by config.js;
+  // this is what makes it stick. Persisting here rather than there keeps
+  // core/config.js free of writes — it reads settings, it does not own them —
+  // and this is the composition root, which is where "apply the deployment's
+  // configuration" belongs (docs/ARCHITECTURE.md §3).
+  if (RELAY_IS_CUSTOM && storage.loadRelayUrl() !== RELAY_URL) {
+    storage.saveRelayUrl(RELAY_URL);
+    console.info("[realtimeclipboard] relay set from the address bar:", RELAY_URL);
+  }
+
   // Core UI first: these own the surfaces that report connection state, so a
   // failure here is worth knowing about loudly rather than swallowing.
   toast.init();
@@ -635,7 +685,7 @@ async function boot() {
 
   wire();
   await wireFiles().catch(err =>
-    console.warn("[hopboard] files layer unavailable:", err.message));
+    console.warn("[realtimeclipboard] files layer unavailable:", err.message));
 
   // ---- connect NOW ----------------------------------------------------
   // Deliberately not awaited: the session is the product, and it must not
@@ -643,7 +693,7 @@ async function boot() {
   // encoder. Errors are reported through the status bar.
   const { key, intent, locked } = resolveKey();
   startSession(key, intent, locked).catch(err => {
-    console.error("[hopboard] session failed to open", err);
+    console.error("[realtimeclipboard] session failed to open", err);
     state.setConnection("offline", "could not start session");
     emit(EV.TOAST, "Could not start the session — check the console");
   });
@@ -655,6 +705,9 @@ async function boot() {
   safeInit("resizers", resizer.init);
   safeInit("sync mode", syncMode.init);
   safeInit("project links", appLinks.init);
+  // Not awaited: it fetches a JSON file and, if that is slow or missing, the
+  // consequence is one banner that does not appear.
+  safeInit("what's new", () => { whatsNew.init(); });
   safeInit("hints", hints.init);
   safeInit("ad slot", ads.init);
   safeInit("peer cursors", cursors.init);
@@ -668,7 +721,7 @@ async function boot() {
   safeInit("mobile nav", mobileNav.init);
 
   console.info(
-    `[hopboard] booted · intent=${intent} locked=${!!locked} device=${device.name()}`
+    `[realtimeclipboard] booted · intent=${intent} locked=${!!locked} device=${device.name()}`
   );
 }
 

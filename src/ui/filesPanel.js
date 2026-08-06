@@ -36,7 +36,7 @@ import * as state from "../core/state.js";
 import * as registry from "../files/registry.js";
 import * as transfer from "../files/transfer.js";
 import { iconFor, formatSize } from "../files/thumbs.js";
-import { $, esc, on as bind } from "./dom.js";
+import { $, esc, on as bind, setHTML } from "./dom.js";
 
 const S = registry.STATE;
 
@@ -197,7 +197,7 @@ function mountClearAll() {
   btn.type = "button";
   btn.title = "Remove every file from this session";
   btn.setAttribute("aria-label", "Remove every file from this session");
-  btn.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true">${BIN_PATH}</svg>`;
+  setHTML(btn, `<svg viewBox="0 0 24 24" aria-hidden="true">${BIN_PATH}</svg>`);
 
   // ui/panes.js already ignores clicks on a button inside a pane header, but
   // this must not depend on that staying true: collapsing the pane as a side
@@ -222,7 +222,7 @@ function render() {
   // role/tabindex rather than a <button>: a tile CONTAINS buttons (cancel,
   // remove), and a button inside a button is invalid and unpredictable in
   // assistive tech. Enter/Space are handled below, which a div does not get free.
-  $("grid").innerHTML = items.map(f => `
+  setHTML($("grid"), items.map(f => `
     <div class="tile${tileClass(f)}" data-id="${esc(f.id)}" title="${esc(tooltip(f))}"
          role="button" tabindex="0" aria-label="${esc(tooltip(f))}">
       <div class="thumb">${f.thumb
@@ -237,7 +237,7 @@ function render() {
           : `<div class="sz">${esc(subtitle(f))}</div>`}
       </div>
       <div class="bar${f.path === "relay" ? " viarelay" : ""}" style="width:${f.progress}%"></div>
-    </div>`).join("");
+    </div>`).join(""));
 }
 
 function tileClass(f) {
@@ -443,7 +443,7 @@ function drawPrompts() {
     return;
   }
 
-  region.innerHTML = [...prompts].map(([token, { req, expires }]) => `
+  setHTML(region, [...prompts].map(([token, { req, expires }]) => `
       <div class="card" data-token="${esc(token)}">
         <div class="t">A device wants one of your files</div>
         <div class="f">${esc(req.name)} <span class="s">${formatSize(req.size)}</span></div>
@@ -458,7 +458,7 @@ function drawPrompts() {
                   title="Stop asking about this device until this tab closes">Allow all</button>
           <button class="btn" data-allow="${esc(token)}">Send it</button>
         </div>
-      </div>`).join("");
+      </div>`).join(""));
 }
 
 function onPromptClick(e) {
@@ -515,7 +515,7 @@ function confirmAction({ title, file, warning, confirm }) {
 
     // esc() on the title and the button label as well as the file name: the
     // name is chosen by a peer, and the title quotes counts derived from it.
-    el.innerHTML = `<div class="card">
+    setHTML(el, `<div class="card">
       <div class="t">${esc(title)}</div>
       ${file ? `<div class="f">${esc(file)}</div>` : ""}
       <div class="w">${esc(warning)}</div>
@@ -523,7 +523,7 @@ function confirmAction({ title, file, warning, confirm }) {
         <button class="btn ghost" type="button" data-no>Keep</button>
         <button class="btn bad" type="button" data-yes>${esc(confirm)}</button>
       </div>
-    </div>`;
+    </div>`);
 
     el.onclick = e => {
       if (e.target.closest("[data-yes]")) return closeConfirm(true);

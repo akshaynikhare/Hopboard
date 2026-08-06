@@ -244,7 +244,7 @@ state.setKey({ key: "ROOMA1", roomHash: "roomA" });
 ok("a device nobody vouched for is not allowed", transfer.isPeerAllowed("peerZ") === false);
 ok("allowing a device takes", transfer.allowPeer("peerZ") === true && transfer.isPeerAllowed("peerZ"));
 ok("the allowance is stored against its room, in session storage",
-   (store.get("hopboard.allow") || "").includes("roomA"), store.get("hopboard.allow"));
+   (store.get("realtimeclipboard.allow") || "").includes("roomA"), store.get("realtimeclipboard.allow"));
 ok("allowing one device does not allow another", transfer.isPeerAllowed("peerY") === false);
 
 // The security property: rotating the key is how a device is thrown out of a

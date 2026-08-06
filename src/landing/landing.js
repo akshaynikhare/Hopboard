@@ -1,5 +1,5 @@
 /**
- * Hopboard — landing page behaviour.
+ * RealtimeClipboard — landing page behaviour.
  *
  * Three jobs, none of which may block first paint:
  *
@@ -151,6 +151,17 @@ const STEPS = [
 ];
 const STILL = "Encrypted here, decrypted there";
 
+/**
+ * Where the pill parks when motion is turned off.
+ *
+ * Not the midpoint, which is where it used to sit: on both layouts the middle
+ * of the path IS the relay node, so a reduced-motion visitor got the pill
+ * permanently parked over "relay · ciphertext only" — the one caption that
+ * explains what the middle of the diagram is. A third of the way along is still
+ * plainly in transit and covers nothing.
+ */
+const REST = 0.3;
+
 const TRAVEL_MS = 11000;   // one end to the other
 const HOLD_MS   = 1600;    // pause on arrival before it starts again
 
@@ -225,8 +236,12 @@ start("flow", function flow() {
       n.el = el;
     }
 
+    // Marked, so the caption can carry the same colour as the curve it names.
+    // Two routes drawn in two colours and captioned in one grey leaves the
+    // reader matching them by position, which is exactly the work a legend is
+    // supposed to save them.
     const fl = document.createElement("div");
-    fl.className = "flabel";
+    fl.className = "flabel files";
     fl.textContent = "files · straight between machines";
     labels.appendChild(fl);
     layout.filesLabel.el = fl;
@@ -244,6 +259,7 @@ start("flow", function flow() {
   function position() {
     metrics = measure();
     if (!metrics) return;
+    pillW = 0;      // the breakpoint changes the pill's font and padding
     for (const n of layout.nodes) {
       const p = toPx(n.x, n.y);
       n.el.style.left = p.x + "px";
@@ -255,21 +271,47 @@ start("flow", function flow() {
     f.el.style.left = fp.x + "px";
     f.el.style.top = fp.y + "px";
     f.el.style.transform = OFFSETS[f.place](layout.gap);
-    place(reduced.matches ? 0.5 : 0);
+    place(reduced.matches ? REST : 0);
   }
+
+  /**
+   * Width of the pill as it currently reads.
+   *
+   * Invalidated when the text changes rather than measured every frame: reading
+   * offsetWidth forces a style recalculation, and doing that in the same frame
+   * we write a transform is the classic layout thrash. The label changes five
+   * times in eleven seconds; the transform changes sixty times a second.
+   */
+  let pillW = 0;
 
   function place(t) {
     if (!metrics || !len) return;
-    const p = text.getPointAtLength(len * t);
-    const px = toPx(p.x, p.y);
-    pill.style.transform = `translate(${px.x}px, ${px.y}px) translate(-50%, -50%)`;
 
+    // Label first, so the measurement below is of the string we are about to
+    // show and not the one before it.
     let label = STILL;
     if (!reduced.matches) {
       label = STEPS[0].text;
       for (const s of STEPS) if (t >= s.at) label = s.text;
     }
-    if (pillText.textContent !== label) pillText.textContent = label;
+    if (pillText.textContent !== label) { pillText.textContent = label; pillW = 0; }
+    if (!pillW) pillW = pill.offsetWidth;
+
+    const p = text.getPointAtLength(len * t);
+    const px = toPx(p.x, p.y);
+
+    // The pill is HTML, so unlike the path it can hang outside the stage. On the
+    // tall layout the path passes within 90px of the right edge and the pill is
+    // wider than that — unclamped it slid off the screen, taking the relay's
+    // caption with it. Clamp to the stage, unless the pill is wider than the
+    // stage itself, in which case centred is the least-bad answer.
+    const stageW = stage.clientWidth;
+    const half = pillW / 2;
+    const x = pillW + 8 > stageW
+      ? stageW / 2
+      : Math.min(Math.max(px.x, half + 4), stageW - half - 4);
+
+    pill.style.transform = `translate(${x}px, ${px.y}px) translate(-50%, -50%)`;
   }
 
   function frame(now) {
@@ -282,7 +324,7 @@ start("flow", function flow() {
   function run() {
     const want = onScreen && !document.hidden && !reduced.matches;
     if (want && !raf) { started = 0; raf = requestAnimationFrame(frame); }
-    if (!want && raf) { cancelAnimationFrame(raf); raf = 0; if (reduced.matches) place(0.5); }
+    if (!want && raf) { cancelAnimationFrame(raf); raf = 0; if (reduced.matches) place(REST); }
   }
 
   build();

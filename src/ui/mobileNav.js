@@ -27,7 +27,7 @@
  * is a bad trade. This is a nav with a current item, which is what it is.
  */
 
-import { $, esc } from "./dom.js";
+import { $, esc, setHTML } from "./dom.js";
 
 /** Must match the breakpoint in styles/mobile.css. */
 const NARROW = "(max-width:900px)";
@@ -70,7 +70,7 @@ export function init() {
   // Local constants, not user input — escaped anyway, because the repo rule is
   // "everything interpolated into innerHTML goes through esc()" and an
   // exception you have to remember is not a rule.
-  host.innerHTML = `
+  setHTML(host, `
     <nav class="mnav" aria-label="Views">
       ${views.map(v => `
         <button type="button" class="mnavbtn" data-view="${esc(v.id)}">
@@ -79,7 +79,7 @@ export function init() {
           <span class="mdot" hidden></span>
           <span class="vh" data-alert hidden>needs attention</span>
         </button>`).join("")}
-    </nav>`;
+    </nav>`);
 
   host.addEventListener("click", e => {
     const btn = e.target.closest("[data-view]");

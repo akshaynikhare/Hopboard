@@ -20,6 +20,36 @@ library, or the `@import` chain in `styles/main.css` becomes a visible load
 delay. At that point add a concatenation step at *deploy* time — not a build step
 in development.
 
+### That happened. Here is what it cost.
+
+Two of the three conditions arrived together — 47 modules and a 17-deep serial
+`@import` chain — so `tools/build.mjs` now assembles the deploy with esbuild.
+The trade was taken exactly as written above:
+
+- **`src/` is untouched.** Development is still `python -m http.server`, the
+  `.husky` hooks still check real modules, and the module graph on disk is still
+  the thing you read. The bundle exists only inside `_site`.
+- **The deploy is no longer a file copy.** It runs `npm ci` and one script. That
+  is the cost, and it is the reason this was deferred until both triggers fired.
+- **What it bought:** 113 KB → ~35 KB gzip of eager JavaScript and 40 requests →
+  2; CSS 24 KB → 6 KB and 17 serial requests → 1.
+
+Two things bundling broke that nothing else caught, both worth knowing before
+touching the build:
+
+1. **`import.meta.url` is not portable across bundling.** Six modules resolved
+   asset paths from it, which encodes how deep a file sits in the tree — and
+   bundling moves every one of them at once. `install.js` resolved the app root
+   one level too high and silently broke the service-worker scope and the PWA
+   install criteria (OI-9). `core/paths.js` now owns this, from
+   `document.baseURI`, and the static check forbids the old pattern.
+2. **`import(variable)` is opaque to a bundler.** The optional-panel loader
+   passed path strings, so esbuild could not see them, left the specifiers
+   alone, and both panels 404'd in the deploy — caught, warned and degraded
+   exactly as designed, which is precisely why it would have shipped. Literal
+   specifiers inside thunks keep the laziness and stay analysable.
+   `tests/bundle.mjs` boots the built output and fails on either.
+
 The one constraint this imposes: **ES modules require HTTP**. Opening
 `index.html` from `file://` fails on CORS. Use `python -m http.server 8080`.
 
@@ -63,8 +93,10 @@ src/
     hints.js            getting-started overlay
     panes.js            collapsible sidebar panes (delegated)
     resizer.js          draggable splitters
-    qr.js               QR modal
+    modal.js            the one focus-trapping dialog shell
+    qr.js               QR modal (predates modal.js; still has its own copy)
     lockDialog.js       the PIN prompt for locked sessions
+    whatsNew.js         release notes, read from changelog.json
     install.js          PWA install + service worker
     ads.js              the single ad placeholder
   styles/
@@ -149,7 +181,8 @@ were replaced tomorrow.
 | Add a UI panel | new `ui/*.js` + `styles/*.css`, register in `main.js` |
 | Change a colour | `styles/tokens.css` |
 | Add a setting | `state.js` defaults → a row in the right menu in `sessionPanel.js`. No markup in `app.html`: the menus render from state when opened |
-| Add a modal | Copy the `ui/qr.js` pattern — inert shell, tab ring, Escape, focus restore — and mount to `document.body`, **never** `#mount-modals`. `filesPanel.js` owns that node and rewrites its `innerHTML` on a 500 ms tick, which would delete a dialog out from under its own focus trap |
+| Add a modal | `ui/modal.js` — `show({className, html, labelledBy, onClose})`. It owns the inert shell, the tab ring, Escape, and focus restore. Do **not** hand-roll another one, and do not mount to `#mount-modals`: `filesPanel.js` owns that node and rewrites its `innerHTML` on a 500 ms tick, which would delete a dialog out from under its own focus trap |
+| Release something | `npm run release -- minor`. Tests run in a git hook, not on GitHub; a tag is what deploys — [RELEASING.md](RELEASING.md) |
 
 ### Adding a feature, worked example
 
@@ -180,7 +213,7 @@ These are load-bearing. Breaking one is a vulnerability, not a bug.
 | The lock marker is parsed **before** key normalisation | `core/keys.js` `parseFragment()` — normalising first turns `#!ABCDEF` into the different, valid key `ABCDEF` |
 | The lock beacon is planted only into a room with no retained clip | `main.js` on `EV.ROOM_STATE` — it is itself a clip, and would otherwise overwrite the last-clip replay of FR-3.3 |
 | A locked session claims "Private" only once something has actually decrypted | `state.setVerified()` → `ui/sessionPanel.js` `renderLock()` |
-| Peer content is escaped before entering `innerHTML` | `ui/dom.js` `esc()` |
+| Peer content is escaped before entering `innerHTML` | `ui/dom.js` `esc()`, and `setHTML()` is the only sink — enforced by Trusted Types in the CSP, and by the static check |
 | `lastSent` and the suppression window are set *before* writing to the OS clipboard | `clipboard/capture.js` `apply()` |
 | The AES key is derived once per session, never per message — and is cleared on leave, rotate and rejoin | `core/crypto.js` cache + `clearCache()` |
 | Rejected files always report why | `files/registry.js` → `filesPanel.js` |

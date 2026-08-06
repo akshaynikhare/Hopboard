@@ -1,0 +1,44 @@
+# Two jobs: keep commits off the release branch, and run the checks that used
+# to run in CI.
+#
+# The checks are here rather than on GitHub deliberately — the only workflow
+# left is a tag-triggered deploy. CI that runs after the push tells you about a
+# mistake once it is already in the history; this refuses to make the mistake.
+# The cost is that the gate is only as good as the machine it runs on, which is
+# a trade being made knowingly.
+#
+# Only the offline suites run here, because a pre-commit hook that needs a
+# network is a pre-commit hook that fails on a train. The ones that talk to a
+# relay run in pre-push.
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# ---------------------------------------------------------------- branch guard
+#
+# main is what a release tag is cut from, so it is a place changes arrive at,
+# not a place they are written. --no-verify still gets through, which is
+# correct: this is a guard rail, not a permission system, and the person with
+# push access is allowed to overrule it.
+if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
+  echo ""
+  echo "  Refusing to commit directly to $BRANCH."
+  echo ""
+  echo "  Work on a branch and merge it:"
+  echo "      git switch -c my-change"
+  echo "      git commit ..."
+  echo ""
+  echo "  If you meant it:  git commit --no-verify"
+  echo ""
+  exit 1
+fi
+
+# ------------------------------------------------------------------- the gate
+echo "Running local checks (this is what GitHub used to do) …"
+
+npm run --silent verify || {
+  echo ""
+  echo "  Checks failed — nothing committed."
+  echo "  Run 'npm run verify' to see the detail."
+  echo ""
+  exit 1
+}

@@ -22,7 +22,13 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 const SRC = process.argv[2] || "ne_110m_land.geojson";
 const OUT = "src/landing/land.js";
-const STEP = 1.5;
+/**
+ * Degrees a side. Pick it against the size the globe is DRAWN at, not against
+ * how much detail the source has: at a 600px sphere one degree is about four
+ * pixels at the equator, so a finer grid buys nothing you could see and costs
+ * bytes on the one page search engines fetch.
+ */
+const STEP = +(process.argv[3] || 1);
 const W = Math.round(360 / STEP);
 const H = Math.round(180 / STEP);
 
@@ -85,7 +91,7 @@ const b64 = Buffer.from(bytes).toString("base64");
 const lines = b64.match(/.{1,96}/g).map(l => `  "${l}" +`).join("\n").replace(/ \+$/, "");
 
 writeFileSync(OUT, `/**
- * Hopboard — the land mask the globe draws its continents from.
+ * RealtimeClipboard — the land mask the globe draws its continents from.
  *
  * GENERATED FILE. Do not hand-edit: run \`node tools/build-land-mask.mjs\`
  * against Natural Earth's 1:110m land polygons and commit what comes out. The

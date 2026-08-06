@@ -1,11 +1,11 @@
-# Hopboard — an end-to-end encrypted online clipboard that syncs text between devices
+# RealtimeClipboard — an end-to-end encrypted online clipboard that syncs text between devices
 
-Hopboard is a free, open-source online clipboard: open it on two devices, type the
+RealtimeClipboard is a free, open-source online clipboard: open it on two devices, type the
 same five-character key, and whatever you copy on one is ready to paste on the
 other. No account, no install, no database. Files travel peer-to-peer and never
 touch the server.
 
-**[Try it → akshaynikhare.github.io/Hopboard](https://akshaynikhare.github.io/Hopboard/)**
+**[Try it → akshaynikhare.github.io/RealtimeClipboard](https://akshaynikhare.github.io/RealtimeClipboard/)**
 
 ```
   Machine A  ──┐                                  ┌──  Machine B
@@ -42,15 +42,15 @@ Moving a snippet between a work laptop, a desktop and a phone is
 disproportionately annoying. The alternatives want an account, an install with
 admin rights, or an email to yourself. This wants a five-character key.
 
-## How Hopboard compares to Snapdrop, PairDrop, LocalSend and AirDrop
+## How RealtimeClipboard compares to Snapdrop, PairDrop, LocalSend and AirDrop
 
 The nearby tools are mostly *file droppers*: you pick a device and push a file at
-it. Hopboard is a clipboard — what you copy shows up ready to paste, without
+it. RealtimeClipboard is a clipboard — what you copy shows up ready to paste, without
 picking anything.
 
 | Tool | Account | Install | Across networks | Lands on system clipboard | Files |
 |---|---|---|---|---|---|
-| **Hopboard** | None | None — browser | Yes | **Yes** | P2P, 5 MB |
+| **RealtimeClipboard** | None | None — browser | Yes | **Yes** | P2P, 5 MB |
 | PairDrop | None | None — browser | Yes, via a 6-digit code | No — you send a message | P2P |
 | Snapdrop | Optional since the LimeWire acquisition | None — browser | Same network only | No | P2P |
 | LocalSend | None | Native app on both ends | Same network only | No | Unlimited, LAN |
@@ -85,7 +85,7 @@ with a short key, and share a single clipboard between them.
 
 ### How do I sync my clipboard between my phone and my PC?
 
-Open Hopboard on both, type the same five-character key on each, and copy
+Open RealtimeClipboard on both, type the same five-character key on each, and copy
 something. It arrives on the other device ready to paste. Nothing to install, so
 it works on a machine where you do not have admin rights.
 
@@ -107,7 +107,7 @@ credential — anyone who learns it can read that session while it is open.
 ### Can it read my clipboard in the background?
 
 No, and neither can any other web app on any browser. `readText()` requires
-window focus. You switch to the Hopboard tab and it picks up what you copied.
+window focus. You switch to the RealtimeClipboard tab and it picks up what you copied.
 
 ### Which browsers work?
 
@@ -149,31 +149,68 @@ python -m http.server 8080
 cd backend
 pip install -r requirements.txt
 python -m uvicorn main:app --port 8000
-python test_relay.py ws://127.0.0.1:8000    # 45-check protocol gate
+python test_relay.py ws://127.0.0.1:8000    # 51-check protocol gate
 python test_sse.py http://127.0.0.1:8000    # 33-check fallback gate
 ```
+
+The relay must be on **port 8000**: `src/core/config.js` points the app there
+automatically when the page is served from localhost, so nothing needs
+configuring — but nothing else will be found either. Open `app.html#DEVKEY` in
+two windows to watch a clip cross between them.
 
 With the relay running, `node tests/fallback.mjs ws://127.0.0.1:8000` exercises
 the client's WebSocket → SSE failover with WebSockets simulated as blocked.
 
-See [backend/README.md](backend/README.md) for deployment, **including the
-replica-pinning step that must not be skipped.**
+Full setup, the service-worker cache trap, and how to check a UI change:
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). For deployment see
+[backend/README.md](backend/README.md), **including the replica-pinning step
+that must not be skipped.**
+
+## Contributing and releasing
+
+```bash
+npm install                          # sets up the git hooks
+git switch -c fix/whatever           # main refuses direct commits
+git commit -m "fix(scope): what changed"
+```
+
+[CONTRIBUTING.md](CONTRIBUTING.md) has the full loop, the commit convention, and
+the boundaries the static checks enforce. Security problems go through
+[SECURITY.md](SECURITY.md), not the issue tracker.
+
+The tests run **locally, in a git hook, before the commit exists** — there is no
+CI. GitHub's only workflow copies files to Pages, and it runs on a version tag
+and nothing else. The reasoning, the trade that comes with it, and the commit
+message format the changelog is generated from are in
+[docs/RELEASING.md](docs/RELEASING.md).
+
+```bash
+npm run verify                       # what the pre-commit hook runs
+npm test                             # everything, needs a relay
+npm run release -- minor             # verify, changelog, tag, push, deploy
+```
 
 ## Docs
 
 | Doc | What it covers |
 |---|---|
 | [PRD.md](docs/PRD.md) | Requirements, architecture, security model, open issues |
+| [DEVELOPMENT.md](docs/DEVELOPMENT.md) | Running it locally, the test suite, the landing-page grid and globe, and the traps |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Module layout, boundaries, and how to add a feature |
+| [RELEASING.md](docs/RELEASING.md) | Hooks instead of CI, tag-triggered deploys, and the generated changelog |
+| [CHANGELOG.md](CHANGELOG.md) | What shipped in each release — generated from the commits |
 | [CLIPBOARD-FLOW.md](docs/CLIPBOARD-FLOW.md) | How the browser reaches the OS clipboard, and why background capture is impossible |
 | [P2P-FILES.md](docs/P2P-FILES.md) | Thumbnails over the relay, bytes over WebRTC, and the corporate-network problem |
 | [M0-RESULTS.md](docs/M0-RESULTS.md) | Transport gate results |
 | [SEO.md](docs/SEO.md) | Search, answer-engine and distribution strategy |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, the commit convention, and the boundaries the checks enforce |
+| [SECURITY.md](SECURITY.md) | Reporting a vulnerability privately, and what is in scope |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Contributor Covenant 2.1 |
 
 ## Known limitations
 
 - **No background clipboard capture.** No web app can do this on any browser —
-  `readText()` requires window focus. You switch to Hopboard and it grabs what you
+  `readText()` requires window focus. You switch to RealtimeClipboard and it grabs what you
   copied. [Why](docs/CLIPBOARD-FLOW.md).
 - **P2P file transfer may fail on corporate networks**, which block the UDP that
   WebRTC needs. Falls back to relay-chunked transfer, labelled visibly.

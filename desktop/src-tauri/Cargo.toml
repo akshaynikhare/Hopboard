@@ -1,0 +1,35 @@
+[package]
+name = "realtimeclipboard"
+version = "0.1.0"
+description = "An end-to-end encrypted clipboard shared between your devices"
+authors = ["akshaynikhare"]
+license = "MIT"
+repository = "https://github.com/akshaynikhare/RealtimeClipboard"
+edition = "2021"
+# webkit2gtk 4.1 is the real floor on Linux, which is roughly Ubuntu 22.04 and
+# Fedora 36. Older distributions get the browser or the CLI — see
+# help/install/ "Older distributions".
+rust-version = "1.77"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-autostart = "2"
+
+[features]
+# Used by `tauri dev` only.
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+# The binary ships to people who were told this is a small app, so it should be.
+# strip and LTO together take roughly a third off.
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

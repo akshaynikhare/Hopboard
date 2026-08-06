@@ -1,0 +1,29 @@
+# Blank issues stay ON.
+#
+# Turning them off is the usual advice and it is wrong for a project this size:
+# the cost is a stranger with a real report bouncing off a form that does not
+# fit what they came to say. A slightly untidy issue is worth more than a
+# missing one.
+blank_issues_enabled: true
+
+contact_links:
+  - name: Clipboard sync is not working
+    url: https://akshaynikhare.github.io/RealtimeClipboard/help/clipboard-sync-not-working/
+    about: The common causes first — blocked WebSockets, clipboard permission, and why a browser will not read the clipboard of an unfocused tab.
+
+  - name: How it works, and what it deliberately does not do
+    url: https://github.com/akshaynikhare/RealtimeClipboard/blob/main/docs/PRD.md
+    about: The security model, the threat model, and the settled decisions — no extension, no accounts, no server-side storage.
+
+  # Named separately from the bug form on purpose. Someone who has found a way
+  # to read another person's clipboard should not be filing a public issue that
+  # tells everyone else how, and SECURITY.md is not somewhere they will think to
+  # look while they are staring at the "new issue" screen.
+  #
+  # This link only works because private vulnerability reporting is turned on for
+  # the repo. With it off, an outside reporter gets a form they cannot submit,
+  # which is worse than not offering the route at all — so if it is ever
+  # disabled, point this at the email in SECURITY.md instead.
+  - name: Found a security problem?
+    url: https://github.com/akshaynikhare/RealtimeClipboard/security/advisories/new
+    about: Report it privately instead of opening a public issue — a working attack on someone's session should not be published before it is fixed.

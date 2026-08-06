@@ -4,28 +4,35 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html, which is the page that
+     actually needs them; repeating the argument on five pages would guarantee
+     five versions of it. The landing page needs connect-src for the relay too —
+     src/landing/globe.js fetches /stats. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+
 <!--
   Title and description target "online clipboard" and "clipboard sync", which is
   what people actually type. The earlier wording led with "shared clipboard" —
   that phrase belongs to VirtualBox and RDP, and would have brought the wrong
   audience even if it had ranked.
 -->
-<title>Online Clipboard — Sync Text Between Devices, No Login | Hopboard</title>
+<title>Online Clipboard — Sync Text Between Devices, No Login | RealtimeClipboard</title>
 <meta name="description" content="Free online clipboard that syncs text between Windows, macOS, Android and ChromeOS. Type one five-character key on each device — no account, no install, end-to-end encrypted, files sent peer-to-peer.">
-<link rel="canonical" href="https://akshaynikhare.github.io/Hopboard/">
+<link rel="canonical" href="https://akshaynikhare.github.io/RealtimeClipboard/">
 <meta name="theme-color" content="#007acc">
 <link rel="manifest" href="./manifest.webmanifest">
 <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
 
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Hopboard">
+<meta property="og:site_name" content="RealtimeClipboard">
 <meta property="og:title" content="Online Clipboard — Sync Text Between Devices, No Login">
 <meta property="og:description" content="Copy on one machine, paste on another. A five-character key, no account, end-to-end encrypted. Works across different networks, not just the same Wi-Fi.">
-<meta property="og:url" content="https://akshaynikhare.github.io/Hopboard/">
-<meta property="og:image" content="https://akshaynikhare.github.io/Hopboard/social/og-card.png">
+<meta property="og:url" content="https://akshaynikhare.github.io/RealtimeClipboard/">
+<meta property="og:image" content="https://akshaynikhare.github.io/RealtimeClipboard/social/og-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Hopboard — an online clipboard shared between a laptop and a phone with a five-character key.">
+<meta property="og:image:alt" content="RealtimeClipboard — an online clipboard shared between a laptop and a phone with a five-character key.">
 <meta name="twitter:card" content="summary_large_image">
 
 <!--
@@ -41,50 +48,50 @@
   "@graph": [
     {
       "@type": "Organization",
-      "@id": "https://akshaynikhare.github.io/Hopboard/#org",
-      "name": "Hopboard",
-      "url": "https://akshaynikhare.github.io/Hopboard/",
-      "logo": "https://akshaynikhare.github.io/Hopboard/icons/icon-512.png",
-      "description": "Hopboard builds a free, end-to-end encrypted online clipboard that syncs text between devices and sends files peer-to-peer.",
+      "@id": "https://akshaynikhare.github.io/RealtimeClipboard/#org",
+      "name": "RealtimeClipboard",
+      "url": "https://akshaynikhare.github.io/RealtimeClipboard/",
+      "logo": "https://akshaynikhare.github.io/RealtimeClipboard/icons/icon-512.png",
+      "description": "RealtimeClipboard builds a free, end-to-end encrypted online clipboard that syncs text between devices and sends files peer-to-peer.",
       "sameAs": [
-        "https://github.com/akshaynikhare/Hopboard"
+        "https://github.com/akshaynikhare/RealtimeClipboard"
       ]
     },
     {
       "@type": "WebSite",
-      "@id": "https://akshaynikhare.github.io/Hopboard/#website",
-      "name": "Hopboard",
-      "url": "https://akshaynikhare.github.io/Hopboard/",
-      "publisher": { "@id": "https://akshaynikhare.github.io/Hopboard/#org" },
+      "@id": "https://akshaynikhare.github.io/RealtimeClipboard/#website",
+      "name": "RealtimeClipboard",
+      "url": "https://akshaynikhare.github.io/RealtimeClipboard/",
+      "publisher": { "@id": "https://akshaynikhare.github.io/RealtimeClipboard/#org" },
       "inLanguage": "en"
     },
     {
       "@type": "WebPage",
-      "@id": "https://akshaynikhare.github.io/Hopboard/#webpage",
-      "url": "https://akshaynikhare.github.io/Hopboard/",
+      "@id": "https://akshaynikhare.github.io/RealtimeClipboard/#webpage",
+      "url": "https://akshaynikhare.github.io/RealtimeClipboard/",
       "name": "Online Clipboard — Sync Text Between Devices, No Login",
       "description": "Free online clipboard that syncs text between Windows, macOS, Android and ChromeOS with a five-character key. No account, end-to-end encrypted.",
-      "isPartOf": { "@id": "https://akshaynikhare.github.io/Hopboard/#website" },
-      "about": { "@id": "https://akshaynikhare.github.io/Hopboard/#app" },
+      "isPartOf": { "@id": "https://akshaynikhare.github.io/RealtimeClipboard/#website" },
+      "about": { "@id": "https://akshaynikhare.github.io/RealtimeClipboard/#app" },
       "inLanguage": "en",
       "datePublished": "2026-08-05",
       "dateModified": "2026-08-06"
     },
     {
       "@type": "WebApplication",
-      "@id": "https://akshaynikhare.github.io/Hopboard/#app",
-      "name": "Hopboard",
+      "@id": "https://akshaynikhare.github.io/RealtimeClipboard/#app",
+      "name": "RealtimeClipboard",
       "applicationCategory": "UtilitiesApplication",
       "applicationSubCategory": "Online clipboard",
       "operatingSystem": "Windows, macOS, Android, ChromeOS, Linux",
       "browserRequirements": "Requires a Chromium-based browser for automatic clipboard capture. Firefox and Safari can send and receive pasted content.",
-      "url": "https://akshaynikhare.github.io/Hopboard/",
-      "installUrl": "https://akshaynikhare.github.io/Hopboard/app.html",
+      "url": "https://akshaynikhare.github.io/RealtimeClipboard/",
+      "installUrl": "https://akshaynikhare.github.io/RealtimeClipboard/app.html",
       "description": "Online clipboard that syncs text between your own devices with a five-character key. End-to-end encrypted in the browser, no account, no install, and files travel peer-to-peer without touching the server.",
       "isAccessibleForFree": true,
-      "license": "https://github.com/akshaynikhare/Hopboard/blob/main/LICENSE",
+      "license": "https://github.com/akshaynikhare/RealtimeClipboard/blob/main/LICENSE",
       "softwareVersion": "0.1.0",
-      "publisher": { "@id": "https://akshaynikhare.github.io/Hopboard/#org" },
+      "publisher": { "@id": "https://akshaynikhare.github.io/RealtimeClipboard/#org" },
       "featureList": [
         "Sync clipboard text between devices with a five-character key",
         "Works across different networks — not limited to one Wi-Fi",
@@ -105,7 +112,12 @@
      the stylesheet is small and the script is a module — so nothing here
      competes with first paint. -->
 <link rel="stylesheet" href="./src/landing/landing.css">
+<!-- redirect.js FIRST: deferred modules run in document order, and a visitor who
+     arrived on a share link should be sent to the app before anything else
+     starts building the page they are not going to see. -->
+<script type="module" src="./src/landing/redirect.js"></script>
 <script type="module" src="./src/landing/landing.js"></script>
+<script type="module" src="./src/landing/faq.js"></script>
 </head>
 <body>
 
@@ -134,11 +146,15 @@
           <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
           <path d="M9 13l2 2 4-4"/>
         </svg>
-        <b>Hopboard</b>
+        <b>RealtimeClipboard</b>
       </a>
       <span class="tag">pre-alpha</span>
       <span class="spacer"></span>
-      <a class="tlink" href="https://github.com/akshaynikhare/Hopboard">GitHub</a>
+      <!-- Download before GitHub: someone reading the landing page is deciding
+           whether to use this, and "which of my machines can run it" is a
+           closer question than "show me the source". -->
+      <a class="tlink" href="./download/">Download</a>
+      <a class="tlink" href="https://github.com/akshaynikhare/RealtimeClipboard">GitHub</a>
       <a class="tlink strong" href="./app.html">Open the app</a>
     </div>
   </div>
@@ -261,9 +277,9 @@
         </div>
       </header>
       <ol class="steps">
-        <li>Open Hopboard on the first machine. It generates a key like <code>D75LV</code>.</li>
+        <li>Open RealtimeClipboard on the first machine. It generates a key like <code>D75LV</code>.</li>
         <li>Type that key on your second machine, or scan the QR code.</li>
-        <li>Copy anything. Switch to Hopboard and it is already on the way.</li>
+        <li>Copy anything. Switch to RealtimeClipboard and it is already on the way.</li>
         <li>On the other device it lands straight on the system clipboard. Just paste.</li>
       </ol>
     </div>
@@ -290,7 +306,7 @@
              loads. -->
         <div class="adbox"><span class="adph">Ad slot · 728 × 90</span></div>
         <p class="hint adnote">
-          Hopboard is free, has no accounts and sells nothing. This one slot pays for
+          RealtimeClipboard is free, has no accounts and sells nothing. This one slot pays for
           the relay server that keeps your devices connected. There are no ads inside
           the app itself — the page holding your clipboard runs no third-party code,
           and that is not going to change.
@@ -353,10 +369,10 @@
       <header class="shead">
         <p class="eyebrow">Where this fits</p>
         <div class="htext">
-          <h2>Hopboard vs Snapdrop, PairDrop, LocalSend and AirDrop</h2>
+          <h2>RealtimeClipboard vs Snapdrop, PairDrop, LocalSend and AirDrop</h2>
           <p>
             The nearby tools are mostly <em>file droppers</em>: you pick a device and
-            push a file at it. Hopboard is a clipboard — what you copy shows up ready
+            push a file at it. RealtimeClipboard is a clipboard — what you copy shows up ready
             to paste on the other machine, without picking anything.
           </p>
         </div>
@@ -369,7 +385,7 @@
            aria-label="Comparison table — scrolls sideways">
         <table class="cmp">
           <caption class="sr-only">
-            Hopboard compared with Snapdrop, PairDrop, LocalSend, AirDrop, KDE Connect
+            RealtimeClipboard compared with Snapdrop, PairDrop, LocalSend, AirDrop, KDE Connect
             and Pushbullet, by account, install, network, system clipboard, files
             and platforms.
           </caption>
@@ -386,7 +402,7 @@
           </thead>
           <tbody>
             <tr class="me">
-              <th scope="row">Hopboard</th>
+              <th scope="row">RealtimeClipboard</th>
               <td class="y">None</td>
               <td class="y">None — browser</td>
               <td class="y">Yes</td>
@@ -454,7 +470,7 @@
 
       <p class="hint">
         Checked against each project's own documentation in August 2026. If something
-        here has gone out of date, <a href="https://github.com/akshaynikhare/Hopboard/issues">open
+        here has gone out of date, <a href="https://github.com/akshaynikhare/RealtimeClipboard/issues">open
         an issue</a> and it will be corrected.
       </p>
     </div>
@@ -526,7 +542,7 @@
               copy while the session is open, and request your files. Treat it like one.</li>
           <li><b>It cannot watch your clipboard in the background.</b> No web app can, on
               any browser — reading the clipboard requires the window to be focused. You
-              switch to Hopboard and it picks up what you copied.</li>
+              switch to RealtimeClipboard and it picks up what you copied.</li>
           <li><b>Live mode shares everything you copy</b>, including passwords you copied
               for some unrelated reason. Manual mode exists for exactly that reason.</li>
           <li><b>Peer-to-peer file transfer often fails on corporate networks</b>, which
@@ -553,93 +569,143 @@
     <div class="in">
       <header class="shead">
         <p class="eyebrow">Questions</p>
-        <div class="htext"><h2>Online clipboard questions, answered</h2></div>
+        <div class="htext">
+          <h2>Online clipboard questions, answered</h2>
+          <!-- hidden until faq.js reveals it: with no JS the button cannot do
+               anything, and a dead control is worse than no control. The
+               accordion itself needs none — <details> opens on its own. -->
+          <button type="button" class="faqall" id="faqAll"
+                  aria-expanded="false" aria-controls="faqList" hidden>
+            <span class="faqall-i" aria-hidden="true"></span>
+            <span class="faqall-t">Expand all</span>
+          </button>
+        </div>
       </header>
 
-      <div class="faq">
-        <h3>What is an online clipboard?</h3>
-        <p>
-          An online clipboard is a web page that holds what you copy on one device so
-          you can paste it on another. Instead of emailing yourself a link or plugging
-          in a cable, both devices open the same page, identify themselves with a short
-          key, and share a single clipboard between them.
-        </p>
+      <div class="faq" id="faqList">
+        <details class="qa">
+          <summary><h3>What is an online clipboard?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            An online clipboard is a web page that holds what you copy on one device so
+            you can paste it on another. Instead of emailing yourself a link or plugging
+            in a cable, both devices open the same page, identify themselves with a short
+            key, and share a single clipboard between them.
+            </p>
+          </div>
+        </details>
 
-        <h3>How do I sync my clipboard between my phone and my PC?</h3>
-        <p>
-          Open Hopboard on both, type the same five-character key on each, and copy
-          something. It arrives on the other device ready to paste. There is no account
-          to make and nothing to install, so it works on a machine where you do not have
-          admin rights.
-        </p>
+        <details class="qa">
+          <summary><h3>How do I sync my clipboard between my phone and my PC?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Open RealtimeClipboard on both, type the same five-character key on each, and copy
+            something. It arrives on the other device ready to paste. There is no account
+            to make and nothing to install, so it works on a machine where you do not have
+            admin rights.
+            </p>
+          </div>
+        </details>
 
-        <h3>Can I share a clipboard between Windows and Android without an account?</h3>
-        <p>
-          Yes. Hopboard needs no email, no password and no sign-in — the five-character
-          key is the whole identity of a session. When you close the tab the session is
-          gone, and nothing about it was ever written to disk.
-        </p>
+        <details class="qa">
+          <summary><h3>Can I share a clipboard between Windows and Android without an account?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes. RealtimeClipboard needs no email, no password and no sign-in — the five-character
+            key is the whole identity of a session. When you close the tab the session is
+            gone, and nothing about it was ever written to disk.
+            </p>
+          </div>
+        </details>
 
-        <h3>Does it work if the two devices are on different networks?</h3>
-        <p>
-          Yes. Text goes through a relay, so a laptop on home Wi-Fi and a phone on mobile
-          data share a clipboard perfectly well. This is the main difference from
-          Snapdrop, LocalSend and AirDrop, which need both devices on the same network.
-          Files are the exception: they go directly between the two machines, and that
-          direct connection is the part corporate firewalls sometimes block.
-        </p>
+        <details class="qa">
+          <summary><h3>Does it work if the two devices are on different networks?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes. Text goes through a relay, so a laptop on home Wi-Fi and a phone on mobile
+            data share a clipboard perfectly well. This is the main difference from
+            Snapdrop, LocalSend and AirDrop, which need both devices on the same network.
+            Files are the exception: they go directly between the two machines, and that
+            direct connection is the part corporate firewalls sometimes block.
+            </p>
+          </div>
+        </details>
 
-        <h3>Is an online clipboard safe to use?</h3>
-        <p>
-          It depends entirely on whether the server can read what you copy — and with
-          Hopboard it cannot. Text is encrypted in your browser with AES-GCM before it is
-          sent, and the key never leaves your device: the server only sees a hash that
-          tells it which room to route to, and ciphertext it has no way to open. It keeps
-          neither. The honest caveat is that the key is a bearer credential — anyone who
-          learns it can read that session while it is open.
-        </p>
+        <details class="qa">
+          <summary><h3>Is an online clipboard safe to use?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            It depends entirely on whether the server can read what you copy — and with
+            RealtimeClipboard it cannot. Text is encrypted in your browser with AES-GCM before it is
+            sent, and the key never leaves your device: the server only sees a hash that
+            tells it which room to route to, and ciphertext it has no way to open. It keeps
+            neither. The honest caveat is that the key is a bearer credential — anyone who
+            learns it can read that session while it is open.
+            </p>
+          </div>
+        </details>
 
-        <h3>Is this a real-time clipboard?</h3>
-        <p>
-          Yes. Hopboard is a live clipboard: the moment a copy is captured it is
-          encrypted and pushed over an open WebSocket, so it lands on the other
-          device in well under a second on a normal connection. There is no polling
-          and no refresh button — the other device already has it by the time you
-          look at it.
-        </p>
+        <details class="qa">
+          <summary><h3>Is this a real-time clipboard?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes. RealtimeClipboard is a live clipboard: the moment a copy is captured it is
+            encrypted and pushed over an open WebSocket, so it lands on the other
+            device in well under a second on a normal connection. There is no polling
+            and no refresh button — the other device already has it by the time you
+            look at it.
+            </p>
+          </div>
+        </details>
 
-        <h3>Where is my clipboard data stored?</h3>
-        <p>
-          Nowhere. There is no database and nothing is written to disk. The relay holds
-          the last message for a room in memory and drops it; files never reach the
-          server at all, because they travel peer-to-peer between your two devices.
-        </p>
+        <details class="qa">
+          <summary><h3>Where is my clipboard data stored?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Nowhere. There is no database and nothing is written to disk. The relay holds
+            the last message for a room in memory and drops it; files never reach the
+            server at all, because they travel peer-to-peer between your two devices.
+            </p>
+          </div>
+        </details>
 
-        <h3>Can it watch my clipboard in the background?</h3>
-        <p>
-          No, and neither can any other web app on any browser — reading the clipboard
-          requires the window to have focus, which is a deliberate browser security rule.
-          You switch to the Hopboard tab and it picks up whatever you copied. A native
-          app can do this; a web page cannot, and anything claiming otherwise on the web
-          is worth a second look.
-        </p>
+        <details class="qa">
+          <summary><h3>Can it watch my clipboard in the background?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            No, and neither can any other web app on any browser — reading the clipboard
+            requires the window to have focus, which is a deliberate browser security rule.
+            You switch to the RealtimeClipboard tab and it picks up whatever you copied. A native
+            app can do this; a web page cannot, and anything claiming otherwise on the web
+            is worth a second look.
+            </p>
+          </div>
+        </details>
 
-        <h3>Which browsers does it work in?</h3>
-        <p>
-          Chromium browsers get the full experience — Chrome, Edge, Brave and Chrome on
-          Android can read the clipboard directly. Firefox and Safari can receive
-          everything and can send anything you paste in by hand, but cannot read the
-          clipboard on their own, because they have not implemented that part of the
-          Clipboard API.
-        </p>
+        <details class="qa">
+          <summary><h3>Which browsers does it work in?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Chromium browsers get the full experience — Chrome, Edge, Brave and Chrome on
+            Android can read the clipboard directly. Firefox and Safari can receive
+            everything and can send anything you paste in by hand, but cannot read the
+            clipboard on their own, because they have not implemented that part of the
+            Clipboard API.
+            </p>
+          </div>
+        </details>
 
-        <h3>Is Hopboard free?</h3>
-        <p>
-          Yes, free and open source under the MIT licence, with no paid tier and no
-          account. The relay is a small FastAPI service you can also
-          <a href="https://github.com/akshaynikhare/Hopboard">run yourself</a> if you
-          would rather not use someone else's.
-        </p>
+        <details class="qa">
+          <summary><h3>Is RealtimeClipboard free?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes, free and open source under the MIT licence, with no paid tier and no
+            account. The relay is a small FastAPI service you can also
+            <a href="https://github.com/akshaynikhare/RealtimeClipboard">run yourself</a> if you
+            would rather not use someone else's.
+            </p>
+          </div>
+        </details>
       </div>
     </div>
   </section>
@@ -660,32 +726,17 @@
 <footer class="sec">
   <div class="in">
     <div class="footgrid">
-      <p>Open source — <a href="https://github.com/akshaynikhare/Hopboard">github.com/akshaynikhare/Hopboard</a></p>
-      <!-- Guides are linked from here rather than the top bar: they are for
-           people who arrived from a search, not for someone about to press the
-           button. A crawler still finds them on the first page it fetches. -->
-      <p>Guides — <a href="./clipboard-sync-not-working/">Clipboard sync not working?</a></p>
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <!-- The two content hubs. Linked from the footer rather than the top bar
+           because they are for people who arrived from a search, not for
+           someone about to press the button — but a crawler still reaches both,
+           and through them every article, from the first page it fetches. -->
+      <p><a href="./download/">Download</a> · <a href="./help/">Help</a> · <a href="./blog/">Blog</a></p>
       <p>Sessions are held in memory and never written to disk. Clipboard contents are
          encrypted in your browser before they are sent.</p>
     </div>
   </div>
 </footer>
 
-<script>
-// A key in the fragment means someone followed a share link to the old app
-// URL. Send them on rather than showing marketing to someone who came to work.
-//
-// An in-page anchor is NOT a key. "#live" and "#compare" are both four or more
-// characters and both used to be swallowed by this, so deep-linking to a
-// section — from a search result, or from anywhere at all — landed the visitor
-// in the app on a room called LIVE. If the fragment names something on this
-// page, it is a destination, not a credential.
-(function () {
-  var raw = location.hash.slice(1).trim();
-  if (!raw || document.getElementById(raw)) return;
-  var shared = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (shared.length >= 4) location.replace("./app.html#" + shared);
-})();
-</script>
 </body>
 </html>

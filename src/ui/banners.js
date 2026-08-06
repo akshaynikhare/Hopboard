@@ -11,7 +11,7 @@ import { on, emit, EV } from "../core/bus.js";
 import { TRANSPORT } from "../core/config.js";
 import * as state from "../core/state.js";
 import * as capture from "../clipboard/capture.js";
-import { $, esc } from "./dom.js";
+import { $, esc, setHTML } from "./dom.js";
 
 const banners = new Map();
 /** key -> a function that cancels that banner's auto-dismiss timer. */
@@ -50,7 +50,7 @@ export function init() {
       show("perm", {
         tone: "info",
         title: "Allow clipboard access",
-        body: "Lets Hopboard pick up what you copied when you switch back to this window.",
+        body: "Lets RealtimeClipboard pick up what you copied when you switch back to this window.",
         action: { label: "Allow", onClick: () => capture.requestPermission() },
       });
     }
@@ -89,6 +89,17 @@ export function init() {
   // device to a list nobody re-reads is not enough — if a stranger guesses or
   // is handed the key, the moment they arrive is the only moment it is
   // noticeable.
+  /**
+   * A banner from anywhere, by event.
+   *
+   * Every banner above is one this module knows the meaning of, which is right
+   * for the ones tied to session state. "What's new" is not: it is a notice
+   * about the build, its content comes from a data file, and teaching this
+   * module to parse a changelog to render it would put the knowledge in the
+   * wrong place. So the shape stays here and the content comes in.
+   */
+  on("ui:banner", ({ key, ...opts }) => { if (key) show(key, opts); });
+
   on(EV.PEER_JOINED, ({ name }) => {
     const who = name || "An unnamed device";
     // In a locked session the arrival means more, not less: reaching this room
@@ -124,6 +135,26 @@ export function init() {
    * Only raised once peers have had a chance to appear; a banner that fires the
    * instant a creator opens their own new session would be pure noise.
    */
+  /**
+   * The prompt was cancelled, so nothing is connected and nothing will be.
+   *
+   * This is the one state the app can end up in with no route forward: the
+   * dialog is gone, the session was never opened, and the status bar alone does
+   * not offer a way back. Raised off the connection detail rather than a
+   * dedicated event because "idle, because a PIN is required" is exactly what
+   * that field already says.
+   */
+  on(EV.CONN_STATE, ({ state: connState, detail }) => {
+    if (connState !== "idle" || !detail?.includes("PIN")) return;
+    show("lock", {
+      tone: "info",
+      title: "This session is locked",
+      body: "It needs its PIN before this device can join. The PIN is not in the "
+          + "link — whoever sent it to you has to pass it on separately.",
+      action: { label: "Enter PIN", onClick: () => emit("session:relock") },
+    });
+  });
+
   on(EV.LOCK_STATE, ({ locked, verified }) => {
     if (!locked || verified) return dismiss("lock");
     clearTimeout(lockDoubt);
@@ -168,7 +199,7 @@ export function init() {
         tone: "bad",
         title: "Cannot reach the relay",
         body: "Neither WebSockets nor HTTP streaming is getting through. If you are on "
-            + "a managed network, ask for hopboard.fastapicloud.dev to be allowed on 443.",
+            + "a managed network, ask for realtimeclipboard.fastapicloud.dev to be allowed on 443.",
       });
       return;
     }
@@ -178,7 +209,7 @@ export function init() {
     show("transport", {
       tone: "info",
       title: "Using the HTTP fallback",
-      body: "WebSockets are blocked on this network, so Hopboard switched to HTTP "
+      body: "WebSockets are blocked on this network, so RealtimeClipboard switched to HTTP "
           + "streaming. Everything works and is still end-to-end encrypted; sending is "
           + "a little slower.",
     });
@@ -250,7 +281,7 @@ function show(key, { tone, title, body, action, dismissAfter }) {
   // Populating it once it is being watched is the behaviour they all agree on.
   soon(() => {
     if (banners.get(key) !== el) return;              // dismissed within the frame
-    txt.innerHTML = `<b>${esc(title)}</b><span>${esc(body)}</span>`;
+    setHTML(txt, `<b>${esc(title)}</b><span>${esc(body)}</span>`);
   });
 
   if (dismissAfter > 0) autoDismiss(key, el, dismissAfter);

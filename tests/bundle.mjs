@@ -1,0 +1,189 @@
+/**
+ * The deploy bundle is a second artifact, and nothing else tests it.
+ *
+ * Every other check in this repo runs against `src/` — the unbundled tree that
+ * developers and the .husky hooks see. What ships is what tools/build.mjs
+ * produces, and the failures that live in the gap between them are all silent:
+ * a lazy import quietly inlined, a chunk that 404s, a precache list naming
+ * files that no longer exist, a stylesheet cascade reordered. None of them
+ * throw. They present as "the app is slower now", "that panel has no styling",
+ * or "offline stopped working", weeks later.
+ *
+ * Usage:  node tests/bundle.mjs
+ *         Skips cleanly without jsdom, like tests/boot.mjs.
+ */
+
+import { execFileSync } from "node:child_process";
+import { readFileSync, readdirSync, existsSync, rmSync, mkdtempSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { dirname, join, resolve } from "node:path";
+import { tmpdir } from "node:os";
+
+const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+let pass = 0, fail = 0;
+const check = (name, ok, detail = "") => {
+  ok ? pass++ : fail++;
+  console.log(`  ${ok ? "PASS" : "FAIL"}  ${name}${detail ? "  — " + detail : ""}`);
+  return ok;
+};
+
+console.log("\nBundled build\n");
+
+const OUT = mkdtempSync(join(tmpdir(), "realtimeclipboard-build-"));
+try {
+  execFileSync(process.execPath, [join(REPO, "tools/build.mjs"), OUT], { stdio: "pipe" });
+} catch (err) {
+  console.log("  FAIL  build succeeds  — " + (err.stdout?.toString() || err.message).slice(-400));
+  process.exit(1);
+}
+check("build succeeds", true);
+
+const read = p => readFileSync(join(OUT, p), "utf8");
+const has = p => existsSync(join(OUT, p));
+
+/* ---------- the lazy loads survived ----------
+   Without --splitting, esbuild inlines dynamic imports. The globe is 18 KB
+   gzip below the fold on the page search engines fetch, and files/transfer.js
+   is the largest module in the repo. Inlining either would make the bundle
+   bigger while every other check still passed. */
+const mainJs = read("src/main.js");
+const chunks = name => [...read(name).matchAll(/from\s*"\.\/([\w.-]+\.js)"/g)].map(m => m[1]);
+
+check("the globe is still a separate chunk",
+  !mainJs.includes("naturalearthdata")
+  && existsSyncGlob("src/landing", /^globe-/),
+  "landing.js must import it, not contain it");
+
+check("file transfer is still a separate chunk",
+  existsSyncGlob("src", /^transfer-/) && existsSyncGlob("src", /^registry-/));
+
+/* ---------- every chunk the entries name actually exists ----------
+   A module specifier that resolves to nothing is a blank page and one console
+   line — the exact failure native ES modules fail at silently, which is why
+   tests/static-check.mjs guards it for the source tree. */
+const dangling = [];
+for (const entry of ["src/main.js", "src/landing/landing.js",
+                     "src/landing/faq.js", "src/landing/redirect.js"]) {
+  if (!has(entry)) { dangling.push(`${entry} (missing entry)`); continue; }
+  for (const c of chunks(entry)) {
+    if (!has(join(dirname(entry), c))) dangling.push(`${entry} -> ${c}`);
+  }
+}
+check("every chunk resolves", dangling.length === 0, dangling.join("; "));
+
+/* ---------- the precache list matches what was built ----------
+   cache.addAll() rejects as a unit: one stale entry kills the install and
+   offline support stops working with no visible symptom. */
+const sw = read("sw.js");
+const shell = [...(sw.match(/const SHELL = \[([\s\S]*?)\n\];/)?.[1] ?? "")
+  .matchAll(/"\.\/([^"]*)"/g)].map(m => m[1]).filter(Boolean);
+const missing = shell.filter(p => !has(p));
+check(`precache list is complete (${shell.length} entries)`, missing.length === 0,
+  missing.join(", "));
+check("service worker VERSION was stamped",
+  !/const VERSION = "";/.test(sw) && /const VERSION = ".+";/.test(sw),
+  sw.match(/const VERSION = "(.*?)";/)?.[1]);
+
+/* ---------- the cascade still ends where it has to ----------
+   src/styles/main.css imports mobile.css LAST on purpose: "nearly every rule in
+   it overrides an earlier sheet's at the same specificity, and source order is
+   what settles that." esbuild preserves @import order, so this should hold —
+   but a future switch to a naive `cat styles/*.css` would sort alphabetically
+   and break the whole mobile layout with a green build. */
+const bundledCss = read("src/styles/main.css");
+const probe = src => (readFileSync(join(REPO, "src/styles", src), "utf8")
+  .match(/(?<=^|\})\s*(\.[a-zA-Z][\w-]*)\s*[,{]/m) || [])[1];
+const mobileSel = probe("mobile.css");
+const others = ["layout.css", "editor.css", "statusbar.css", "banners.css", "ads.css"]
+  .map(probe).filter(Boolean);
+const mobileAt = mobileSel ? bundledCss.lastIndexOf(mobileSel) : -1;
+check("mobile.css is still last in the cascade",
+  mobileAt > 0 && others.every(sel => bundledCss.indexOf(sel) < mobileAt),
+  `${mobileSel} at ${((100 * mobileAt) / bundledCss.length).toFixed(0)}%`);
+check("all 17 @imports were inlined", !bundledCss.includes("@import"));
+
+/* ---------- and it still boots ----------
+   The point of 1c-0: six modules resolved asset paths from `import.meta.url`,
+   which encodes how deep a file sits in the tree. Bundling moves all of them at
+   once. install.js resolved the app root one level too high and broke the
+   service-worker scope and PWA install criteria in a way nothing threw on. */
+let JSDOM;
+try { ({ JSDOM } = await import("jsdom")); }
+catch {
+  console.log("\n  SKIP: boot half needs jsdom  (npm i -D jsdom)\n");
+  done();
+}
+
+const dom = new JSDOM(read("app.html"), {
+  url: "https://akshaynikhare.github.io/RealtimeClipboard/app.html#BUNDLE",
+  pretendToBeVisual: true,
+});
+const { window } = dom;
+const put = (n, v) => Object.defineProperty(globalThis, n, { value: v, configurable: true, writable: true });
+global.window = window;
+global.document = window.document;
+global.location = window.location;
+put("navigator", window.navigator);
+global.localStorage = window.localStorage;
+global.sessionStorage = window.sessionStorage;
+global.performance = window.performance;
+global.HTMLElement = window.HTMLElement;
+global.Node = window.Node;
+global.CustomEvent = window.CustomEvent;
+put("crypto", globalThis.crypto);
+if (!window.crypto?.subtle) {
+  Object.defineProperty(window, "crypto", { value: globalThis.crypto, configurable: true });
+}
+Object.defineProperty(window.navigator, "clipboard", { value: undefined, configurable: true });
+
+// No relay, on purpose: this asks whether the bundle EVALUATES and reaches the
+// end of boot(). Whether the transport works is tests/e2e.mjs's job, and
+// waiting on a live socket here would make a build check need the network.
+global.WebSocket = class { constructor() { setTimeout(() => this.onerror?.({}), 0); } send() {} close() {} };
+
+const log = [];
+for (const level of ["warn", "error", "info"]) {
+  const original = console[level];
+  console[level] = (...a) => { log.push([level, a.join(" ")]); original(...a); };
+}
+
+let threw = null;
+try {
+  await import(pathToFileURL(join(OUT, "src/main.js")).href);
+  window.document.dispatchEvent(new window.Event("DOMContentLoaded"));
+  await new Promise(r => setTimeout(r, 1500));
+} catch (err) { threw = err; }
+
+check("the bundle evaluates without throwing", !threw, threw?.message ?? "");
+check("boot() reaches the end",
+  log.some(([lvl, m]) => lvl === "info" && m.includes("booted")));
+
+const errors = log.filter(([lvl]) => lvl === "error");
+check("no errors during boot", errors.length === 0,
+  errors.map(([, m]) => m.slice(0, 120)).join(" | "));
+
+/* main.js loads the optional panels through a thunk so their specifiers stay
+   literal and analysable. When they were path STRINGS the bundler could not
+   see them, left them pointing at ./ui/qr.js, and both panels failed to load
+   in the deploy — caught, warned and degraded exactly as designed, which is
+   why it would have shipped. The degradation is correct; reaching it from a
+   build mistake is not, so it fails here. */
+const notLoaded = log.filter(([, m]) => m.includes("not loaded"));
+check("no optional feature failed to load", notLoaded.length === 0,
+  notLoaded.map(([, m]) => m.slice(0, 160)).join(" | "));
+
+done();
+
+/** Chunk filenames carry a content hash, so they can only be matched by shape. */
+function existsSyncGlob(dir, re) {
+  try { return readdirSync(join(OUT, dir)).some(f => re.test(f)); }
+  catch { return false; }
+}
+
+function done() {
+  rmSync(OUT, { recursive: true, force: true });
+  console.log("\n" + "=".repeat(56));
+  console.log(`BUNDLE: ${pass}/${pass + fail} passed`);
+  console.log("=".repeat(56));
+  process.exit(fail ? 1 : 0);
+}

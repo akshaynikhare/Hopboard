@@ -32,3 +32,12 @@ package-lock.json
 
 # Scratch screenshots from local UI checks — output, not source
 .shots/
+
+# The assembled deploy. Built by tools/build.mjs, in CI or locally — output.
+_site/
+
+# Generated package manifests — output of tools/manifest.mjs
+dist/
+
+# npm pack output
+*.tgz
