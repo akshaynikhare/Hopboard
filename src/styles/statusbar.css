@@ -50,15 +50,17 @@ button.sitem:focus-visible { outline:1px solid var(--focus); outline-offset:-2px
 /* ------------------------------------------------------------------ *
  * Transport menu
  *
- * Anchored to the bottom-left because the status bar is the last row on the
- * screen and #sbConn sits at its left end. Fixed rather than absolute: the
- * status bar is inside the pinned shell, and an absolutely positioned menu
- * would be clipped by the editor pane's own overflow.
+ * Slides up out of the status bar item that opens it. Fixed rather than
+ * absolute: the status bar is inside the pinned shell, and an absolutely
+ * positioned menu would be clipped by the editor pane's own overflow. `left`
+ * is set in statusbar.js from the button's own position, so it stays under
+ * #sbConn wherever the items before it push it to.
  * ------------------------------------------------------------------ */
 .tmenu {
   position:fixed;
   left:8px;
   bottom:calc(var(--statusbar-h) + 6px);
+  transform-origin:bottom left;
   z-index:62;
   width:min(300px, calc(100vw - 16px));
   background:var(--side);
@@ -105,6 +107,17 @@ button.sitem:focus-visible { outline:1px solid var(--focus); outline-offset:-2px
   text-transform:uppercase;
   letter-spacing:.04em;
   color:var(--dim);
+}
+
+/* It rises out of the bar it belongs to — the same 6px lift and .13s as the QR
+   dialog, so the two overlays in this app move the same way. Motion only for
+   people who have not asked for less of it. */
+@media (prefers-reduced-motion: no-preference) {
+  .tmenu { animation:tmenu-up .13s ease-out; }
+  @keyframes tmenu-up {
+    from { opacity:0; transform:translateY(6px); }
+    to   { opacity:1; transform:none; }
+  }
 }
 
 /* Drop the least useful items first on narrow screens. */
