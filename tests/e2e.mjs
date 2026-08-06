@@ -21,7 +21,8 @@ import * as proto from "../src/transport/protocol.js";
 
 const LOCK_BEACON = LOCK.BEACON;
 
-const BASE = process.argv[2] || "wss://realtimeclipboard.fastapicloud.dev";
+const BASE = process.argv[2] || process.env.RELAY_BASE
+  || "wss://realtimeclipboard.fastapicloud.dev";
 
 let pass = 0, fail = 0;
 const results = [];

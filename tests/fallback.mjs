@@ -19,7 +19,7 @@ import { createServer } from "node:http";
 
 import { NET, TRANSPORT } from "../src/core/config.js";
 
-const BASE = process.argv[2] || "ws://127.0.0.1:8000";
+const BASE = process.argv[2] || process.env.RELAY_BASE || "ws://127.0.0.1:8000";
 const HTTP = BASE.replace(/^ws/i, "http");
 
 let pass = 0, fail = 0;

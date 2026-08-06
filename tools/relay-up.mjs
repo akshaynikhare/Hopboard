@@ -25,12 +25,22 @@ for (const base of CANDIDATES) {
     if (!res.ok) continue;
     const body = await res.json();
     if (body?.ok !== true) continue;
-    console.log(`relay: ${base} (instance ${body.instance})`);
+    // The URL goes to stdout ON ITS OWN LINE so the caller can capture it and
+    // point the suites at the relay that was actually found.
+    //
+    // Without that, this and the tests disagree about which relay they mean:
+    // this probes localhost first and reports success, while the suites fall
+    // back to the DEPLOYED relay — so a developer running a local relay gets a
+    // green gate that then fails against a host it never checked. That is worse
+    // than no gate, because it fails at the moment of pushing and looks like a
+    // broken commit rather than a missing deployment.
+    console.error(`relay: ${base} (instance ${body.instance})`);
+    console.log(base);
     process.exit(0);
   } catch {
     // Unreachable, refused, timed out — all the same answer here.
   }
 }
 
-console.log("relay: none reachable");
+console.error("relay: none reachable");
 process.exit(1);

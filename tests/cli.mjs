@@ -19,7 +19,8 @@ import { dirname, join, resolve } from "node:path";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const BIN = join(REPO, "cli/realtimeclipboard.mjs");
-const BASE = process.argv[2] || "wss://realtimeclipboard.fastapicloud.dev";
+const BASE = process.argv[2] || process.env.RELAY_BASE
+  || "wss://realtimeclipboard.fastapicloud.dev";
 const HTTP = BASE.replace(/^ws/i, "http");
 
 let pass = 0, fail = 0;
