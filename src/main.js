@@ -34,6 +34,7 @@ import * as sessionPanel from "./ui/sessionPanel.js";
 import * as statusbar from "./ui/statusbar.js";
 import * as resizer from "./ui/resizer.js";
 import * as syncMode from "./ui/syncMode.js";
+import * as appLinks from "./ui/appLinks.js";
 import * as hints from "./ui/hints.js";
 import * as cursors from "./ui/cursors.js";
 import * as ads from "./ui/ads.js";
@@ -411,6 +412,7 @@ async function boot() {
   safeInit("session panel", sessionPanel.init);
   safeInit("resizers", resizer.init);
   safeInit("sync mode", syncMode.init);
+  safeInit("project links", appLinks.init);
   safeInit("hints", hints.init);
   safeInit("ad slot", ads.init);
   safeInit("peer cursors", cursors.init);

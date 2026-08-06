@@ -68,6 +68,7 @@ const SHELL = [
   "./src/transport/sse.js",
   "./src/transport/ws.js",
   "./src/ui/ads.js",
+  "./src/ui/appLinks.js",
   "./src/ui/banners.js",
   "./src/ui/cursors.js",
   "./src/ui/dom.js",

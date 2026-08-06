@@ -153,6 +153,38 @@ export const SYNC_MODES = {
 };
 export const DEFAULT_SYNC_MODE = SYNC_MODES.LIVE;
 
+/**
+ * The project's own addresses: where the code is, and where it asks for help.
+ *
+ * Derived from OWNER/NAME rather than written out four times, for the same
+ * reason RELAY_HTTP_URL is derived from RELAY_URL — a fork, a rename, or a
+ * moved account is then one edit, and the four links cannot drift into pointing
+ * at three different projects.
+ *
+ * COFFEE_HANDLE is separate because it is a different service's account name
+ * and only happens to match today.
+ *
+ * !! UNVERIFIED: OWNER is real (the repo is at github.com/akshaynikhare/
+ * Hopboard); the sponsors page and the Buy Me a Coffee handle were guessed from
+ * it and have NOT been confirmed to exist. Check both before this ships — a
+ * donate link that 404s costs more goodwill than no donate link. !!
+ */
+export const REPO = {
+  OWNER: "akshaynikhare",
+  NAME: "Hopboard",
+  COFFEE_HANDLE: "akshaynikhare",
+};
+
+export const LINKS = {
+  REPO:    `https://github.com/${REPO.OWNER}/${REPO.NAME}`,
+  ISSUES:  `https://github.com/${REPO.OWNER}/${REPO.NAME}/issues`,
+  /** Straight to the form: "report" that lands on a list of other people's
+      bugs asks the user to find the button themselves. */
+  NEW_ISSUE: `https://github.com/${REPO.OWNER}/${REPO.NAME}/issues/new`,
+  SPONSOR: `https://github.com/sponsors/${REPO.OWNER}`,
+  COFFEE:  `https://www.buymeacoffee.com/${REPO.COFFEE_HANDLE}`,
+};
+
 export const IMAGES = {
   /** Clipboard image types we will read and share. */
   TYPES: ["image/png", "image/jpeg", "image/webp", "image/gif"],
