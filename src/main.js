@@ -6,7 +6,9 @@
  * transport stay swappable while the rest of the app was being built.
  */
 
-import { TEXT, SYNC_MODES, LOCK } from "./core/config.js";
+import {
+  TEXT, SYNC_MODES, LOCK, textBytes, RELAY_URL, RELAY_IS_CUSTOM,
+} from "./core/config.js";
 import { emit, on, EV } from "./core/bus.js";
 import * as state from "./core/state.js";
 import * as keys from "./core/keys.js";
@@ -328,7 +330,19 @@ async function decryptFrame(frame) {
 async function sendText(text) {
   const { aesKey, originId } = state.get();
   if (!aesKey || !relay.isOpen()) return;
-  if (text.length > TEXT.MAX_CHARS) return;
+
+  // Bytes, not characters. The relay counts the encoded frame, so multibyte
+  // text can sit well inside MAX_CHARS and still be too large to send.
+  //
+  // This is also the last gate before the wire, and it must be loud. The
+  // editor's own check only covers text a human typed; this path is where an
+  // auto-captured clipboard arrives, and a silent `return` here was a clip
+  // that appeared to sync and never did.
+  const bytes = textBytes(text);
+  if (bytes > TEXT.MAX_BYTES) {
+    return emit(EV.TOAST, `Too big to send — ${Math.ceil(bytes / 1024)} KB, `
+      + `limit ${Math.floor(TEXT.MAX_BYTES / 1024)} KB`);
+  }
 
   const { payload, iv } = await cryptoBox.encrypt(aesKey, text);
   relay.send(proto.clip({ payload, iv, originId }));
@@ -614,13 +628,19 @@ async function wireFiles() {
 async function loadOptional() {
   // install.js is initialised directly in boot(); listing it here too would
   // register the service worker twice.
+  // Thunks, not path strings. `import(variable)` is opaque to a bundler: it
+  // cannot know what to emit, so it leaves the specifier alone and the deploy
+  // asks for ./ui/qr.js, which the bundle does not contain. Both panels then
+  // fail to load — caught, warned, and degraded exactly as designed, which is
+  // precisely why nobody would notice. A literal specifier inside a thunk keeps
+  // the laziness AND lets tools/build.mjs split each one into its own chunk.
   const features = [
-    ["./ui/historyPanel.js", "history"],
-    ["./ui/qr.js",           "qr"],
+    [() => import("./ui/historyPanel.js"), "history"],
+    [() => import("./ui/qr.js"),           "qr"],
   ];
-  for (const [path, label] of features) {
+  for (const [load, label] of features) {
     try {
-      const mod = await import(path);
+      const mod = await load();
       await mod.init?.();
     } catch (err) {
       console.warn(`[hopboard] optional feature "${label}" not loaded:`, err.message);
@@ -646,6 +666,16 @@ function safeInit(label, fn) {
 }
 
 async function boot() {
+  // A relay handed to us in `?relay=` has already been resolved by config.js;
+  // this is what makes it stick. Persisting here rather than there keeps
+  // core/config.js free of writes — it reads settings, it does not own them —
+  // and this is the composition root, which is where "apply the deployment's
+  // configuration" belongs (docs/ARCHITECTURE.md §3).
+  if (RELAY_IS_CUSTOM && storage.loadRelayUrl() !== RELAY_URL) {
+    storage.saveRelayUrl(RELAY_URL);
+    console.info("[hopboard] relay set from the address bar:", RELAY_URL);
+  }
+
   // Core UI first: these own the surfaces that report connection state, so a
   // failure here is worth knowing about loudly rather than swallowing.
   toast.init();
