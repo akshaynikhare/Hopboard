@@ -28,7 +28,7 @@ python -m http.server 8080      # http://127.0.0.1:8080
 # 45-check protocol gate
 python test_relay.py ws://127.0.0.1:8000
 
-# 30-check gate for the SSE+POST fallback, including a mixed-transport room
+# 33-check gate for the SSE+POST fallback, including a mixed-transport room
 python test_sse.py http://127.0.0.1:8000
 
 # hold a connection open on heartbeat alone
@@ -119,6 +119,20 @@ Three things are specific to this path:
 
 The client (`src/transport/relay.js`) picks this path on its own after two
 WebSocket attempts that never become usable, and tells the user it did.
+
+### Deploy the relay before the frontend
+
+Not a style preference. A frontend that falls back to a relay without these
+routes asks for `/sse` and gets a 404 — and **a response with no CORS header on
+it is reported by every browser as "blocked by CORS policy"**, whatever the
+status actually was. The console then says cross-origin, the cause is a stale
+deploy, and the two look nothing alike.
+
+Both ends now refuse to lie about it. `CORSMiddleware` puts the header on every
+response including the ones FastAPI generates on its own, so a missing route
+reads as an honest 404; and if the client meets a relay whose `/health` answers
+while `/sse` does not, it says "this relay is out of date" instead of blaming
+the network. `test_sse.py` S7 and `tests/fallback.mjs` cover both halves.
 
 ## Limits
 

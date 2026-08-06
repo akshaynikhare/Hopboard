@@ -54,6 +54,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 
 from fastapi import FastAPI, Request, Response, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
 INSTANCE_ID = uuid.uuid4().hex[:8]
@@ -155,6 +156,31 @@ FRAME_CLASS.update({
 CLASS_LIMITS["cursor"] = 20
 
 app = FastAPI(title="Hopboard relay", version="0.2.0-m7")
+
+# CORS on every response, including the ones this file never writes.
+#
+# The routes below set their own headers, so this looks redundant. It is not,
+# and the reason is worth stating: the responses that need it most are the ones
+# FastAPI generates on its own — 404 for a route that does not exist, 405, 422,
+# 500. Those carry no CORS header, and a browser reports a header-less response
+# as "blocked by CORS policy" rather than as the status it actually was.
+#
+# That cost real debugging time exactly once: a frontend deployed ahead of the
+# relay asked for /sse, got a bare 404 because that build did not have the
+# route yet, and every console message said CORS. The bug was a stale deploy;
+# the diagnosis said cross-origin policy. With this, the same mistake reports
+# an honest 404 and takes a minute instead of an evening.
+#
+# "*" because there are no credentials anywhere in this design — the session key
+# never leaves the browser and the relay only ever holds ciphertext. WebSocket
+# scopes pass through untouched; CORS does not apply to them.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+    max_age=86400,
+)
 
 
 class RateBuckets:

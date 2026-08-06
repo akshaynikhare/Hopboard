@@ -148,7 +148,7 @@ cd backend
 pip install -r requirements.txt
 python -m uvicorn main:app --port 8000
 python test_relay.py ws://127.0.0.1:8000    # 45-check protocol gate
-python test_sse.py http://127.0.0.1:8000    # 30-check fallback gate
+python test_sse.py http://127.0.0.1:8000    # 33-check fallback gate
 ```
 
 With the relay running, `node tests/fallback.mjs ws://127.0.0.1:8000` exercises

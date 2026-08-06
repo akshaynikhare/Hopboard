@@ -39,6 +39,17 @@ import * as proto from "./protocol.js";
 
 export const LABEL = "HTTP stream";
 
+/**
+ * The relay answered, but not on /sse — it is running a build from before the
+ * fallback existed.
+ *
+ * Worth telling apart from a blocked network, because it looks identical from
+ * here and the fix is the opposite one. It is also the likeliest way to meet
+ * this path: deploy the frontend ahead of the relay and every client that falls
+ * back lands on a route that is not there yet.
+ */
+export const NO_FALLBACK = "relay has no fallback endpoint";
+
 export const available = () =>
   typeof EventSource !== "undefined" && typeof fetch === "function";
 
@@ -93,8 +104,23 @@ export function create({ url, roomHash, onOpen, onFrame, onDown }) {
     // new sid, while we carry on POSTing under the old one — a ghost in the
     // roster and every send rejected. Reconnection is relay.js's job, with its
     // backoff and its rejoin, so end the stream here and report it.
-    finish(sid ? 4001 : 4000, sid ? "stream dropped" : "stream refused");
+    if (sid) return finish(4001, "stream dropped");
+
+    // Nothing has come back at all, and EventSource will not say why — no
+    // status, no body, and a 404 with no CORS header on it reads in the console
+    // as a cross-origin block. So ask the relay something simpler: if /health
+    // answers, the host is reachable and it is the route that is missing.
+    classify().then(reason => finish(4000, reason));
   };
+
+  async function classify() {
+    try {
+      const res = await fetch(`${base}/health`, { signal: timeout(5000) });
+      return res.ok ? NO_FALLBACK : `relay error ${res.status}`;
+    } catch {
+      return "stream refused";
+    }
+  }
 
   /**
    * Take the next POST's worth of frames.

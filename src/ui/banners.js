@@ -92,7 +92,23 @@ export function init() {
   // Which pipe the session is running down. Silence here would be the same
   // mistake FR-7.6 forbids for file transfers: a fallback nobody is told about
   // reads as "the app is just slow today".
-  on(EV.TRANSPORT, ({ mode, blocked }) => {
+  on(EV.TRANSPORT, ({ mode, blocked, unsupported }) => {
+    if (blocked && unsupported) {
+      // The relay answered /health and refused /sse, so this is not the
+      // network: it is a relay running a build from before the fallback
+      // existed. Says so plainly, because the console will be full of CORS
+      // errors — a bare 404 carries no CORS header — and that sends anyone
+      // debugging it in exactly the wrong direction.
+      show("transport", {
+        tone: "bad",
+        title: "This relay is out of date",
+        body: "WebSockets are blocked here and the relay does not have the HTTP "
+            + "fallback yet. It needs redeploying — the browser will report this as "
+            + "a CORS error, but nothing is wrong with the network.",
+      });
+      return;
+    }
+
     if (blocked) {
       // Not "reconnecting". Neither a WebSocket nor a plain HTTP stream is
       // getting through, which no amount of waiting fixes — this is the banner

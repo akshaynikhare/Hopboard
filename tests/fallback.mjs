@@ -15,6 +15,8 @@
  *         Skips cleanly when no relay is reachable, so it is safe in CI.
  */
 
+import { createServer } from "node:http";
+
 import { NET, TRANSPORT } from "../src/core/config.js";
 
 const BASE = process.argv[2] || "ws://127.0.0.1:8000";
@@ -250,6 +252,35 @@ check("closing the fallback leaves the room", left,
       JSON.stringify(peerInbox.filter(m => m.t === "peers").at(-1) ?? null));
 
 peer.close();
+
+/* ---------- 5. a relay that predates the fallback ---------- */
+
+// Deploy the frontend ahead of the relay and this is what every client that
+// falls back meets: /health answers, /sse is a bare 404 — and a 404 with no
+// CORS header on it reads in the browser console as a cross-origin block. The
+// client has to name the real cause, or the next person debugs the network.
+const stale = createServer((req, res) => {
+  if (req.url.startsWith("/health")) {
+    res.writeHead(200, { "content-type": "application/json" });
+    return res.end('{"ok":true,"instance":"old"}');
+  }
+  res.writeHead(404, { "content-type": "text/plain" });
+  res.end("Not Found");
+});
+await new Promise(r => stale.listen(0, "127.0.0.1", r));
+const stalePort = stale.address().port;
+
+let verdict = null;
+on(EV.TRANSPORT, payload => { if (payload.blocked) verdict = payload; });
+
+relay.connect({ roomHash: room, intent: "join", url: `ws://127.0.0.1:${stalePort}`,
+                name: "blocked-device" });
+const diagnosed = await until("the client to work out why", () => verdict !== null, 8000);
+relay.close();
+stale.close();
+
+check("an out-of-date relay is diagnosed, not blamed on the network",
+      diagnosed && verdict.unsupported === true, JSON.stringify(verdict));
 
 console.log("\n" + "=".repeat(56));
 console.log(`FALLBACK: ${pass}/${pass + fail} passed`);

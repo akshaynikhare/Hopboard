@@ -393,10 +393,47 @@ async def s6_departure():
         await b.close()
 
 
+# ------------------------------------------------------------------ S7
+
+async def s7_cors_on_errors():
+    """The header has to be on the responses this file never writes.
+
+    A browser reports any header-less response as "blocked by CORS policy",
+    whatever the status actually was. That turned a frontend deployed ahead of
+    the relay — /sse answering 404 because that build predated the route — into
+    an evening of debugging cross-origin policy that was never the problem.
+    """
+    print("\nS7  CORS on responses FastAPI generates")
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        origin = {"Origin": "https://akshaynikhare.github.io"}
+
+        missing = await client.get(f"{HTTP}/no-such-route", headers=origin)
+        check("a 404 for an unknown route still carries CORS",
+              missing.status_code == 404
+              and missing.headers.get("access-control-allow-origin") == "*",
+              f"HTTP {missing.status_code} acao="
+              f"{missing.headers.get('access-control-allow-origin', 'missing')}")
+
+        wrong_method = await client.get(f"{HTTP}/pub/whatever", headers=origin)
+        check("a 405 carries CORS too",
+              wrong_method.headers.get("access-control-allow-origin") == "*",
+              f"HTTP {wrong_method.status_code}")
+
+        # One header, not two. Duplicated ACAO is itself a CORS failure, and the
+        # routes here set their own on top of the middleware.
+        # Streamed, not fetched: the response body never ends, so reading it is
+        # a guaranteed timeout. Only the headers are of interest here.
+        async with client.stream("GET", f"{HTTP}/sse/corscheck", headers=origin) as stream:
+            acao = stream.headers.get_list("access-control-allow-origin")
+        check("exactly one Access-Control-Allow-Origin on the stream",
+              len(acao) == 1, f"{len(acao)}: {acao}")
+
+
 async def main():
     print(f"\nSSE + POST fallback gate against {HTTP}")
     for section in (s1_handshake, s2_two_sse_peers, s3_mixed_room,
-                    s4_batching_and_replay, s5_limits, s6_departure):
+                    s4_batching_and_replay, s5_limits, s6_departure,
+                    s7_cors_on_errors):
         try:
             await section()
         except Exception as err:                      # noqa: BLE001
