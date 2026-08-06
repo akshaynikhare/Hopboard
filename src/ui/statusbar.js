@@ -94,7 +94,9 @@ function initTransportPicker() {
   on(EV.TRANSPORT, ({ mode, forced }) => {
     picked = forced ?? "";
     live = mode;
-    if (host.firstChild) drawMenu(host);         // only if it is open
+    if (!host.firstChild) return;                // only if it is open
+    drawMenu(host);
+    anchor(host);
   });
 
   button.addEventListener("click", e => {
@@ -115,6 +117,7 @@ function initTransportPicker() {
 
 function openMenu(host) {
   drawMenu(host);
+  anchor(host);
   $("sbConn")?.setAttribute("aria-expanded", "true");
   host.querySelector("[data-transport]")?.focus();
   // Capture phase: a click anywhere else closes it before that click does
@@ -143,6 +146,32 @@ function onMenuKey(e) {
   e.preventDefault();
   closeMenu($("mount-transport"));
   $("sbConn")?.focus();
+}
+
+/**
+ * Sit directly above the button that opened it, without falling off the screen.
+ *
+ * Measured off the button rather than fixed in CSS, in both axes, because both
+ * move. Horizontally: the status bar puts the share key before the connection
+ * item and drops items at narrow widths, so #sbConn's left edge depends on the
+ * key's length and the window. Vertically: the status bar is the last row on a
+ * desktop but NOT on a phone, where the tab bar sits below it — a menu offset
+ * from the bottom of the viewport was correct on one layout and covering the
+ * tab bar on the other.
+ *
+ * The CSS values stay as the fallback for anything that cannot measure.
+ */
+function anchor(host) {
+  const menu = host.querySelector(".tmenu");
+  const button = $("sbConn");
+  if (!menu || typeof button?.getBoundingClientRect !== "function") return;
+
+  const bar = button.getBoundingClientRect();
+  const width = menu.getBoundingClientRect().width || 300;
+  if (!bar.width && !bar.height) return;                 // not laid out yet
+
+  menu.style.left = `${Math.max(8, Math.min(bar.left, window.innerWidth - width - 8))}px`;
+  menu.style.bottom = `${Math.max(0, window.innerHeight - bar.top + 6)}px`;
 }
 
 function drawMenu(host) {
