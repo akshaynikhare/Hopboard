@@ -174,6 +174,10 @@ git switch -c fix/whatever           # main refuses direct commits
 git commit -m "fix(scope): what changed"
 ```
 
+[CONTRIBUTING.md](CONTRIBUTING.md) has the full loop, the commit convention, and
+the boundaries the static checks enforce. Security problems go through
+[SECURITY.md](SECURITY.md), not the issue tracker.
+
 The tests run **locally, in a git hook, before the commit exists** — there is no
 CI. GitHub's only workflow copies files to Pages, and it runs on a version tag
 and nothing else. The reasoning, the trade that comes with it, and the commit
@@ -199,6 +203,9 @@ npm run release -- minor             # verify, changelog, tag, push, deploy
 | [P2P-FILES.md](docs/P2P-FILES.md) | Thumbnails over the relay, bytes over WebRTC, and the corporate-network problem |
 | [M0-RESULTS.md](docs/M0-RESULTS.md) | Transport gate results |
 | [SEO.md](docs/SEO.md) | Search, answer-engine and distribution strategy |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Setup, the commit convention, and the boundaries the checks enforce |
+| [SECURITY.md](SECURITY.md) | Reporting a vulnerability privately, and what is in scope |
+| [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) | Contributor Covenant 2.1 |
 
 ## Known limitations
 

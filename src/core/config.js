@@ -332,10 +332,11 @@ export const DEFAULT_SYNC_MODE = SYNC_MODES.LIVE;
  * moved account is then one edit, and the four links cannot drift into pointing
  * at three different projects.
  *
- * !! UNVERIFIED: OWNER is real (the repo is at github.com/akshaynikhare/
- * RealtimeClipboard); the sponsors page was guessed from it and has NOT been
- * confirmed to exist. Check it before this ships — a donate link that 404s
- * costs more goodwill than no donate link. !!
+ * Every link below was checked against a live GitHub on 2026-08-07 and returned
+ * 200: the repo, the issue chooser, and the sponsors page. Re-check the sponsors
+ * page if the account ever moves — a donate link that 404s costs more goodwill
+ * than no donate link. The .github/FUNDING.yml button is the same destination
+ * and has to move with it.
  */
 export const REPO = {
   OWNER: "akshaynikhare",
