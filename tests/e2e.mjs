@@ -242,6 +242,55 @@ async function main() {
 
   l1.close(); l2.close(); l3.close(); l4.close();
 
+  /* ---------------------------------------------------------------------
+     Locking a room out from under the people in it.
+
+     The founder leaves for a locked room, which the others can neither name
+     nor open — so the last thing it does in the old room is say so. The claim
+     under test is that the goodbye actually arrives: it is an ordinary clip as
+     far as the relay is concerned, which is what lets it work against a relay
+     that knows nothing about it.
+  --------------------------------------------------------------------- */
+  console.log("\nLocking with company");
+
+  const okey = keys.generate();
+  const oroom = await cryptoBox.roomHash(okey);
+  const oaes = await cryptoBox.deriveKey(okey);
+
+  const founder = new Peer("F", oroom, oaes);
+  const guest   = new Peer("G", oroom, oaes);
+  await founder.connect("create");
+  const wf = await founder.next(m => m.t === "welcome");
+  check("the founder arrives into an empty room", wf.existing === 0,
+        "this, and only this, is what earns the right to lock");
+
+  await guest.connect("join");
+  const wg = await guest.next(m => m.t === "welcome");
+  check("a guest arrives after them", wg.existing === 1);
+
+  await founder.sendClip(LOCK.EVICT);
+  const goodbye = await guest.next(m => m.t === "clip" && m.originId === founder.originId
+                                       && m.payload !== undefined);
+  check("the guest is told the session was locked",
+        await guest.readClip(goodbye) === LOCK.EVICT);
+
+  // The other half of "gracefully": a device that was offline for the moment it
+  // happened, or that follows the old link afterwards, must not walk into a room
+  // it has already been removed from and sit there in silence.
+  const latecomer = new Peer("L", oroom, oaes);
+  await latecomer.connect("join");
+  const wlate = await latecomer.next(m => m.t === "welcome");
+  check("and so is anyone who arrives afterwards",
+        !!wlate.last && await latecomer.readClip(wlate.last) === LOCK.EVICT,
+        "the relay retains the goodbye and replays it");
+
+  // The founder is in a genuinely different room, not a flag away from this one.
+  const locked = await cryptoBox.deriveLocked(okey, "a new pin entirely");
+  check("the room the founder left for cannot be reached from the old link",
+        locked.roomHash !== oroom);
+
+  founder.close(); guest.close(); latecomer.close();
+
   console.log("\n" + "=".repeat(60));
   console.log(`E2E: ${pass}/${pass + fail} passed`);
   results.filter(r => !r.ok).forEach(r => console.log(`   FAILED: ${r.name} ${r.detail}`));

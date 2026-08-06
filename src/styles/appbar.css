@@ -76,6 +76,53 @@
   .modebtn { padding:3px 8px; }
 }
 
+/* Lock session. Sits between the mode switch and the project links, because it
+   belongs to the session rather than to the app around it.
+
+   Outlined rather than filled: it is a control you press, like the switch
+   beside it, but pressing it abandons the current room and disconnects every
+   other device in it — so it gets the weight of a real button and none of the
+   accent that would invite an idle click. */
+.lockbtn {
+  display:flex;
+  align-items:center;
+  gap:5px;
+  height:22px;
+  padding:0 8px;
+  margin-left:8px;
+  flex:none;
+  border:1px solid var(--bd2);
+  border-radius:3px;
+  background:var(--editor);
+  color:var(--dim);
+  font:inherit;
+  font-size:11.5px;
+  font-weight:500;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.lockbtn:hover { color:var(--text); background:var(--hover); }
+.lockbtn svg {
+  width:13px; height:13px; flex:none;
+  fill:none; stroke:currentColor; stroke-width:1.7;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+
+/* Already locked. A state, not an alert — the padlock reports a property the
+   session now has, and the status bar's "Private" is saying the same thing two
+   metres to the south. */
+.lockbtn.on { color:var(--ok); border-color:color-mix(in srgb, var(--ok) 45%, var(--bd2)); }
+
+/* Refused. Still focusable and still hoverable — see the note in
+   ui/lockButton.js about why this is not `disabled` — so the cursor says "this
+   does nothing" while the title and the toast say why. */
+.lockbtn[aria-disabled="true"] {
+  opacity:.5;
+  cursor:not-allowed;
+}
+.lockbtn[aria-disabled="true"]:hover { background:var(--editor); color:var(--dim); }
+.lockbtn.on[aria-disabled="true"]:hover { color:var(--ok); }
+
 /* Project links — report, sponsor — in the far-right corner.
    Quiet by default (--dim, no border, no fill): they are the only things in
    the header that ask the user for something rather than do something for
@@ -119,6 +166,10 @@
 @media (max-width:1080px) {
   .alink .lbl { display:none; }
   .alink { padding:0 6px; }
+  /* The padlock is the one glyph up here whose meaning is not in question, so
+     it survives losing its word better than the two beside it do. */
+  .lockbtn .lbl { display:none; }
+  .lockbtn { padding:0 6px; margin-left:6px; }
 }
 
 /* Editor toolbar: the same action cluster, now docked to the top-right of the

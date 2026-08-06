@@ -105,7 +105,9 @@ src/
     resizer.js          draggable splitters
     modal.js            the one focus-trapping dialog shell
     qr.js               QR modal (predates modal.js; still has its own copy)
-    lockDialog.js       the PIN prompt for locked sessions
+    lockDialog.js       the PIN prompt for locked sessions, and the notice
+                        shown to a device removed by one
+    lockButton.js       "Lock session" in the app header, and who may press it
     whatsNew.js         release notes, read from changelog.json
     install.js          PWA install + service worker
     ads.js              the single ad placeholder
@@ -223,6 +225,9 @@ These are load-bearing. Breaking one is a vulnerability, not a bug.
 | The lock marker is parsed **before** key normalisation | `core/keys.js` `parseFragment()` — normalising first turns `#!ABCDEF` into the different, valid key `ABCDEF` |
 | The lock beacon is planted only into a room with no retained clip | `main.js` on `EV.ROOM_STATE` — it is itself a clip, and would otherwise overwrite the last-clip replay of FR-3.3 |
 | A locked session claims "Private" only once something has actually decrypted | `state.setVerified()` → `ui/sessionPanel.js` `renderLock()` |
+| Only the device that opened the room may lock it, once anyone else is in it | `state.canLock()`, fed by `welcome.existing` — enforced at both call sites (`ui/lockButton.js` and `main.js` `session:lock`) |
+| Locking never leaves the other devices connected to a session nobody is in | `main.js` `sendEviction()` plants `LOCK.EVICT` in the room being abandoned; `onEvicted()` is the other end |
+| A bus event that reports is never named the same as one that commands | `core/bus.js` — `EV.LOCK_STATE` and the `"session:lock"` imperative once shared a name, and every `setKey()` opened the PIN dialog by itself |
 | Peer content is escaped before entering `innerHTML` | `ui/dom.js` `esc()`, and `setHTML()` is the only sink — enforced by Trusted Types in the CSP, and by the static check |
 | `lastSent` and the suppression window are set *before* writing to the OS clipboard | `clipboard/capture.js` `apply()` |
 | The AES key is derived once per session, never per message — and is cleared on leave, rotate and rejoin | `core/crypto.js` cache + `clearCache()` |

@@ -96,6 +96,9 @@ A static web app. Open it on machine A, get a short share key (e.g. `D75LV`). En
 | FR-1.12 | Locking, unlocking and changing the PIN each start a **new room**, because the lock state and the PIN are both part of the room's name. The UI says so before acting | Must |
 | FR-1.13 | Minimum PIN length **6**, free-form. The dialog states the entropy in bits as it is typed | Should |
 | FR-1.14 | A locked session distinguishes **confirmed** from **unconfirmed**: the padlock claims privacy only once something in the room has actually decrypted | Must |
+| FR-1.15 | **Locking is reachable in one press.** A `Lock session` control sits in the app header, beside the mode switch. It opens the PIN dialog when pressed and at no other time — nothing about locking is ever raised unprompted | Should |
+| FR-1.16 | **Only the founder may lock a shared session.** Alone, any device may. With other devices present, only the one that was first into the room — the relay's `welcome.existing` is the authority, not the client's own belief. A device that may not is told why rather than shown a control that silently does nothing | Must |
+| FR-1.17 | **Locking says goodbye.** Because FR-1.12 makes locking a room change, the devices left behind are removed from the session, not merely desynchronised. Before leaving, the locking device plants a sealed sentinel in the old room; every device that reads it disconnects and is shown what happened and what it would now need to rejoin. The relay retains it, so a device that was offline at that moment — or that follows the old link afterwards — is told too | Must |
 
 ### 3.2 Clipboard engine
 | ID | Requirement | Priority |
@@ -554,7 +557,8 @@ The relay sees only `roomHash` and ciphertext. It cannot derive the key from the
 - On first clipboard-permission prompt: what is read, when, and that it never leaves encrypted.
 - On "Copy link" **in a locked session**: that the PIN is *not* in the link and has to be sent another way.
 - On the QR code in a locked session: the same — the code carries the key, not the PIN.
-- On locking, unlocking, or changing the PIN: that it starts a new session and leaves the current devices behind.
+- On locking, unlocking, or changing the PIN: that it starts a new session and leaves the current devices behind. When other devices are actually present, how many, stated in the dialog *before* the button is pressed rather than in a toast afterwards.
+- On a device that has just been removed by someone else's lock: that the session was locked, that this is why it disconnected, and that rejoining needs both the new link and the PIN.
 
 ### 7.5 Locked sessions
 

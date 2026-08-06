@@ -61,6 +61,9 @@ export function init() {
   // The padlock and the Security group both read `locked`/`verified`, and the
   // second of those can flip at any moment — the first frame that decrypts.
   on(EV.LOCK_STATE, () => { renderLock(); menu.refresh(); });
+  // Whether this device may lock at all is answered by the relay's welcome, so
+  // the Security group has to be able to change its mind after it was drawn.
+  on(EV.FOUNDER, () => menu.refresh());
   on(EV.PEERS_CHANGED, ({ count, list }) => renderPeers(count, list));
   on(EV.SYNC_MODE, () => menu.refresh());
   on(EV.INSTANCE_CHANGED, ({ from, to }) => { splitBrain = { from, to }; menu.refresh(); });
@@ -324,17 +327,29 @@ function changeRelay(reset = false) {
  * and the button label gets to say what actually happens.
  */
 function lockRows() {
-  const { locked, verified } = state.get();
+  const { locked, verified, peers } = state.get();
 
   if (!locked) {
+    const allowed = state.canLock();
+    const others = Math.max(0, peers - 1);
+
     return `<div class="srow plain">
         <div class="l"><b>Lock this session</b><span>Adds a PIN that is not in the
         link. Starts a new session — your other devices need the new link and the
         PIN.</span></div>
       </div>
-      <div class="sacts">
+      ${allowed ? `<div class="sacts">
         <button class="btn ghost" type="button" data-act="lock" data-mi="lock">Lock session</button>
-      </div>`;
+      </div>` : ""}
+      ${allowed
+        ? (others ? `<div class="snote">The ${others} other device${
+            others === 1 ? "" : "s"} here will be disconnected.</div>` : "")
+        // Not a disabled button. The action is unavailable on this device and
+        // will not become available on it — offering a greyed control invites
+        // clicking it to find out why, and the answer fits in the space the
+        // button was taking up.
+        : `<div class="snote">Only the first device in a session can lock it.
+           Ask whoever started this one.</div>`}`;
   }
 
   return `<div class="srow plain">

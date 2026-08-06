@@ -128,6 +128,23 @@ export function toUrl(key, locked = false) {
   location.hash = fragment(key, locked);
 }
 
+/**
+ * Drop the key out of the address bar without navigating.
+ *
+ * For the one case where the session in the URL is not merely over but closed
+ * to this device: it was locked by somebody else and we were removed from it
+ * (main.js onEvicted). The fragment is what boot() reads first, so leaving it
+ * in place means every reload rejoins a room we have been ejected from and
+ * gets ejected again.
+ *
+ * replaceState rather than `location.hash = ""`, which leaves a bare "#" on the
+ * URL and pushes a history entry — so Back would put the dead key straight
+ * back.
+ */
+export function clearUrl() {
+  history.replaceState(null, "", location.pathname + location.search);
+}
+
 export function shareLink(key, locked = false) {
   return `${location.origin}${location.pathname}#${fragment(key, locked)}`;
 }

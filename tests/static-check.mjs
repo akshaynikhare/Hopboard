@@ -113,6 +113,8 @@ const stripComments = s => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]
 // Files whose innerHTML provably carries no peer content, with the reason.
 const ESC_EXEMPT = {
   "src/ui/editor.js": "gutter interpolates a loop index integer, nothing else",
+  "src/ui/lockButton.js": "the template is a constant; every dynamic string it "
+    + "later carries goes in through textContent or setAttribute",
 };
 
 /* setHTML() as well as innerHTML: the Trusted Types work moved every write

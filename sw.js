@@ -99,6 +99,7 @@ const SHELL = [
   "./src/ui/hints.js",
   "./src/ui/historyPanel.js",
   "./src/ui/install.js",
+  "./src/ui/lockButton.js",
   "./src/ui/lockDialog.js",
   "./src/ui/mobileNav.js",
   "./src/ui/modal.js",

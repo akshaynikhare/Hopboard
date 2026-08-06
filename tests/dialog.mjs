@@ -112,6 +112,86 @@ click("[data-modal-dismiss]");
 check("and so does the one that replaced it", await second === null);
 check("nothing is left mounted", !$(".lockmodal"));
 
+/* ---- the goodbye notice ----
+   What a device sees when the session it was in has just been locked without
+   it. No field, and it must settle whichever way the user leaves it — the
+   caller is deciding whether to open a fresh session on the answer. */
+
+const notice = dlg.notice({
+  title: "This session has been locked",
+  body: ["The device that started this session added a PIN."],
+  dismiss: "Close",
+  action: "Start a new session",
+});
+
+check("the notice mounts", !!$(".lockmodal-dlg"));
+check("it collects no secret", !$("input"));
+check("it says what happened", $("#lockTitle").textContent.includes("locked"));
+click("[data-ok]");
+check("the primary button reports itself", await notice === "action");
+
+const closed = dlg.notice({ title: "x", body: ["y"], action: "go" });
+click("[data-modal-dismiss]");
+check("closing it resolves null rather than the action", await closed === null);
+
+/* ---- the header button ----
+   Renders the answer state.canLock() gives, and must be able to change its
+   mind: whether this device was first into the room is not known until the
+   relay's welcome arrives, which is after this button has already been drawn. */
+
+const state = await import("../src/core/state.js");
+const bus = await import("../src/core/bus.js");
+const lockButton = await import("../src/ui/lockButton.js");
+
+const host = document.createElement("div");
+host.id = "mount-lock";
+document.body.appendChild(host);
+
+state.get().locked = false;
+state.get().peers = 1;
+state.get().founder = null;
+lockButton.init();
+
+check("a button mounts", !!$("#bLock"));
+check("nothing opened by itself", !$(".lockmodal"));
+check("alone, it is offered", $("#bLock").getAttribute("aria-disabled") === "false");
+
+let toast = "";
+bus.on(bus.EV.TOAST, m => { toast = m; });
+let asked = 0;
+bus.on("session:lock", () => { asked++; });
+
+// A second device turns up, and this one was not first.
+state.get().peers = 2;
+state.setFounder(false);
+check("company plus a late arrival refuses it",
+  $("#bLock").getAttribute("aria-disabled") === "true");
+check("and it is still focusable, so it can explain itself",
+  !$("#bLock").disabled);
+check("the reason is on the control itself",
+  /first device/i.test($("#bLock").title), $("#bLock").title);
+
+$("#bLock").click();
+check("pressing it asks for no PIN", asked === 0);
+check("it says why instead", /first device/i.test(toast), toast);
+
+// The relay's welcome lands and says this device opened the room after all.
+state.setFounder(true);
+check("being told we were first re-offers it",
+  $("#bLock").getAttribute("aria-disabled") === "false");
+$("#bLock").click();
+check("and now pressing it asks to lock", asked === 1);
+
+state.get().locked = true;
+bus.emit(bus.EV.LOCK_STATE, { locked: true, verified: false });
+check("once locked, the button reports the state", $("#bLock").classList.contains("on"));
+check("and refuses to do it twice",
+  $("#bLock").getAttribute("aria-disabled") === "true");
+$("#bLock").click();
+check("pointing at where the PIN is changed instead",
+  /already locked/i.test(toast), toast);
+check("still only one lock request in total", asked === 1);
+
 console.log(`\n${"=".repeat(58)}`);
 console.log(`DIALOG: ${pass}/${pass + fail} passed`);
 console.log("=".repeat(58));

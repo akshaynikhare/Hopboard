@@ -1,9 +1,11 @@
 /**
  * The PIN prompt for locked sessions.
  *
- * One export, `ask()`, which resolves to the PIN the user typed or to null if
- * they backed out. Everything the caller does with that answer — deriving,
- * connecting, giving up — happens in main.js; this module knows nothing about
+ * `ask()` resolves to the PIN the user typed or to null if they backed out, and
+ * `notice()` states a fact about the lock and offers one way forward — the
+ * dialog a device sees when the session it was in has been locked without it.
+ * Everything the caller does with either answer — deriving, connecting, giving
+ * up, starting again — happens in main.js; this module knows nothing about
  * rooms, keys or the relay, and imports nothing that does.
  *
  * WHY THIS IS A MODAL, when the file-request prompt next door deliberately is
@@ -71,8 +73,14 @@ const COPY = {
  * `mode` is create | join | retry. `key` is shown so someone answering a prompt
  * on a second device can see which session it is for — it is already in their
  * address bar, so this discloses nothing they do not have.
+ *
+ * `note` is a sentence the caller adds above the field, and it exists for one
+ * case: locking a session that other devices are currently in throws them out
+ * of it. That consequence belongs on the button that causes it, in the dialog
+ * the user is looking at, with the number of devices in it — not in a toast
+ * they read afterwards.
  */
-export function ask({ mode = "join", key = "" } = {}) {
+export function ask({ mode = "join", key = "", note = "" } = {}) {
   const copy = COPY[mode] ?? COPY.join;
   ensureStyles();
 
@@ -85,6 +93,7 @@ export function ask({ mode = "join", key = "" } = {}) {
         <h2 id="lockTitle">${esc(copy.title)}</h2>
         <p id="lockIntro">${esc(copy.intro)}</p>
         ${key ? `<p class="lockkey">Session <b>${esc(key)}</b></p>` : ""}
+        ${note ? `<p class="lockwarn" role="note">${esc(note)}</p>` : ""}
 
         <label class="locklbl" for="lockPin">PIN</label>
         <input id="lockPin" class="lockinput" type="password" name="realtimeclipboard-pin"
@@ -156,6 +165,42 @@ export function ask({ mode = "join", key = "" } = {}) {
     });
 
     pin.focus();
+  });
+}
+
+/**
+ * Say something and offer a way forward. No field, no secret.
+ *
+ * The one caller is the device that has just been removed from a session
+ * somebody else locked. It is a modal for the reason the PIN prompt is: by the
+ * time this appears the connection is closed and there is no session behind the
+ * dialog to go on using, so trapping focus describes the situation rather than
+ * imposing anything on it.
+ *
+ * `body` is an array of paragraphs. Resolves to "action" if the primary button
+ * was pressed, and to null for every other way out — dismiss, Escape, backdrop
+ * — so a caller can treat "they read it and closed it" as its own answer.
+ */
+export function notice({ title = "", body = [], dismiss = "Close", action = null } = {}) {
+  ensureStyles();
+
+  return new Promise(resolve => {
+    const { el } = modal.show({
+      className: "lockmodal",
+      labelledBy: "lockTitle",
+      onClose: resolve,
+      html: `
+        <h2 id="lockTitle">${esc(title)}</h2>
+        ${body.map(p => `<p>${esc(p)}</p>`).join("")}
+        <div class="lockrow">
+          <button class="btn ghost" type="button" data-modal-dismiss>${esc(dismiss)}</button>
+          ${action ? `<button class="btn" type="button" data-ok>${esc(action)}</button>` : ""}
+        </div>`,
+    });
+
+    el.addEventListener("click", e => {
+      if (e.target.closest("[data-ok]")) modal.close("action");
+    });
   });
 }
 

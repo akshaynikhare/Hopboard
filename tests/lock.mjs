@@ -168,6 +168,75 @@ check("the beacon round-trips to exactly the sentinel",
 check("a peer without the PIN cannot read the beacon",
   !await opens(wrongPin.aesKey, beaconBox));
 
+/* --------------------------------------------------------- the goodbye clip */
+
+check("the eviction sentinel cannot be typed by a user",
+  LOCK.EVICT.charCodeAt(0) === 0);
+check("it is not the beacon", LOCK.EVICT !== LOCK.BEACON);
+
+const evictBox = await cryptoBox.encrypt(a.aesKey, LOCK.EVICT);
+check("it round-trips to exactly the sentinel",
+  await cryptoBox.decrypt(a.aesKey, evictBox.payload, evictBox.iv) === LOCK.EVICT);
+// It travels through the relay like any other clip, so the relay must be no
+// more able to read "the session was locked" than it is to read a password.
+check("the relay cannot tell it from any other clip",
+  !await opens(wrongPin.aesKey, evictBox));
+
+/* ---------------------------------------------- reports are not instructions
+
+   THE REGRESSION. EV.LOCK_STATE was "session:lock" — the same name the UI
+   emits to mean "lock this session". One string, a report and an order, and
+   the bus namespaces nothing. Every state.setKey() therefore delivered a
+   report to the handler that acts on the order, so the app opened its own
+   "Lock this session" PIN dialog on every boot. It looked like a feature. */
+
+const bus = await import("../src/core/bus.js");
+const COMMANDS = ["session:lock", "session:unlock", "session:repin",
+                  "session:rotate", "session:leave", "session:rejoin"];
+const announcements = Object.values(bus.EV);
+const collisions = COMMANDS.filter(c => announcements.includes(c));
+check("no imperative shares a name with an announcement",
+  collisions.length === 0, collisions.join(", "));
+
+/* ------------------------------------------------------- who may lock, and when
+
+   The rule the whole feature turns on: locking removes everyone else from the
+   room, so with company only the device that opened the room may do it. Tested
+   against the real state module rather than a copy of the condition — a second
+   copy of a rule is what a disagreement is made of. */
+
+const state = await import("../src/core/state.js");
+
+const situation = ({ locked = false, peers = 1, founder = null }) => {
+  const s = state.get();
+  s.locked = locked;
+  s.peers = peers;
+  s.founder = founder;
+  return state.canLock();
+};
+
+check("alone and unasked, anyone may lock",
+  situation({ peers: 1, founder: null }) === true);
+check("alone, having been first, still yes",
+  situation({ peers: 1, founder: true }) === true);
+check("with company, the device that opened the room may",
+  situation({ peers: 3, founder: true }) === true);
+check("with company, a device that arrived later may NOT",
+  situation({ peers: 3, founder: false }) === false);
+// The reason `founder` is null rather than false before `welcome` answers: a
+// tri-state that collapses to false hands the room to nobody.
+check("with company and no answer yet, it waits rather than guessing",
+  situation({ peers: 2, founder: null }) === false);
+check("an already-locked session cannot be locked again",
+  situation({ locked: true, peers: 1, founder: true }) === false);
+
+// setKey is what runs on every room change, and carrying the title across one
+// would let the founder of session A lock session B out from under its owner.
+state.get().founder = true;
+state.setKey({ key: "AAAAAA", roomHash: "r", aesKey: null });
+check("opening a different room forgets that we were first",
+  state.get().founder === null);
+
 /* ------------------------------------------------ the open path is untouched
 
    A change to the unlocked derivation would strand every link in existence.

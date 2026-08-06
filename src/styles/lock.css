@@ -55,6 +55,25 @@
   color: var(--str);
 }
 
+/*
+ * What pressing the button is about to do to everybody else.
+ *
+ * --warn, boxed, above the field rather than in the small print at the bottom:
+ * disconnecting the other devices in the session is a consequence of this
+ * dialog and not a footnote to it, and a sentence under the button is a
+ * sentence read after the click.
+ */
+.lockwarn {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  border-radius: 3px;
+}
+
 .locklbl {
   display: block;
   margin-bottom: 4px;

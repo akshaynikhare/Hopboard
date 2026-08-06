@@ -113,6 +113,12 @@
          here you press rather than read, so it keeps the roomier spot. -->
     <div id="mount-mode"></div>
 
+    <!-- Lock this session. Built by ui/lockButton.js, which also decides
+         whether this device is allowed to press it — locking removes everyone
+         else from the room, so only the device that opened it may, once there
+         is anyone else here. It opens a dialog when pressed and never before. -->
+    <div id="mount-lock"></div>
+
     <!-- Report / sponsor. Built by ui/appLinks.js so the URLs come
          from core/config.js REPO and exist once — a rename or a fork is then
          one edit, not four hrefs that quietly disagree. -->

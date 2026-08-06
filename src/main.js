@@ -37,6 +37,7 @@ import * as statusbar from "./ui/statusbar.js";
 import * as resizer from "./ui/resizer.js";
 import * as syncMode from "./ui/syncMode.js";
 import * as appLinks from "./ui/appLinks.js";
+import * as lockButton from "./ui/lockButton.js";
 import * as lockDialog from "./ui/lockDialog.js";
 import * as whatsNew from "./ui/whatsNew.js";
 import * as hints from "./ui/hints.js";
@@ -226,6 +227,82 @@ async function sendBeacon() {
 }
 
 /* ------------------------------------------------------------------
+   Locking a room out from under the people in it
+
+   Locking moves the session: the lock flag is part of the room hash, so the
+   locking device leaves for a new room and cannot take anyone with it — the
+   others have neither the new key nor the PIN, and no way to be handed either
+   by a relay that never sees them. Before this they were simply abandoned:
+   still connected, still in a room, in sync with nobody and with nothing on
+   screen to say so.
+
+   So the last thing sent into the old room is a sealed sentinel. Anyone who
+   decrypts it closes their connection and is told what happened. See
+   LOCK.EVICT in core/config.js for why it is a clip rather than a frame type,
+   and for what it does to the room's retained last clip.
+------------------------------------------------------------------- */
+async function sendEviction() {
+  const { aesKey, originId } = state.get();
+  if (!aesKey || !relay.isOpen()) return;
+  const { payload, iv } = await cryptoBox.encrypt(aesKey, LOCK.EVICT);
+  relay.send(proto.clip({ payload, iv, originId }));
+  // Awaited, not fired and forgotten: the caller's next act is to close the
+  // socket this has to travel down. See LOCK.EVICT_FLUSH_MS.
+  await new Promise(done => setTimeout(done, LOCK.EVICT_FLUSH_MS));
+}
+
+/**
+ * The other end of it: this device has just been removed from a session.
+ *
+ * Disconnect first and explain second. The dialog is modal and the user may
+ * leave it sitting there — meanwhile this device must not still be in a room
+ * it has been told to leave, sending clips to it and taking clips from it.
+ *
+ * Guarded because the goodbye is a retained clip: a reconnect replays it, and
+ * a second notice stacked on the first would close the first (ui/modal.js
+ * never stacks) and resolve its promise as a cancel.
+ */
+let evicted = false;
+
+async function onEvicted() {
+  if (evicted) return;
+  evicted = true;
+
+  relay.close();
+  cryptoBox.clearCache();
+  state.resetRoster();
+  lockPrk = null;
+  storage.clearLock();
+  // Forget the room in both places it is remembered, so a reload lands on a
+  // fresh session rather than bouncing straight back off the retained goodbye.
+  // The alternative is honest and useless: a refresh loop that keeps telling
+  // someone they have been removed from a session they cannot rejoin.
+  storage.remove("lastKey");
+  keys.clearUrl();
+  state.setConnection("idle", "removed — the session was locked");
+
+  const answer = await lockDialog.notice({
+    title: "This session has been locked",
+    body: [
+      "The device that started this session added a PIN. Locking starts a new "
+      + "session, so this one has been disconnected.",
+      "To rejoin, you need the new link AND the PIN — the link alone will not "
+      + "open it, and the PIN never travels with it.",
+    ],
+    dismiss: "Close",
+    action: "Start a new session",
+  });
+
+  evicted = false;
+  if (answer !== "action") return;
+
+  const key = keys.generate(
+    state.get().settings.longKeys ? keys.LENGTHS.LONG : keys.LENGTHS.NORMAL);
+  emit(EV.TOAST, "New session — share the link to bring a device in");
+  await openSession(key, "create");
+}
+
+/* ------------------------------------------------------------------
    inbound frames
 ------------------------------------------------------------------- */
 async function onFrame(msg) {
@@ -243,9 +320,10 @@ async function onFrame(msg) {
         // the sentinel check, because the beacon's whole job is this line.
         state.setVerified();
 
-        // The beacon is not a clip anybody typed. Swallowed here rather than
+        // Neither sentinel is a clip anybody typed. Swallowed here rather than
         // downstream because TEXT_RECEIVED goes on to the editor, the history
         // pane and — with auto-write on — the machine's actual clipboard.
+        if (text === LOCK.EVICT) return onEvicted();
         if (text === LOCK.BEACON) return;
 
         emit(EV.TEXT_RECEIVED, { text, from: msg.originId });
@@ -494,14 +572,36 @@ function wire() {
   --------------------------------------------------------------------- */
 
   on("session:lock", async () => {
-    const pin = await lockDialog.ask({ mode: "create" });
+    // Checked here as well as on the button (ui/lockButton.js), because the
+    // gear menu emits this same event and a rule enforced at one of two call
+    // sites is a rule that is about to be enforced at neither.
+    if (state.get().locked) return emit(EV.TOAST, "This session is already locked");
+    if (!state.canLock()) {
+      return emit(EV.TOAST, "Only the first device in this session can lock it");
+    }
+
+    const others = Math.max(0, state.get().peers - 1);
+    const pin = await lockDialog.ask({
+      mode: "create",
+      note: others
+        ? `${others} other device${others === 1 ? " is" : "s are"} in this session. `
+          + "Locking moves you to a new one, so they will be disconnected."
+        : "",
+    });
     if (!pin) return;
+
+    // Said out loud to the room being left, before the socket carrying it goes.
+    if (others) await sendEviction();
+
     relay.close();
     cryptoBox.clearCache();
     state.resetRoster();
     const key = keys.generate(
       state.get().settings.longKeys ? keys.LENGTHS.LONG : keys.LENGTHS.NORMAL);
-    emit(EV.TOAST, "Locked — your other devices need the new link and the PIN");
+    emit(EV.TOAST, others
+      ? `Locked — ${others} device${others === 1 ? "" : "s"} disconnected. `
+        + "They need the new link and the PIN"
+      : "Locked — your other devices need the new link and the PIN");
     await openSession(key, "create", { locked: true, pin });
   });
 
@@ -546,6 +646,18 @@ function wire() {
     if (!state.get().locked || existing > 0 || hasLast) return;
     sendBeacon();
   });
+
+  /* ---- who opened this room -------------------------------------------
+     `existing` is the peer count taken the instant before we joined, so zero
+     means we are the first device here. That is the whole basis for who may
+     lock the session (core/state.js canLock), and it is the relay's answer
+     rather than ours — a client cannot decide for itself that it was first.
+
+     Re-answered on every welcome, including reconnects, which is correct: a
+     relay restart drops every room (OI-13), and the title should follow the
+     room that exists rather than the one that did.
+  --------------------------------------------------------------------- */
+  on(EV.ROOM_STATE, ({ existing }) => state.setFounder(existing === 0));
 
   on("session:relock", () => retryLock());
 
@@ -704,6 +816,7 @@ async function boot() {
   safeInit("session panel", sessionPanel.init);
   safeInit("resizers", resizer.init);
   safeInit("sync mode", syncMode.init);
+  safeInit("lock button", lockButton.init);
   safeInit("project links", appLinks.init);
   // Not awaited: it fetches a JSON file and, if that is slow or missing, the
   // consequence is one banner that does not appear.

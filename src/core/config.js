@@ -263,6 +263,40 @@ export const LOCK = {
    * rendering it. See core/crypto.js and the beacon note in main.js.
    */
   BEACON: String.fromCharCode(0) + "realtimeclipboard-lock-v1",
+
+  /**
+   * Sent into the room being ABANDONED when the session is locked.
+   *
+   * Locking is a room change (see main.js): the lock flag is part of the room
+   * name, so the locking device leaves for a new, locked room and everyone
+   * else is simply left behind in the old one — connected, in sync with
+   * nobody, with no way to tell that from a quiet afternoon. This sentinel is
+   * the goodbye. A device that decrypts it closes its connection and says what
+   * happened, which is the difference between being removed and being
+   * mysteriously alone.
+   *
+   * A clip rather than a new frame type, for the same reason BEACON is one: it
+   * needs no relay change, so it works against a deployed relay, and it is
+   * sealed with the room key — the relay forwards a sentinel it cannot read.
+   *
+   * It does overwrite the room's retained last clip (backend `room.last`), and
+   * that is deliberate: the retained copy is what a late joiner to the dead
+   * room receives, so they are told the session moved instead of being handed
+   * a clip from a session they are no longer part of.
+   */
+  EVICT: String.fromCharCode(0) + "realtimeclipboard-lock-evict-v1",
+
+  /**
+   * How long the goodbye gets to leave the machine before the socket is torn
+   * down under it.
+   *
+   * Not paranoia about WebSocket buffering — the SSE fallback batches upstream
+   * frames into a POST and its close() drops whatever is still queued
+   * (transport/sse.js), so closing in the same tick would send the sentinel to
+   * nobody on exactly the network where the fallback is in use. A quarter of a
+   * second, once, in a flow that is already opening a dialog.
+   */
+  EVICT_FLUSH_MS: 250,
 };
 
 export const NET = {
