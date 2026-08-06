@@ -61,16 +61,27 @@ month, and the incumbent's organic traffic fell 43.74% month-over-month.**
 
 ### On "Realtime Clipboard" specifically
 
-You asked to rank for this. Honest reading: **"realtime clipboard" is not itself a
-meaningful volume term** — it produces no autocomplete depth. Its two viable
-relatives are:
+**Revised after the §3 autocomplete mine — an earlier draft of this section was
+too dismissive.** It said the phrase "produces no autocomplete depth." That was
+wrong: the mine surfaced three live completions carrying it.
 
-- **"live clipboard"** — 1,600/mo measured, cl1p.net only ranks 7th. Winnable, and
-  it matches the project's own original phrasing.
-- **"online clipboard realtime"** — a long tail off the 201K head, held by thin sites.
+| Score | Query |
+|---:|---|
+| 35 | `online clipboard sync automatically in realtime` |
+| 31 | `online clipboard live` |
+| 28 | `online clipboard realtime` |
 
-Treat "realtime clipboard" as a phrase to *include in copy* and as the `/live-clipboard`
-page's secondary target, not as a campaign of its own.
+So the term is real, but it lives **as a modifier on "online clipboard", never as
+a head term of its own.** Nobody searches "realtime clipboard" bare; they search
+"online clipboard … realtime". That distinction decides the page: target
+`online clipboard` in the title and `realtime`/`live` in an H2 and the URL slug,
+not the reverse.
+
+Also relevant: **"live clipboard"** is 1,600/mo measured, and cl1p.net only ranks
+7th for it — the weakest incumbent position in the whole set.
+
+Treat "realtime clipboard" as a genuine secondary target for `/live-clipboard`,
+not as a campaign of its own, and not as a domain name (§7).
 
 ### Winnable in 3–6 months, ranked
 
@@ -124,6 +135,22 @@ Prefix `/Hopboard/` until the domain moves. Priority order:
 | `/is-online-clipboard-safe` | snippet bait |
 | `/what-is-an-online-clipboard` | snippet bait |
 
+**Added after the §3 mine** — these were not visible before and two of them are
+the best intent in the whole set:
+
+| Slug | Target keyword | Why |
+|---|---|---|
+| `/clipboard-sync-not-working` | `clipboard sync across devices greyed out`, `copy paste between devices not working` | ⭐ **Rescue traffic.** Their native sync is broken *right now* and nobody in this category writes for it |
+| `/samsung-clipboard-sync` | `share clipboard between samsung devices` (43) | Samsung is its own cluster, twice in the top 45 |
+| `/online-clipboard-qr-code` | `online clipboard qr code` (31), `with qr code` (29) | **The app already has a QR button** — the feature exists, the page does not |
+| `/how-to-sync-clipboard-across-devices` | `how to sync clipboard across devices` (151) | Highest-scoring query found, anywhere |
+| `/share-clipboard-between-android-devices` | (136) | Second highest |
+| `/self-hosted-clipboard-sync` | `clipboard sync self hosted` (34), `open source` (30) | Feeds r/selfhosted and awesome-selfhosted (§6) |
+
+⚠️ Do **not** build for `online clipboard pdf` or `online clipboard image editor`
+— despite decent scores, that is image/PDF *editing* intent, not transfer. And
+skip `online clipboard vercel` / `klipit`: people looking for a named competitor.
+
 Depth rule from the competitors actually ranking: one wins on ~500 words, another
 on ~4,500. **1,200–2,000 substantive words** beats the first without the cost of
 the second. Note the competitive baseline in this niche is 200–400 URLs, not 14 —
@@ -143,20 +170,83 @@ network. Nothing else occupies that intersection.
 
 ---
 
-## 3. Google Trends — NOT OBTAINED. Read this.
+## 3. Google Trends — partly obtained. Read this.
 
-**Google Trends could not be accessed.** Eleven attempts across two agents and the
-main session — `/trends/explore`, the `/trends/api/explore` JSON endpoint, the
-embed endpoint, the `trends.google.co.in` geo variant, the topic-ID form and a
-reader proxy — returned **HTTP 429** every time. The block was IP-level and did
-not decay.
+**Trends' interest-over-time is still blocked.** `/trends/explore`, the
+`/trends/api/explore` JSON endpoint and the embed endpoint all return **HTTP 429**
+from here, consistently, IP-level, across many attempts on separate days. **There
+is no interest-over-time series and no top-geography map in this document.**
 
-**So there is no interest-over-time series, no top-geography map, and no
-rising/breakout related-query data in this document.** That was an explicit
-requirement and it was not met.
-
-To close the gap: run Trends manually from a browser on a different IP, or use
+To close that gap: run Trends manually from a browser on another IP, or use
 SerpApi's Google Trends endpoint. Ten minutes of manual work.
+
+**What did work, and is arguably the better data:** two endpoints answer normally.
+
+| Endpoint | Status | Gives |
+|---|---|---|
+| `trends.google.com/trends/api/autocomplete` | ✅ 200 | Trends topic entities |
+| `suggestqueries.google.com/complete/search` | ✅ 200 | **Live queries, ordered by popularity** |
+| `trends.google.com/trending/rss` | ✅ 200 | Daily trending (not our topic) |
+
+Google Suggest is the same corpus Trends' "related queries" panel draws from. It
+gives *ordering* rather than an index number — and for choosing which pages to
+build, knowing that `online clipboard no login` outranks `online clipboard pdf` is
+worth more than a 0–100 index on a term nobody types.
+
+### The mined query set — 1,095 real queries
+
+Method: 30 seed phrases in the category, each expanded with an a–z suffix sweep,
+run against Suggest for `gl=us` and `gl=in`, deduplicated. Each suggestion scores
+`10 − rank` per appearance, so a phrase surfacing high under several unrelated
+seeds outranks one appearing once at the bottom. Reproduce with
+`tools/kwmine.py`. **US and India returned near-identical orderings** — the
+top 20 differ only in minor position swaps, which means one set of pages serves
+both markets.
+
+**Every `online clipboard …` completion that exists** (this *is* the page plan):
+
+| Score | Query | Build? |
+|---:|---|---|
+| 48 | `online clipboard` | ✅ homepage |
+| **48** | **`online clipboard no login`** | ✅ **highest-value page** |
+| 36/31 | `online clipboard vercel` / `vercel app` | ❌ people seeking a specific clone |
+| **35** | **`online clipboard sync automatically in realtime`** | ✅ the realtime page |
+| 33 | `online clipboard text` | ✅ fold into homepage |
+| 31 | `online clipboard live` | ✅ |
+| **31/29** | **`online clipboard qr code` / `with qr code`** | ✅ **the app already has QR** |
+| 30 | `online clipboard klipit` | ❌ competitor brand |
+| 30 | `online clipboard url` | ✅ fold in |
+| 30/28 | `online clipboard zip file` / `file` | ✅ the files page |
+| 29 | `online clipboard editor` / `document` / `retrieve` | ✅ fold in |
+| 28 | `online clipboard pdf` / `image editor` | ⚠️ wrong intent — image *editing* |
+| 28 | `online clipboard realtime` | ✅ |
+| 27 | `online clipboard upload` / `io` / `board` | ✅ fold in |
+
+**Informational head terms** — high score, high volume, snippet-winnable:
+
+| Score | Query |
+|---:|---|
+| **151** | `how to sync clipboard across devices` |
+| **136** | `share clipboard between android devices` |
+| 77 | `how to copy and paste across devices` |
+| 52 | `sync clipboard across devices easily windows` |
+| 43 | `sync clipboard between android devices` |
+| 43 | `share clipboard between samsung devices` — **Samsung is its own cluster** |
+| 40 | `sync clipboard between pc and android` |
+| 40 | `how to share clipboard between android and pc` |
+| 36 | `clipboard sync across devices greyed out` — troubleshooting intent, high commercial value |
+| 34 | `clipboard sync self hosted` · 30 `clipboard sync open source` |
+| 28 | `copy paste between devices not working` — **rescue traffic** |
+
+Two clusters worth calling out because they were invisible before this mine:
+
+- **`clipboard sync across devices greyed out`** and **`copy paste between devices
+  not working`** are people whose *native* clipboard sync (Windows/Samsung/Apple)
+  has failed. They have the problem, right now, and the incumbent solution is
+  broken for them. That is the highest-converting intent in the entire set, and
+  nobody in this category is writing for it.
+- **Samsung** appears as its own cluster twice in the top 45. Samsung ships its
+  own clipboard sync; the queries are people trying to make it work across brands.
 
 ### Proxies used instead, and what they are worth
 
@@ -600,7 +690,97 @@ should not be thrown away in the same change as a DNS migration.
 
 ---
 
-## 8. What was changed in this pass
+## 8. Paying for the domain with ads — the arithmetic
+
+The goal is modest: cover a **$10.46/yr** domain, and ideally the relay bill. Ads
+can do that. But two hard gates sit in front of the money, and neither is about
+traffic volume.
+
+### Gate 1 — AdSense will reject the site as it stands
+
+Approval is a content-quality review, not a traffic threshold. The current bar:
+**anything under 500 words per page is "thin content" and triggers rejection**, and
+reviewers expect roughly **15–20 substantial pages** of original material
+([approval requirements](https://innopanda.com/google-adsense-in-2026/)). Hopboard
+today is one landing page plus a `noindex` app. It would be declined.
+
+**This is not a detour.** The 14-page keyword plan in §2, rewritten against the
+mined queries in §3, is *exactly* what AdSense approval requires. Build the pages
+for traffic and the ad eligibility arrives with them. Do not apply before then — a
+rejection is on record and re-application is slower than a first application.
+
+### Gate 2 — the $100 payout threshold is the real constraint
+
+AdSense pays out at **$100 minimum** ([Google](https://support.google.com/adsense/answer/1709871?hl=en)).
+Below that the balance simply sits there. So the question is not "can ads cover
+$10.46" — it is "how long until any money moves at all."
+
+Realistic RPM (revenue per 1,000 pageviews) for a free utility tool:
+
+| Traffic source | RPM | Source |
+|---|---:|---|
+| India | **$0.60–3.00** (₹50–250) | [partnerkin](https://partnerkin.com/en/blog/articles/adsense_rpm_rates_by_country) |
+| United States | ~$6.00 | same |
+| Generic sites, all niches | $0.25–3.00 | same |
+
+This category skews heavily to India (22.8% of cl1p.net's traffic), and a
+free-tool audience has no purchase intent, so **assume a blended $1.00 RPM. Treat
+$2 as optimistic and $0.50 as the pessimistic case.**
+
+At $1.00 RPM:
+
+| Pageviews/yr | Pageviews/day | Gross/yr | Covers the $10.46 domain? | Reaches the $100 payout? |
+|---:|---:|---:|---|---|
+| 10,000 | 27 | $10 | ✅ on paper | ❌ **never paid** |
+| 50,000 | 137 | $50 | ✅ | ❌ still below threshold |
+| **100,000** | **274** | **$100** | ✅ | ✅ **one payout per year** |
+| 250,000 | 685 | $250 | ✅ | ✅ comfortable |
+
+**So the real target is ~100,000 pageviews/year — about 274/day.** Below that the
+earnings are theoretical: you accrue a balance you cannot withdraw.
+
+**The encouraging part:** §2 measured that a ninth-place ranking for "online
+clipboard" is worth ~6,700 visits/month — **80,400/yr from that one keyword**, and
+pageviews exceed visits because people open the app after the landing page. **One
+top-ten ranking on the head term roughly hits the payout threshold on its own.**
+That is the whole monetisation plan in a sentence.
+
+### The conflict nobody will raise until it is too late
+
+An ad network that tracks users **destroys the product's central claim**. Hopboard's
+pitch is "the server cannot read what you copy and nothing is stored." A page
+carrying Google's ad tags is loading a third-party tracker onto the same origin as
+a clipboard tool. Concretely, it costs:
+
+- **pluja/awesome-privacy** — requires *"no user-tracking on the project website."*
+  Listing refused, or removed later.
+- **r/privacy, r/PrivacyGuides, r/degoogle** — the three most on-audience
+  communities. They will find it and lead with it.
+- **Hacker News** — see §6: a commenter opened DevTools on a comparable clipboard
+  launch and dismantled its privacy claim publicly.
+
+**Recommended split, which keeps both the money and the claim:**
+
+| Surface | Monetisation |
+|---|---|
+| **Landing + keyword pages** (public, indexed, no user data) | Ads are fine here. This is where search traffic lands and where ~all impressions occur anyway |
+| **`app.html`** (where clipboard content lives) | **No third-party ad tags.** House ad, sponsor link, or nothing |
+
+That split is defensible in any forum: *"the marketing pages carry ads; the app
+does not load third-party code."* And it costs almost no revenue, because search
+traffic hits the content pages first.
+
+Worth evaluating as a straight upgrade: **EthicalAds** and **Carbon Ads** serve
+developer audiences without cookies or personal-data tracking, which would let ads
+run on the app page too without breaking anything above. ⚠️ **Their current
+publisher terms, traffic minimums and CPMs could not be verified — ethicalads.io
+returned 429.** Check before committing.
+
+Also already wired into `app.html`: **Buy Me a Coffee** and **GitHub Sponsors**.
+For covering $10.46/yr, a single sponsor beats a year of ads at 27 pageviews/day —
+and carries none of the above cost.
+
+## 9. What was changed in this pass
 
 | File | Change |
 |---|---|
@@ -614,7 +794,7 @@ should not be thrown away in the same change as a DNS migration.
 | `manifest.webmanifest` | Description retargeted |
 | `README.md` | Restructured for Google and LLM extraction: keyword-bearing H1, one-sentence description above the fold, feature bullets in search phrasing, comparison table, question-shaped FAQ |
 
-## 9. Still to do, in order
+## 10. Still to do, in order
 
 **Today, free, ~1 hour**
 
@@ -689,7 +869,7 @@ a relay, and there are no reliable free TURN servers.
     **136 stars**. Copy its `software/privydrop.yml` as the template. PR the
     `awesome-selfhosted-data` repo, not the main list.
 
-## 10. Uncertainty register
+## 11. Uncertainty register
 
 **Reddit data is now measured, with one gap.** Subscriber counts come from
 gummysearch, rule text from Wayback snapshots of each sub's `about/rules`
