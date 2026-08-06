@@ -27,7 +27,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY main.py .
+# shared.py too: main.py imports it unconditionally at module scope, so an image
+# without it fails at import, not at the first cross-replica publish.
+COPY main.py shared.py ./
 
 # --system-site-packages is not needed and the user owns nothing: there is
 # nothing in this image the relay should be able to modify at runtime.
