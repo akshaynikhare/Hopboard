@@ -346,8 +346,16 @@ async def s5_limits():
 
         # Rate limiting is per peer and survives across requests, because on this
         # transport there is no connection loop to hang a counter on.
-        for _ in range(14):
-            await a.post({"t": "clip", "payload": "eA==", "iv": "aXY=", "originId": "peerA"})
+        #
+        # Fired concurrently, not in a loop. The window is one second, and
+        # fourteen sequential round trips to a relay on the other side of the
+        # internet take longer than that — so the sequential version passed
+        # locally and reported "0 rejected" against the deployed relay, which
+        # says nothing about the limiter and everything about latency.
+        await asyncio.gather(*(
+            a.post({"t": "clip", "payload": "eA==", "iv": "aXY=", "originId": "peerA"})
+            for _ in range(14)
+        ))
         limited = [m for m in await a.drain() if m.get("code") == "RATE_LIMITED"]
         check("rate limits carry across separate POSTs", bool(limited),
               f"{len(limited)} rejected")
