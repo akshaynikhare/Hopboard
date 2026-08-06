@@ -26,9 +26,12 @@ desktop.ini
 .env.*
 !.env.example
 
-# Only needed for tests/boot.mjs; the app ships with no dependencies
+# The app still ships with zero RUNTIME dependencies, and that has not changed.
+# What changed is that the DEPLOY now has one: tools/build.mjs bundles the site
+# with esbuild, so a floating esbuild version is a floating bundle, and "the
+# build is reproducible" stops being true. The lock file is therefore committed
+# — and `npm ci` in the workflows requires it to exist at all.
 node_modules/
-package-lock.json
 
 # Scratch screenshots from local UI checks — output, not source
 .shots/
