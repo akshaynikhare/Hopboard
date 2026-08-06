@@ -30,7 +30,7 @@ try {
   process.exit(0);
 }
 
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve } from "node:path";
 
@@ -85,6 +85,41 @@ put("crypto", globalThis.crypto);
 if (!window.crypto?.subtle) {
   Object.defineProperty(window, "crypto", { value: globalThis.crypto, configurable: true });
 }
+
+/**
+ * Same-origin requests are served from the tree under test, not from the
+ * internet.
+ *
+ * jsdom is told the page's URL is the production origin, so every relative
+ * fetch the app makes — changelog.json is the only one today — resolved to a
+ * PUBLIC address and went out over the network. A test that boots local files
+ * was quietly asking production for one of its assets.
+ *
+ * That was invisible for as long as the origin happened to answer: the request
+ * 404'd in milliseconds and whatsNew.js's own error path swallowed it. It
+ * stopped being invisible the day the site moved to realtimeclipboard.com,
+ * because DNS for a freshly bought domain does not resolve yet — and undici
+ * does not merely reject on a resolver error, it reports timings first and
+ * takes the whole process down from inside Node's own internals, with a stack
+ * that names neither this file nor the app. The `performance` note above is the
+ * other half of the same seam.
+ *
+ * Pinning it to disk is also just more correct. This asserts things about THIS
+ * working tree; silently checking the deployed site's changelog.json instead
+ * was never what it meant to do.
+ */
+const ORIGIN = window.location.origin;
+const netFetch = globalThis.fetch;
+put("fetch", (input, init) => {
+  const url = new URL(String(input?.url ?? input), ORIGIN);
+  // Anything genuinely remote — the relay's /stats, say — still goes out.
+  if (url.origin !== ORIGIN) return netFetch(input, init);
+  const file = join(REPO, decodeURIComponent(url.pathname));
+  return Promise.resolve(existsSync(file)
+    ? new Response(readFileSync(file), { status: 200 })
+    : new Response("not found", { status: 404 }));
+});
+window.fetch = globalThis.fetch;
 
 // jsdom has no clipboard API. The app must degrade rather than crash — which
 // is itself part of what this asserts.

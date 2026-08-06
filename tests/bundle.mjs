@@ -143,6 +143,38 @@ if (!window.crypto?.subtle) {
 }
 Object.defineProperty(window.navigator, "clipboard", { value: undefined, configurable: true });
 
+/**
+ * Same-origin requests are served out of the build under test — for the reason
+ * stated four lines below, which this file was not honouring.
+ *
+ * jsdom is told the page's URL is the production origin, so the app's relative
+ * fetch for changelog.json resolved to a PUBLIC address. "Waiting on a live
+ * socket here would make a build check need the network" was already the stated
+ * rule, and a live HTTP request breaks it in exactly the same way — it was just
+ * quieter, because the request 404'd fast and whatsNew.js swallowed it.
+ *
+ * It stopped being quiet when the site moved to realtimeclipboard.com and DNS
+ * had not propagated: undici reports timings before rejecting and killed the
+ * process from inside Node's internals. See the `performance` note above — same
+ * seam, and this is the half that was left.
+ *
+ * Serving from OUT rather than from REPO is the point. This test exists to
+ * check what tools/build.mjs produced; reading the source tree instead would
+ * reintroduce the exact gap between `src/` and the deploy that the header of
+ * this file is about.
+ */
+const ORIGIN = window.location.origin;
+const netFetch = globalThis.fetch;
+put("fetch", (input, init) => {
+  const url = new URL(String(input?.url ?? input), ORIGIN);
+  if (url.origin !== ORIGIN) return netFetch(input, init);
+  const file = join(OUT, decodeURIComponent(url.pathname));
+  return Promise.resolve(existsSync(file)
+    ? new Response(readFileSync(file), { status: 200 })
+    : new Response("not found", { status: 404 }));
+});
+window.fetch = globalThis.fetch;
+
 // No relay, on purpose: this asks whether the bundle EVALUATES and reaches the
 // end of boot(). Whether the transport works is tests/e2e.mjs's job, and
 // waiting on a live socket here would make a build check need the network.
