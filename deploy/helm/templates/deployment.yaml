@@ -1,0 +1,110 @@
+{{- /*
+  The guard that matters.
+
+  PRD OI-3: room state is a process-local dict, so more than one replica without
+  a shared backend means two devices can join the same room, land on different
+  pods, and never see each other — silently, intermittently, under load. A
+  comment in values.yaml is something a hurried operator can not-read. This
+  fails the install instead, and says what to do about it.
+*/}}
+{{- if and (gt (int .Values.replicaCount) 1) (not .Values.redis.enabled) }}
+{{- fail (printf "\n\nreplicaCount is %d but redis.enabled is false.\n\nRoom state is per-process (PRD OI-3). With more than one replica and no shared\nbackend, two devices can join the same room, land on different pods, and never\nsee each other. It does not error — it presents as \"sync silently doesn't work\".\n\nEither:\n  set replicaCount to 1, or\n  set redis.enabled=true and redis.url=redis://...\n" (int .Values.replicaCount)) }}
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hopboard-relay.fullname" . }}
+  labels:
+    {{- include "hopboard-relay.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "hopboard-relay.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "hopboard-relay.selectorLabels" . | nindent 8 }}
+      annotations:
+        # Roll the pods when policy changes. Without this, editing an env value
+        # updates the Deployment spec but leaves the running relay on the old
+        # configuration until something else happens to restart it.
+        checksum/policy: {{ toYaml .Values.policy | sha256sum }}
+    spec:
+      securityContext:
+        runAsNonRoot: {{ .Values.securityContext.runAsNonRoot }}
+        runAsUser: {{ .Values.securityContext.runAsUser }}
+      containers:
+        - name: relay
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: HOPBOARD_CORS_ORIGINS
+              value: {{ .Values.policy.corsOrigins | quote }}
+            - name: HOPBOARD_MAX_PEERS
+              value: {{ .Values.policy.maxPeers | quote }}
+            - name: HOPBOARD_ROOM_TTL
+              value: {{ .Values.policy.roomTtlSeconds | quote }}
+            {{- if .Values.policy.disableFiles }}
+            - name: HOPBOARD_DISABLE_FILES
+              value: "true"
+            {{- end }}
+            {{- if gt (int .Values.policy.maxSessionSeconds) 0 }}
+            - name: HOPBOARD_MAX_SESSION
+              value: {{ .Values.policy.maxSessionSeconds | quote }}
+            {{- end }}
+            {{- if .Values.policy.joinTokenSecret.name }}
+            - name: HOPBOARD_JOIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.policy.joinTokenSecret.name }}
+                  key: {{ .Values.policy.joinTokenSecret.key }}
+            {{- else if .Values.policy.joinToken }}
+            - name: HOPBOARD_JOIN_TOKEN
+              value: {{ .Values.policy.joinToken | quote }}
+            {{- end }}
+            {{- if .Values.redis.enabled }}
+            - name: HOPBOARD_REDIS_URL
+              value: {{ required "redis.enabled is true but redis.url is empty" .Values.redis.url | quote }}
+            {{- end }}
+          # Liveness and readiness are the same endpoint because the relay has
+          # only one state: it is serving, or it is not. There is nothing to
+          # warm up and nothing to load — no database, no cache, no disk.
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 2
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: {{ .Values.securityContext.allowPrivilegeEscalation }}
+            readOnlyRootFilesystem: {{ .Values.securityContext.readOnlyRootFilesystem }}
+            capabilities:
+              {{- toYaml .Values.securityContext.capabilities | nindent 14 }}
+          # readOnlyRootFilesystem needs somewhere for /tmp. An emptyDir with a
+          # memory medium, so the "nothing is written to disk" claim survives
+          # contact with the filesystem the runtime insists on having.
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            medium: Memory
+            sizeLimit: 16Mi
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}

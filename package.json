@@ -1,27 +1,62 @@
 {
   "name": "hopboard",
   "version": "0.1.0",
-  "private": true,
+  "description": "Live clipboard sharing. Static frontend of native ES modules \u2014 development needs no build, and `npm run build` exists only to assemble the deploy. Nothing here is needed to READ the app.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/akshaynikhare/Hopboard.git"
+  },
+  "homepage": "https://github.com/akshaynikhare/Hopboard",
+  "bugs": "https://github.com/akshaynikhare/Hopboard/issues",
+  "keywords": [
+    "clipboard",
+    "online-clipboard",
+    "clipboard-sync",
+    "share-text",
+    "end-to-end-encrypted",
+    "cli",
+    "pipe",
+    "ssh"
+  ],
   "type": "module",
-  "description": "Live clipboard sharing. Static frontend, no build step — this file exists so Node treats src/*.js as ES modules when running tests. Nothing here is needed to deploy.",
+  "bin": {
+    "hopboard": "cli/hopboard.mjs"
+  },
+  "files": [
+    "cli/",
+    "src/core/",
+    "src/transport/",
+    "LICENSE",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "verify": "node tests/static-check.mjs && node tests/lock.mjs && node tests/dialog.mjs && node tests/whatsnew.mjs && node tests/files.mjs",
-    "test": "npm run verify && node tests/e2e.mjs && node tests/boot.mjs && node tests/boot.mjs --locked && node tests/fallback.mjs",
+    "verify": "node tests/static-check.mjs && node tests/relay-url.mjs && node tests/lock.mjs && node tests/dialog.mjs && node tests/whatsnew.mjs && node tests/files.mjs && node tests/clipsize.mjs",
+    "test": "npm run verify && node tests/bundle.mjs && node tests/e2e.mjs && node tests/boot.mjs && node tests/boot.mjs --locked && node tests/fallback.mjs",
     "test:static": "node tests/static-check.mjs",
     "test:lock": "node tests/lock.mjs && node tests/dialog.mjs",
     "test:e2e": "node tests/e2e.mjs",
     "test:boot": "node tests/boot.mjs && node tests/boot.mjs --locked",
+    "test:bundle": "node tests/bundle.mjs",
     "test:fallback": "node tests/fallback.mjs",
+    "build": "node tools/build.mjs",
+    "check:csp": "node tools/build.mjs _site && node tools/csp-check.mjs",
     "relay": "python -m uvicorn main:app --app-dir backend --port 8000",
     "relay:up": "node tools/relay-up.mjs",
     "changelog": "node tools/changelog.mjs",
     "release": "node tools/release.mjs",
     "serve": "python -m http.server 8080",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:cli": "node tests/cli.mjs",
+    "prepublishOnly": "npm run verify && node tests/cli.mjs"
   },
   "devDependencies": {
+    "esbuild": "^0.28.1",
     "husky": "^9.1.7",
     "jsdom": "^26.1.0"
   },
-  "comment": "jsdom is only needed by tests/boot.mjs, which skips cleanly when it is absent. tests/fallback.mjs needs a relay on 127.0.0.1:8000 and skips cleanly without one. The app itself has zero dependencies and ships as-is."
+  "comment": "esbuild is used ONLY by tools/build.mjs, which assembles the deploy \u2014 src/ stays plain ES modules on disk, so `npm run serve` still needs no build and the .husky checks still run against real modules. jsdom is needed by tests/boot.mjs and tests/bundle.mjs, which skip cleanly when it is absent. tests/fallback.mjs needs a relay on 127.0.0.1:8000 and skips cleanly without one. The app itself still ships with zero RUNTIME dependencies."
 }
