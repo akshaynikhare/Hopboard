@@ -173,7 +173,7 @@ Three guards, any one of which would mostly work; together they close it:
 | Copy not picked up | Window never regained focus | Last-capture timestamp, so staleness is visible |
 | Incoming clip while unfocused | `writeText()` refused | "1 pending" badge; written on focus |
 | Firefox / Safari | No silent read exposed | Capability banner; T1 paste path only |
-| Not HTTPS | Clipboard API unavailable | Hard error — GitHub Pages is HTTPS, so this only bites local `file://` testing |
+| Not HTTPS | Clipboard API unavailable | Hard error — the site is HTTPS-only (HSTS, see `_headers`), so this only bites local `file://` testing |
 
 ---
 

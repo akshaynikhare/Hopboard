@@ -1,24 +1,20 @@
 # RealtimeClipboard
 #
 # ---------------------------------------------------------------------------
-# HEADS UP: on GitHub Pages this file does nothing.
+# This file is live. It was not, for the whole life of the project before now.
 # ---------------------------------------------------------------------------
 #
-# robots.txt is only read at the root of an origin. This project deploys to
-# https://akshaynikhare.github.io/RealtimeClipboard/ , so this file lands in a
-# subdirectory and no crawler will ever fetch it. The file that actually
-# governs this origin lives in the akshaynikhare/akshaynikhare.github.io
-# repository and is served from https://akshaynikhare.github.io/robots.txt .
+# robots.txt is only read at the ROOT of an origin. The site used to deploy to
+# https://akshaynikhare.github.io/RealtimeClipboard/ , which put this file in a
+# subdirectory where no crawler would ever fetch it — the file that actually
+# governed that origin lived in a different repository, so the sitemap below
+# could not be declared from here at all and nothing had ever told a crawler it
+# existed.
 #
-# The sitemap therefore has to be declared THERE, not here. Add this line to
-# that repo's robots.txt, next to the career-compass one already in it:
-#
-#     Sitemap: https://akshaynikhare.github.io/RealtimeClipboard/sitemap.xml
-#
-# Until that happens, nothing has told a crawler this sitemap exists.
-#
-# This file is kept so it is ready the day RealtimeClipboard moves to its own domain, at
-# which point it becomes the real thing and the lines below take effect.
+# Since the move to https://realtimeclipboard.com/ this file sits at an apex and
+# is authoritative. Which also means a mistake in it is now capable of doing
+# real damage rather than none: tools/site-check.mjs asserts the Sitemap line
+# points at the canonical origin, and fails the deploy if it does not.
 #
 # ---------------------------------------------------------------------------
 # Why there is no longer a Disallow for app.html
@@ -40,4 +36,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://akshaynikhare.github.io/RealtimeClipboard/sitemap.xml
+Sitemap: https://realtimeclipboard.com/sitemap.xml

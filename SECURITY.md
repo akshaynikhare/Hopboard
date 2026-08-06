@@ -31,7 +31,7 @@ be. There is no bug bounty and no money.
 
 ## Supported versions
 
-The deployed site at `akshaynikhare.github.io/RealtimeClipboard/` and the latest
+The deployed site at `realtimeclipboard.com/` and the latest
 tag are what get fixed. Older tags do not receive backports — a static frontend
 updates the moment the tab is reloaded, so there is nothing to backport to.
 
