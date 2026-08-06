@@ -498,9 +498,14 @@
           </p>
         </div>
 
+        <!-- The canvas is wrapped rather than styled directly: the faint well
+             behind the sphere is a CSS gradient on .globefield, which keeps it
+             out of every animation frame. -->
         <figure class="globewrap">
-          <canvas id="globe" width="640" height="640" role="img"
-                  aria-label="Rotating globe marking the countries with active sessions"></canvas>
+          <div class="globefield">
+            <canvas id="globe" width="640" height="640" role="img"
+                    aria-label="Rotating globe marking the countries with active sessions"></canvas>
+          </div>
           <figcaption class="hint" id="globeCap">Sessions worldwide</figcaption>
         </figure>
       </div>
@@ -665,8 +670,18 @@
 <script>
 // A key in the fragment means someone followed a share link to the old app
 // URL. Send them on rather than showing marketing to someone who came to work.
-var shared = location.hash.slice(1).trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
-if (shared.length >= 4) location.replace("./app.html#" + shared);
+//
+// An in-page anchor is NOT a key. "#live" and "#compare" are both four or more
+// characters and both used to be swallowed by this, so deep-linking to a
+// section — from a search result, or from anywhere at all — landed the visitor
+// in the app on a room called LIVE. If the fragment names something on this
+// page, it is a destination, not a credential.
+(function () {
+  var raw = location.hash.slice(1).trim();
+  if (!raw || document.getElementById(raw)) return;
+  var shared = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (shared.length >= 4) location.replace("./app.html#" + shared);
+})();
 </script>
 </body>
 </html>

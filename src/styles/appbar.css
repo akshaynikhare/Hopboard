@@ -76,6 +76,52 @@
   .modebtn { padding:3px 8px; }
 }
 
+/* Project links — report, coffee, sponsor — in the far-right corner.
+   Quiet by default (--dim, no border, no fill): they are the only things in
+   the header that ask the user for something rather than do something for
+   them, and an ask that shouts competes with the mode switch beside it. The
+   colour only arrives on hover, once the pointer has already committed. */
+.applinks {
+  display:flex;
+  align-items:center;
+  gap:1px;
+  flex:none;
+  margin-left:10px;
+  /* A pipe rather than more whitespace: the switch is a control and these are
+     departures, and at a glance the group needs to read as separate. */
+  padding-left:10px;
+  border-left:1px solid var(--bd);
+}
+.alink {
+  display:flex;
+  align-items:center;
+  gap:5px;
+  height:22px;
+  padding:0 7px;
+  border-radius:4px;
+  color:var(--dim);
+  font-size:11.5px;
+  font-weight:500;
+  text-decoration:none;
+  white-space:nowrap;
+}
+.alink:hover { background:color-mix(in srgb, var(--text) 16%, transparent); color:var(--text); }
+.alink.coffee:hover  { color:var(--warn); }
+.alink.sponsor:hover { color:var(--bad); }
+.alink svg {
+  width:14px; height:14px; flex:none;
+  fill:none; stroke:currentColor; stroke-width:1.5;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+
+/* Below the width where all three words fit, the icons carry them. The title
+   attribute is the label at that point — and each link keeps its own hue on
+   hover, which is what tells three same-sized glyphs apart. */
+@media (max-width:1080px) {
+  .alink .lbl { display:none; }
+  .alink { padding:0 6px; }
+}
+
 /* Editor toolbar: the same action cluster, now docked to the top-right of the
    text it acts on. A row of its own rather than an overlay — floating it over
    the textarea would sit on the first line of whatever you pasted. */

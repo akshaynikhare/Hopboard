@@ -51,6 +51,18 @@
   --page:1180px;
   --pad:clamp(18px,4vw,28px);
   --cols:3;
+
+  /* The inset between a column's rule and whatever sits inside that column.
+     Every grid cell and every full-width block carries it, which is what keeps
+     type, panels and borders OFF the vertical rules instead of on them — a
+     letter touching a hairline reads as a rendering fault, and a panel border
+     landing on one reads as a doubled line. One value, so the gap on the left
+     of a column always matches the gap on the right of its neighbour. */
+  --gut:clamp(16px,2.1vw,32px);
+
+  /* motion + depth, restated once so the polish stays consistent */
+  --ease:cubic-bezier(.2,.7,.3,1);
+  --lift:0 1px 2px rgba(0,0,0,.30),0 10px 30px rgba(0,0,0,.28);
 }
 
 @media (prefers-color-scheme: light) {
@@ -68,12 +80,14 @@
     --key:#a31515;
     --ok:#0f7b6c;
     --warn:#8a6d00;
+    --lift:0 1px 2px rgba(0,0,0,.06),0 10px 30px rgba(0,0,0,.09);
   }
 }
 
 * { box-sizing:border-box; margin:0; padding:0; }
 
-html { scroll-behavior:smooth; }
+/* scroll-padding keeps #faq and #compare from landing under the sticky bar. */
+html { scroll-behavior:smooth; scroll-padding-top:78px; }
 
 body {
   background:var(--bg);
@@ -200,6 +214,19 @@ h3 {
 
 /* --------------------------------------------------------------- top bar */
 
+/* Sticky, because the one action on this page — open the app — should never be
+   a scroll away. Translucent over the page rather than opaque: the vertical
+   rules keep running behind it, so the grid does not appear to stop at the bar.
+   The solid fallback comes first for engines without color-mix. */
+.topbar {
+  position:sticky;
+  top:0;
+  z-index:5;
+  background:var(--bg);
+  background:color-mix(in srgb,var(--bg) 84%,transparent);
+  backdrop-filter:blur(12px) saturate(140%);
+  -webkit-backdrop-filter:blur(12px) saturate(140%);
+}
 .topbar .in::after {
   content:"";
   display:block;
@@ -210,7 +237,8 @@ h3 {
   display:flex;
   align-items:center;
   gap:12px;
-  height:56px;
+  height:60px;
+  padding:0 var(--gut);     /* off the outer rules, like everything else */
 }
 .brand {
   display:flex;
@@ -219,7 +247,8 @@ h3 {
   color:var(--text);
   text-decoration:none;
 }
-.brand svg { width:19px; height:19px; color:var(--blue); }
+.brand svg { width:19px; height:19px; color:var(--blue); transition:transform .35s var(--ease); }
+.brand:hover svg { transform:translateY(-1px) rotate(-4deg); }
 .brand b { font-size:15.5px; font-weight:650; letter-spacing:-.01em; }
 .tag {
   font:10.5px/1 var(--mono);
@@ -234,12 +263,43 @@ h3 {
   font-size:13.5px;
   color:var(--dim);
   text-decoration:none;
+  transition:color .18s var(--ease);
 }
 .tlink:hover { color:var(--text); }
-.tlink.strong { color:var(--text); }
-.tlink.strong:hover { color:var(--link); }
+
+/* The one thing anyone came here to press gets a border and a hit area, so it
+   reads as the action and not as a third navigation link. */
+.tlink.strong {
+  color:var(--text);
+  border:1px solid var(--rule2);
+  border-radius:2px;
+  padding:7px 13px;
+  transition:color .18s var(--ease),border-color .18s var(--ease),background-color .18s var(--ease);
+}
+.tlink.strong:hover {
+  color:#fff;
+  background:var(--blue);
+  border-color:var(--blue);
+}
 
 /* ------------------------------------------------------------------- hero */
+
+/* A single soft wash behind the hero, anchored to the key panel's side of the
+   grid. It gives the fold somewhere to look without adding a shape the rest of
+   the page would then have to answer for. */
+.hero > .in { position:relative; }
+.hero > .in::after {
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:-8% -12% 24% 30%;
+  background:radial-gradient(60% 60% at 70% 30%,color-mix(in srgb,var(--blue) 22%,transparent),transparent 70%);
+  filter:blur(28px);
+  pointer-events:none;
+}
+@media (prefers-color-scheme: light) {
+  .hero > .in::after { background:radial-gradient(60% 60% at 70% 30%,color-mix(in srgb,var(--blue) 12%,transparent),transparent 70%); }
+}
 
 .hero-grid {
   display:grid;
@@ -248,15 +308,19 @@ h3 {
 }
 .hero-copy {
   grid-column:1 / span 2;
-  padding:clamp(46px,7vw,86px) clamp(20px,3vw,44px) 40px 0;
+  padding:clamp(52px,7.4vw,96px) clamp(26px,3.4vw,52px) 44px var(--gut);
 }
-.hero-list { margin-top:26px; font-size:14.5px; }
+.hero-list { margin-top:28px; font-size:14.5px; }
 
 .keypanel {
   grid-column:3 / span 1;
-  margin:clamp(46px,7vw,86px) 0 40px;
+  margin:clamp(52px,7.4vw,96px) var(--gut) 44px;
   background:var(--panel);
   border:1px solid var(--rule2);
+  box-shadow:var(--lift);
+  /* The accent hairline names the panel as the primary surface without a
+     coloured border round the whole thing. */
+  border-top:2px solid var(--blue);
 }
 .panelhead {
   font:11px/1 var(--mono);
@@ -313,8 +377,8 @@ h3 {
 .btn {
   display:block;
   width:100%;
-  margin-top:11px;
-  padding:12px 18px;
+  margin-top:13px;
+  padding:13px 18px;
   background:var(--blue);
   color:#fff;
   border:1px solid transparent;
@@ -323,8 +387,14 @@ h3 {
   text-align:center;
   text-decoration:none;
   cursor:pointer;
+  transition:filter .18s var(--ease),transform .18s var(--ease),box-shadow .18s var(--ease);
 }
-.btn:hover { filter:brightness(1.14); }
+.btn:hover {
+  filter:brightness(1.14);
+  transform:translateY(-1px);
+  box-shadow:0 6px 20px color-mix(in srgb,var(--blue) 40%,transparent);
+}
+.btn:active { transform:translateY(0); box-shadow:none; }
 
 .hint {
   font-size:12.5px;
@@ -336,19 +406,23 @@ h3 {
 .note {
   font-size:13px;
   color:var(--dim);
-  padding:0 0 clamp(34px,5vw,52px);
+  padding:0 var(--gut) clamp(34px,5vw,52px);
 }
 
 /* ------------------------------------------------------- section headers */
 
+/* align-items:start, or the eyebrow stretches to the full height of the row and
+   its own centring drops it to the middle of the heading — level with the
+   second line of an h2 rather than the first. */
 .shead {
   display:grid;
   grid-template-columns:repeat(var(--cols),1fr);
-  padding:clamp(38px,5vw,64px) 0 clamp(22px,3vw,34px);
+  align-items:start;
+  padding:clamp(44px,5.4vw,72px) 0 clamp(26px,3.2vw,38px);
   gap:16px 0;
 }
-.shead .eyebrow { grid-column:1; padding-right:24px; padding-top:7px; }
-.shead .htext   { grid-column:2 / -1; padding-right:clamp(0px,4vw,60px); }
+.shead .eyebrow { grid-column:1; padding:7px var(--gut) 0; }
+.shead .htext   { grid-column:2 / -1; padding-left:var(--gut); padding-right:clamp(var(--gut),4vw,60px); }
 .shead .htext p { color:var(--dim); margin-top:13px; max-width:58ch; font-size:15px; }
 
 /* ------------------------------------------------------------ dotted path */
@@ -357,7 +431,7 @@ h3 {
    are HTML positioned BELOW their point on the path, i.e. outside the SVG box. */
 .stage {
   position:relative;
-  padding-bottom:clamp(46px,6vw,70px);
+  padding:0 var(--gut) clamp(46px,6vw,70px);
 }
 .flowsvg { display:block; width:100%; height:auto; overflow:visible; }
 
@@ -425,25 +499,28 @@ h3 {
   grid-template-columns:repeat(var(--cols),1fr);
   padding-bottom:clamp(40px,6vw,66px);
 }
+/* Every step is inset by the same gutter on both sides — the one in the first
+   column included. A uniform inset is what makes the gap left of a step match
+   the gap right of the step before it, all the way across the row. */
 .steps li {
   counter-increment:s;
   position:relative;
-  padding:0 clamp(18px,2.4vw,30px) 0 0;
+  padding:0 var(--gut);
   color:var(--dim);
   font-size:14.5px;
 }
-.steps li + li { padding-left:clamp(18px,2.4vw,30px); }
-.steps li:nth-child(3n+1) { padding-left:0; }   /* first in a row hugs its rule */
 .steps li::before {
   content:counter(s);
   display:grid;
   place-items:center;
-  width:24px; height:24px;
-  margin-bottom:13px;
+  width:26px; height:26px;
+  margin-bottom:14px;
   border:1px solid var(--rule2);
   font:600 11.5px/1 var(--mono);
   color:var(--link);
+  transition:border-color .2s var(--ease),color .2s var(--ease),background-color .2s var(--ease);
 }
+.steps li:hover::before { border-color:var(--blue); background:var(--blue); color:#fff; }
 /* Four steps in a three-column grid: the fourth wraps onto its own row and
    would otherwise sit hard against the left rule with no lead-in. */
 .steps li:nth-child(4) { padding-top:26px; }
@@ -456,13 +533,27 @@ h3 {
   padding-bottom:clamp(40px,6vw,66px);
 }
 .card {
-  padding:26px clamp(20px,2.4vw,30px) 26px 0;
+  padding:28px var(--gut);
   border-top:1px solid var(--rule);
+  position:relative;
+  transition:background-color .2s var(--ease);
 }
 .card:nth-child(-n+3) { border-top:0; }
-.card + .card { padding-left:clamp(20px,2.4vw,30px); }
-.card:nth-child(3n+1) { padding-left:0; }
 .card p { color:var(--dim); font-size:14px; }
+
+/* A card lights up rather than moves: the grid it sits in is the page's
+   skeleton, and nothing in a skeleton should shift under the pointer. The mark
+   is drawn inside the padding so it lands beside the rule, not on it. */
+.card::before {
+  content:"";
+  position:absolute;
+  left:calc(var(--gut) * .45); top:30px;
+  width:2px; height:0;
+  background:var(--blue);
+  transition:height .24s var(--ease);
+}
+.card:hover { background:color-mix(in srgb,var(--panel) 60%,transparent); }
+.card:hover::before { height:22px; }
 
 /* ------------------------------------------------------------------- live */
 
@@ -473,8 +564,8 @@ h3 {
   padding-bottom:clamp(40px,6vw,66px);
   gap:0;
 }
-.livereadout { grid-column:1 / span 2; padding-right:clamp(20px,3vw,44px); }
-.globewrap   { grid-column:3 / span 1; padding-left:clamp(20px,2.4vw,30px); }
+.livereadout { grid-column:1 / span 2; padding-left:var(--gut); padding-right:clamp(26px,3vw,48px); }
+.globewrap   { grid-column:3 / span 1; padding:0 var(--gut); }
 
 .stats { display:flex; flex-wrap:wrap; gap:10px 42px; }
 .stat { display:flex; flex-direction:column; gap:2px; }
@@ -510,16 +601,33 @@ h3 {
 .countrylist li::before { top:.58em; background:var(--ok); }
 .countrylist b { color:var(--text); font-weight:600; font-variant-numeric:tabular-nums; }
 
+/* The globe sits in a faint well rather than floating on the page background:
+   at the limb the dots fade to nothing, and without something behind them the
+   sphere loses its edge on a dark screen. */
 .globewrap { margin:0; }
+.globewrap .globefield {
+  position:relative;
+  max-width:340px;
+  margin:0 auto;
+}
+.globewrap .globefield::before {
+  content:"";
+  position:absolute;
+  inset:6%;
+  border-radius:50%;
+  background:radial-gradient(circle at 50% 42%,
+    color-mix(in srgb,var(--blue) 13%,transparent),
+    transparent 68%);
+}
 #globe {
+  position:relative;
   display:block;
   width:100%;
-  max-width:320px;
   height:auto;
   aspect-ratio:1;
   margin:0 auto;
 }
-.globewrap figcaption { text-align:center; margin-top:10px; }
+.globewrap figcaption { text-align:center; margin-top:12px; }
 
 /* ------------------------------------------------------------ comparison --
    The table is wide by nature, so the SCROLLER is the wrapper, never the page.
@@ -528,8 +636,11 @@ h3 {
 
 .tablewrap {
   overflow-x:auto;
-  margin-bottom:clamp(20px,3vw,30px);
+  /* margin, not padding: the border has to come inside the rules too. */
+  margin:0 var(--gut) clamp(20px,3vw,30px);
   border:1px solid var(--rule2);
+  border-radius:2px;
+  box-shadow:var(--lift);
   background:var(--panel);
   /* Stops the swipe from chaining to the page once the table hits its end —
      without this, flicking left at the edge triggers the browser's back
@@ -562,6 +673,10 @@ h3 {
 }
 .cmp tbody th { color:var(--text); font-weight:650; white-space:nowrap; }
 .cmp tbody tr:last-child th, .cmp tbody tr:last-child td { border-bottom:0; }
+/* Seven columns of short answers: a row tint is what stops the eye losing its
+   line halfway across. */
+.cmp tbody tr { transition:background-color .15s var(--ease); }
+.cmp tbody tr:hover th, .cmp tbody tr:hover td { background:color-mix(in srgb,var(--rule2) 30%,transparent); }
 
 /* Hopboard's own row. Marked with the accent rather than a "best" badge — the
    table should still read as a comparison, not a scoreboard. */
@@ -575,7 +690,11 @@ h3 {
    Questions are h3 so they sit under the section's h2, and each answer is one
    paragraph — the shape a snippet or an AI answer lifts cleanly. */
 
-.faq { max-width:74ch; }
+/* Blocks that fill the whole container rather than sitting in a column still
+   have a rule on each side of them, so they take the same inset. */
+.sec > .in > .hint { padding:0 var(--gut) clamp(30px,4vw,48px); }
+
+.faq { max-width:74ch; padding:0 var(--gut) clamp(40px,6vw,66px); }
 .faq h3 {
   margin-top:clamp(26px,3.4vw,38px);
   margin-bottom:8px;
@@ -590,9 +709,10 @@ h3 {
   background:var(--panel);
   border:1px solid var(--rule2);
   border-left:3px solid var(--warn);
-  padding:22px clamp(20px,2.6vw,30px);
-  margin-bottom:clamp(40px,6vw,66px);
+  padding:24px clamp(22px,2.6vw,32px);
+  margin:0 var(--gut) clamp(40px,6vw,66px);
   max-width:none;
+  box-shadow:var(--lift);
 }
 .honest h3 { color:var(--warn); margin-bottom:14px; }
 .honest .sq-list li { font-size:14.5px; }
@@ -607,9 +727,9 @@ h3 {
   align-items:end;
   gap:20px 0;
 }
-.closing h2 { grid-column:1 / span 2; padding-right:30px; }
-.closing p  { grid-column:1 / span 2; color:var(--dim); font-size:15px; margin-top:-8px; }
-.closing .btn { grid-column:3; margin-top:0; }
+.closing h2 { grid-column:1 / span 2; padding:0 30px 0 var(--gut); }
+.closing p  { grid-column:1 / span 2; color:var(--dim); font-size:15px; margin-top:-8px; padding:0 30px 0 var(--gut); }
+.closing .btn { grid-column:3; margin:0 var(--gut); width:auto; }
 .closing h2 + p { margin-top:10px; }
 
 /* ----------------------------------------------------------------- footer */
@@ -622,8 +742,8 @@ h3 {
   font-size:13px;
   color:var(--dim);
 }
-.footgrid p:first-child { grid-column:1; padding-right:24px; }
-.footgrid p:last-child  { grid-column:2 / -1; max-width:60ch; }
+.footgrid p:first-child { grid-column:1; padding:0 24px 0 var(--gut); }
+.footgrid p:last-child  { grid-column:2 / -1; max-width:60ch; padding:0 var(--gut); }
 footer a { color:var(--dim); }
 footer a:hover { color:var(--link); }
 
@@ -634,43 +754,43 @@ footer a:hover { color:var(--link); }
   .rules span:nth-child(3) { display:none; }
   .rules span:nth-child(2) { border-right:1px solid var(--rule); }
 
-  .hero-copy  { grid-column:1 / -1; padding-right:0; padding-bottom:26px; }
+  .hero-copy  { grid-column:1 / -1; padding-right:var(--gut); padding-bottom:28px; }
   .keypanel   { grid-column:1 / span 1; margin-top:0; }
   .shead .eyebrow { grid-column:1 / -1; padding-top:0; }
-  .shead .htext   { grid-column:1 / -1; padding-right:0; }
-  .steps li:nth-child(3) { padding-top:26px; }
-  .steps li:nth-child(3n+1) { padding-left:clamp(18px,2.4vw,30px); }
-  .steps li:nth-child(odd)  { padding-left:0; }
+  .shead .htext   { grid-column:1 / -1; padding-right:var(--gut); }
+  .steps li:nth-child(3) { padding-top:28px; }
   .card:nth-child(-n+3) { border-top:1px solid var(--rule); }
   .card:nth-child(-n+2) { border-top:0; }
-  .card:nth-child(3n+1) { padding-left:clamp(20px,2.4vw,30px); }
-  .card:nth-child(odd)  { padding-left:0; }
-  .livereadout { grid-column:1 / -1; padding-right:0; }
-  .globewrap   { grid-column:1 / -1; padding-left:0; padding-top:30px; }
+  .livereadout { grid-column:1 / -1; padding-right:var(--gut); }
+  .globewrap   { grid-column:1 / -1; padding-top:34px; }
   .closing h2, .closing p, .closing .btn { grid-column:1 / -1; }
-  .closing .btn { width:auto; justify-self:start; padding-left:30px; padding-right:30px; }
+  .closing h2, .closing p { padding-right:var(--gut); }
+  .closing .btn { justify-self:start; padding-left:30px; padding-right:30px; }
+  .footgrid p:first-child { padding-right:var(--gut); }
   .footgrid p:last-child { grid-column:1 / -1; }
 }
 
 @media (max-width:620px) {
-  :root { --cols:1; }
+  /* One column, and a narrower gutter to go with it: the same 32px inset that
+     reads as air on a desktop is a third of the line length on a phone. */
+  :root { --cols:1; --gut:14px; }
   .rules span:nth-child(2) { display:none; }
   .rules span:nth-child(1) { border-right:1px solid var(--rule); }
 
   .hero-grid, .shead, .steps, .cards, .livegrid, .closing, .footgrid {
     grid-template-columns:1fr;
   }
-  .hero-copy { padding-top:38px; }
+  .hero-copy { padding-top:40px; }
   .keypanel  { grid-column:1; }
-  .steps li, .steps li + li { padding-left:0; padding-right:0; }
-  .steps li + li { margin-top:24px; }
+  .steps li + li { margin-top:26px; }
   .steps li:nth-child(3), .steps li:nth-child(4) { padding-top:0; }
-  .card, .card + .card, .card:nth-child(3n+1) { padding-left:0; padding-right:0; }
   .card:nth-child(-n+3), .card:nth-child(-n+2) { border-top:1px solid var(--rule); }
   .card:first-child { border-top:0; }
   .stats { gap:18px 30px; }
-  .topbar .row { height:52px; gap:9px; }
+  .topbar .row { height:54px; gap:9px; }
+  .tlink.strong { padding:6px 10px; }
   .tag { display:none; }
+  .hero > .in::after { inset:-6% -20% 40% 0; }
 }
 
 /* Fine for a phone in landscape, but a 44px-tall dotted path is not worth the
@@ -690,7 +810,7 @@ footer a:hover { color:var(--link); }
    boundary and open a gap above it. Same reason .shead and .cards carry their
    own padding. */
 .adslot {
-  padding:clamp(30px,4vw,48px) 0;
+  padding:clamp(30px,4vw,48px) var(--gut);
   text-align:center;
 }
 
@@ -734,7 +854,14 @@ footer a:hover { color:var(--link); }
   html { scroll-behavior:auto; }
   .stage[data-ready] .fpath.text { animation:none; }
   .regen:active svg { transition:none; }
-  * { animation-duration:.001ms !important; animation-iteration-count:1 !important; }
+  * {
+    animation-duration:.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+  }
+  /* Hover states may still change colour — that is feedback, not motion — but
+     nothing is allowed to move. */
+  .btn:hover, .brand:hover svg { transform:none; }
 }
 
 /* Windows high-contrast / forced colours: the rules and squares are decoration

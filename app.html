@@ -74,32 +74,10 @@
          here you press rather than read, so it keeps the roomier spot. -->
     <div id="mount-mode"></div>
 
-    <!-- Where the app asks for something back: a bug report, or money.
-         Anchors rather than buttons — they leave the app, so middle-click,
-         "copy link" and "open in new tab" all have to work. rel is spelled out
-         even though target=_blank implies noopener in current browsers; the
-         page is also meta referrer=no-referrer, so no key-bearing URL travels
-         with the click. -->
-    <nav class="applinks" aria-label="Project links">
-      <a class="alink" id="lIssue" target="_blank" rel="noopener noreferrer"
-         href="https://github.com/akshaynikhare/Hopboard/issues/new"
-         title="Report a problem on GitHub" aria-label="Report an issue on GitHub">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16.2h.01"/></svg>
-        <span class="lbl">Report issue</span>
-      </a>
-      <a class="alink coffee" id="lCoffee" target="_blank" rel="noopener noreferrer"
-         href="https://www.buymeacoffee.com/akshaynikhare"
-         title="Support the relay bill — buy me a coffee" aria-label="Buy me a coffee">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h13v5.5A4.5 4.5 0 0112.5 18h-4A4.5 4.5 0 014 13.5z"/><path d="M17 9.5h1.5a2.5 2.5 0 010 5H17"/><path d="M7.5 2.5v2.2M11 2.5v2.2M14.5 2.5v2.2"/></svg>
-        <span class="lbl">Buy me a coffee</span>
-      </a>
-      <a class="alink sponsor" id="lSponsor" target="_blank" rel="noopener noreferrer"
-         href="https://github.com/sponsors/akshaynikhare"
-         title="Sponsor this project on GitHub" aria-label="Sponsor this project on GitHub">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.2s-7.3-4.6-7.3-9.4A3.9 3.9 0 0112 8.4a3.9 3.9 0 017.3 2.4c0 4.8-7.3 9.4-7.3 9.4z"/></svg>
-        <span class="lbl">Sponsor</span>
-      </a>
-    </nav>
+    <!-- Report / coffee / sponsor. Built by ui/appLinks.js so the URLs come
+         from core/config.js REPO and exist once — a rename or a fork is then
+         one edit, not four hrefs that quietly disagree. -->
+    <div id="mount-links"></div>
   </header>
 
   <div class="body">

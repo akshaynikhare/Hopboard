@@ -29,3 +29,6 @@ desktop.ini
 # Only needed for tests/boot.mjs; the app ships with no dependencies
 node_modules/
 package-lock.json
+
+# Scratch screenshots from local UI checks — output, not source
+.shots/

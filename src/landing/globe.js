@@ -118,8 +118,28 @@ function readColours() {
     text: v("--text", "#cccccc"),
     mark: v("--ok", "#4ec9b0"),
     edge: v("--rule", "#2b2b2b"),
+    blue: v("--blue", "#007acc"),
+    panel: v("--panel", "#252526"),
   };
+  colour.gridRGB = toRGB(colour.grid) || [90, 90, 90];
+  colour.blueRGB = toRGB(colour.blue) || [0, 122, 204];
+  colour.panelRGB = toRGB(colour.panel) || [37, 37, 38];
 }
+
+/**
+ * Hex → [r,g,b]. Canvas has no color-mix and no relative colour syntax, so the
+ * gradients below have to be assembled by hand from whatever the stylesheet
+ * says. The tokens are all hex; anything else returns null and the caller falls
+ * back to a flat colour rather than drawing `rgba(NaN,…)`.
+ */
+function toRGB(css) {
+  const m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(css || "");
+  if (!m) return null;
+  let h = m[1];
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+const rgba = ([r, g, b], a) => `rgba(${r},${g},${b},${a})`;
 
 /* ------------------------------------------------------------------ mount */
 
@@ -192,44 +212,144 @@ function project(lat, lon, r, cx, cy) {
   return { x: cx + x * r, y: cy - y * r, z };
 }
 
+/* -------------------------------------------------------------- the field */
+
+/**
+ * The dots, built once.
+ *
+ * Parallels only — no meridians. Two crossing sets of lines make a mesh ball;
+ * one set of rings, spaced so the gap between dots is the same arc length
+ * everywhere, makes a sphere with a surface. Rotation still reads clearly,
+ * because projection bunches the dots toward the limb and that bunching travels.
+ *
+ * What is stored is the unit-sphere trigonometry, not the angles: rotating a
+ * point by `spin` is then four multiplies and two adds instead of two sines and
+ * two cosines. At ~1000 points and 60 frames a second that is the difference
+ * between a rounding error and a measurable slice of the frame.
+ */
+const RING_STEP = 9;      // degrees between parallels
+const ARC_STEP  = 4.5;    // degrees between dots along the equator
+let FIELD = null;
+
+function buildField() {
+  const cosLa = [], sinLa = [], cosLon = [], sinLon = [], weight = [];
+  for (let lat = -81; lat <= 81; lat += RING_STEP) {
+    const la = lat * RAD;
+    const cla = Math.cos(la), sla = Math.sin(la);
+    // Constant arc spacing: the closer to a pole, the fewer dots the ring needs
+    // to look as dense as the equator.
+    const count = Math.max(6, Math.round((360 / ARC_STEP) * cla));
+    const step = 360 / count;
+    // The equator carries a touch more weight — one ring the eye can follow is
+    // what tells you which way the thing is turning.
+    const w = Math.abs(lat) < 1 ? 1.25 : 1;
+    for (let i = 0; i < count; i++) {
+      const lo = i * step * RAD;
+      cosLa.push(cla); sinLa.push(sla);
+      cosLon.push(Math.cos(lo)); sinLon.push(Math.sin(lo));
+      weight.push(w);
+    }
+  }
+  FIELD = {
+    n: cosLa.length,
+    cosLa: Float32Array.from(cosLa), sinLa: Float32Array.from(sinLa),
+    cosLon: Float32Array.from(cosLon), sinLon: Float32Array.from(sinLon),
+    weight: Float32Array.from(weight),
+  };
+}
+
+/* A light, so the sphere has a lit side and a dark one. Front-left and a little
+   above — the same direction the page's panel shadows imply. Unit length. */
+const LX = -0.42, LY = 0.40, LZ = 0.82;
+
+/* Alpha is quantised into buckets and each bucket drawn in one pass. Setting
+   globalAlpha per dot costs a state change per dot; eight passes cost eight. */
+const BUCKETS = 8;
+const bucket = Array.from({ length: BUCKETS }, () => []);
+
 function draw() {
   if (!ctx || !size) return;
-  const cx = size / 2, cy = size / 2, r = size * 0.42;
+  if (!FIELD) buildField();
 
+  const cx = size / 2, cy = size / 2, r = size * 0.42;
   ctx.clearRect(0, 0, size, size);
 
-  // The edge of the sphere, so the wireframe reads as a solid object.
-  ctx.strokeStyle = colour.edge;
-  ctx.lineWidth = 1;
+  // Volume before detail: a wash inside the sphere, brightest where the light
+  // is, so the dots sit ON something instead of floating in a disc-shaped hole.
+  const body = ctx.createRadialGradient(
+    cx + LX * r * 0.55, cy - LY * r * 0.55, r * 0.05,
+    cx, cy, r);
+  body.addColorStop(0, rgba(colour.blueRGB, 0.13));
+  body.addColorStop(0.62, rgba(colour.blueRGB, 0.045));
+  body.addColorStop(1, rgba(colour.gridRGB, 0.0));
+  ctx.fillStyle = body;
   ctx.beginPath();
   ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // The edge, so the object closes. Drawn as a gradient rather than a flat
+  // hairline: a rim that is brightest on the lit side reads as curvature, and a
+  // uniform ring reads as a sticker.
+  const rim = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+  rim.addColorStop(0, rgba(colour.blueRGB, 0.55));
+  rim.addColorStop(0.5, rgba(colour.gridRGB, 0.45));
+  rim.addColorStop(1, rgba(colour.gridRGB, 0.16));
+  ctx.strokeStyle = rim;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - 0.5, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Graticule as small squares — the same mark as the bullets on the page.
-  // Front hemisphere only: a wireframe you can see through reads as a mesh
-  // ball, not a planet.
-  ctx.fillStyle = colour.grid;
-  const dot = size < 240 ? 1 : 1.3;
-  for (let lat = -75; lat <= 75; lat += 15) {
-    const step = 6 / Math.max(0.25, Math.cos(lat * RAD));   // even spacing near the poles
-    for (let lon = 0; lon < 360; lon += step) {
-      const p = project(lat, lon, r, cx, cy);
-      if (p.z <= 0) continue;
-      ctx.globalAlpha = 0.18 + 0.5 * p.z;
-      ctx.fillRect(p.x, p.y, dot, dot);
-    }
+  drawField(r, cx, cy);
+  drawMarkers(r, cx, cy);
+}
+
+function drawField(r, cx, cy) {
+  const f = FIELD;
+  const sp = spin * RAD;
+  const cs = Math.cos(sp), ss = Math.sin(sp);
+  const ct = Math.cos(TILT), st = Math.sin(TILT);
+  const base = size < 220 ? 1 : size < 300 ? 1.2 : 1.5;
+  const px = 1 / dpr;                       // snap to the device pixel grid
+
+  for (const b of bucket) b.length = 0;
+
+  for (let i = 0; i < f.n; i++) {
+    // Rotate about the pole, cheaply: sin/cos of (lon + spin) from the stored
+    // sin/cos of lon.
+    const sinLo = f.sinLon[i] * cs + f.cosLon[i] * ss;
+    const cosLo = f.cosLon[i] * cs - f.sinLon[i] * ss;
+
+    const x = f.cosLa[i] * sinLo;
+    const y0 = f.sinLa[i];
+    const z0 = f.cosLa[i] * cosLo;
+    const y = y0 * ct - z0 * st;
+    const z = y0 * st + z0 * ct;
+    if (z <= 0.02) continue;                // the far side is not drawn at all
+
+    // Two things dim a dot: facing away from the light, and lying near the limb
+    // where the surface turns away from the viewer. The second is what stops
+    // the sphere ending in a hard ring of dots.
+    const lambert = Math.max(0, x * LX + y * LY + z * LZ);
+    const shade = (0.30 + 0.70 * lambert) * (0.35 + 0.65 * z) * f.weight[i];
+    const a = Math.min(1, 0.10 + 0.72 * shade);
+
+    const s = base * (0.62 + 0.38 * z);
+    const sx = Math.round((cx + x * r) / px) * px;
+    const sy = Math.round((cy - y * r) / px) * px;
+
+    const bi = Math.min(BUCKETS - 1, (a * BUCKETS) | 0);
+    bucket[bi].push(sx, sy, s);
   }
-  for (let lon = 0; lon < 360; lon += 15) {
-    for (let lat = -84; lat <= 84; lat += 6) {
-      const p = project(lat, lon, r, cx, cy);
-      if (p.z <= 0) continue;
-      ctx.globalAlpha = 0.14 + 0.4 * p.z;
-      ctx.fillRect(p.x, p.y, dot, dot);
-    }
+
+  ctx.fillStyle = colour.grid;
+  for (let bi = 0; bi < BUCKETS; bi++) {
+    const list = bucket[bi];
+    if (!list.length) continue;
+    ctx.globalAlpha = (bi + 0.5) / BUCKETS;
+    for (let i = 0; i < list.length; i += 3) ctx.fillRect(list[i], list[i + 1], list[i + 2], list[i + 2]);
   }
   ctx.globalAlpha = 1;
-
-  drawMarkers(r, cx, cy);
 }
 
 function drawMarkers(r, cx, cy) {
@@ -243,32 +363,72 @@ function drawMarkers(r, cx, cy) {
 
   const max = entries[0][1];
   const labelled = size >= 220 ? entries.slice(0, 3).map(e => e[0]) : [];
+  const markRGB = toRGB(colour.mark) || [78, 201, 176];
 
+  // Back to front, so a marker near the limb cannot paint over one in front of
+  // it. Sorting by z is what stops the far side of the sphere bleeding through.
+  const drawn = [];
   for (const [code, n] of entries) {
     const c = CENTROIDS.get(code);
     const p = project(c.lat, c.lon, r, cx, cy);
     if (p.z <= 0.02) continue;                       // round the back
+    drawn.push({ code, n, p });
+  }
+  drawn.sort((a, b) => a.p.z - b.p.z);
 
+  ctx.textBaseline = "middle";
+
+  for (const { code, n, p } of drawn) {
+    const { x, y, z } = p;
     const s = 4 + 3 * (max > 1 ? (n - 1) / (max - 1) : 0);
-    const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, s * 3.4);
-    glow.addColorStop(0, colour.mark);
-    glow.addColorStop(1, "transparent");
-    ctx.globalAlpha = 0.28 * Math.min(1, p.z + 0.35);
+
+    // A halo, sized with the marker. It is the one thing on the globe allowed
+    // to be brighter than the surface, because it is the only thing on the
+    // globe that is a fact about someone.
+    const halo = s * 3.6;
+    const glow = ctx.createRadialGradient(x, y, 0, x, y, halo);
+    glow.addColorStop(0, rgba(markRGB, 0.55));
+    glow.addColorStop(0.45, rgba(markRGB, 0.16));
+    glow.addColorStop(1, rgba(markRGB, 0));
+    ctx.globalAlpha = 0.5 * Math.min(1, z + 0.4);
     ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, s * 3.4, 0, Math.PI * 2);
+    ctx.arc(x, y, halo, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.globalAlpha = Math.min(1, 0.55 + p.z);
-    ctx.fillStyle = colour.mark;
-    ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+    // A ring around the square, not a pulse. It gives the mark a size the eye
+    // can judge against its neighbours without implying anything is happening.
+    ctx.globalAlpha = 0.30 * Math.min(1, z + 0.3);
+    ctx.strokeStyle = colour.mark;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(x, y, s * 1.75, 0, Math.PI * 2);
+    ctx.stroke();
 
-    if (labelled.includes(code) && p.z > 0.25) {
-      ctx.globalAlpha = Math.min(1, 0.4 + p.z);
+    // The mark itself: square, like every other marker on the page, snapped to
+    // the pixel grid so a 5px square is 5 crisp pixels and not 7 soft ones.
+    const px = 1 / dpr;
+    const mx = Math.round((x - s / 2) / px) * px;
+    const my = Math.round((y - s / 2) / px) * px;
+    ctx.globalAlpha = Math.min(1, 0.6 + z);
+    ctx.fillStyle = colour.mark;
+    ctx.fillRect(mx, my, s, s);
+
+    if (labelled.includes(code) && z > 0.25) {
+      const text = code + " " + n;
+      ctx.font = '600 10.5px "Cascadia Code",Consolas,"SF Mono",Menlo,monospace';
+      const w = ctx.measureText(text).width;
+      const lx = x + s / 2 + 7, ly = y;
+
+      // A plate behind the label. Over a field of dots, unbacked 10px type is
+      // the first thing to become unreadable.
+      ctx.globalAlpha = 0.72 * Math.min(1, z + 0.35);
+      ctx.fillStyle = rgba(colour.panelRGB, 0.92);
+      ctx.fillRect(lx - 4, ly - 8, w + 8, 16);
+
+      ctx.globalAlpha = Math.min(1, 0.45 + z);
       ctx.fillStyle = colour.text;
-      ctx.font = '10px "Cascadia Code",Consolas,"SF Mono",Menlo,monospace';
-      ctx.textBaseline = "middle";
-      ctx.fillText(code + " " + n, p.x + s / 2 + 6, p.y);
+      ctx.fillText(text, lx, ly + 0.5);
     }
   }
   ctx.globalAlpha = 1;
