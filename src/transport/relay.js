@@ -63,6 +63,7 @@ let opened = false;              // has the CURRENT attempt become usable?
 let mode = TRANSPORT.WS;
 let announced = null;            // last transport reported on the bus
 let stuck = false;               // both transports have failed; cleared by any success
+let unsupported = false;         // the relay is reachable but predates the fallback
 let failures = { [TRANSPORT.WS]: 0, [TRANSPORT.SSE]: 0 };
 let backoff = NET.BACKOFF_MIN_MS;
 let heartbeat = null;
@@ -151,13 +152,17 @@ function blocked() {
 }
 
 function announce() {
-  const key = stuck ? "blocked" : mode;
+  const key = stuck ? `blocked:${unsupported}` : mode;
   if (key === announced) return;   // don't re-raise a banner on every reconnect
   announced = key;
   emit(EV.TRANSPORT, {
     mode: stuck ? null : mode,
     label: CHANNELS[mode].LABEL,
     blocked: stuck,
+    // "the relay is old" and "the network is blocking us" present identically
+    // and have opposite fixes, so the UI is given the difference rather than a
+    // single sentence that has to cover both.
+    unsupported,
   });
 }
 
@@ -200,6 +205,7 @@ function up() {
 
   opened = true;
   stuck = false;
+  unsupported = false;
   idRetries = 0;
   backoff = NET.BACKOFF_MIN_MS;
   failures[mode] = 0;
@@ -219,6 +225,7 @@ function up() {
 function down({ code, reason }) {
   stopTimers();
   channel = null;
+  if (mode === TRANSPORT.SSE) unsupported = reason === sseChannel.NO_FALLBACK;
 
   if (!wantOpen) return state.setConnection("idle");
 
