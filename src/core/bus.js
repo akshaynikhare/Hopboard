@@ -50,6 +50,7 @@ export const EV = {
 
   // files
   FILES_CHANGED:   "files:changed",    // full list
+  FILE_ADDED:      "files:added",      // {file} — added locally, needs announcing
   FILE_PROGRESS:   "files:progress",   // {id, percent}
   TRANSFER_PATH:   "files:path",       // {id, path: "p2p" | "relay"}
 

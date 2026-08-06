@@ -71,7 +71,7 @@
  */
 
 import { FILES, NET } from "../core/config.js";
-import { emit, EV } from "../core/bus.js";
+import { emit, on, EV } from "../core/bus.js";
 import * as state from "../core/state.js";
 import * as registry from "./registry.js";
 import * as chunker from "./chunker.js";
@@ -819,6 +819,64 @@ function finish(t) {
 /* ------------------------------------------------------------------ *
  * Helpers
  * ------------------------------------------------------------------ */
+
+/**
+ * Tell the room a file exists here.
+ *
+ * This is the outbound half of file-meta, and it was missing: the module
+ * consumed announcements from peers but never made one, so a file added on
+ * this machine was visible only on this machine. Dropped files and clipboard
+ * images alike simply never reached anyone.
+ *
+ * Only metadata and the thumbnail travel. The bytes stay put until someone
+ * asks (docs/P2P-FILES.md §1), which is the whole point of the design.
+ */
+export function announce(file) {
+  if (!file || file.origin !== "local") return false;
+  return signal({
+    t: FT.FILE_META,
+    id: file.id,
+    name: file.name,
+    size: file.size,
+    type: file.type,
+    // Respect the thumbnails setting: a 160px preview of a screenshot can be
+    // perfectly legible, and it travels without being requested (PRD OI-15).
+    thumb: state.get().settings.thumbs ? file.thumb : null,
+  });
+}
+
+/**
+ * Re-announce everything we hold. A device that joins later has missed every
+ * earlier announcement — the relay replays the last clip, not the file list —
+ * so without this a new peer sees an empty panel until someone adds a file.
+ */
+export function announceAll() {
+  let sent = 0;
+  for (const file of registry.all()) {
+    if (file.origin === "local" && announce(file)) sent++;
+  }
+  return sent;
+}
+
+/**
+ * Subscribed here rather than wired in main.js, deliberately.
+ *
+ * The outbound announcement was originally main.js's job and was simply never
+ * written — the inbound half existed, so everything looked complete. A module
+ * that knows how to announce should not depend on a distant composition root
+ * remembering to ask it to. Subscribing at module scope makes "a local file
+ * gets announced" a property of this file, and testable without booting the
+ * whole app.
+ */
+on(EV.FILE_ADDED, ({ file }) => announce(file));
+
+// A device that joins later missed every earlier announcement: the relay
+// replays the last clip, not the file list. Re-announce when the room grows.
+let knownPeers = 1;
+on(EV.PEERS_CHANGED, ({ count }) => {
+  if (count > knownPeers) announceAll();
+  knownPeers = count;
+});
 
 function signal(frame) {
   if (!sendSignal) {

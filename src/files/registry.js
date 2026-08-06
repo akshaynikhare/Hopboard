@@ -73,6 +73,10 @@ export async function add(fileList, { makeThumbs = true } = {}) {
       error: null,
     });
     added++;
+    // Announced individually rather than via FILES_CHANGED: that event carries
+    // the whole list and fires for progress ticks too, so a listener could not
+    // tell "this one is new and needs sending" from "something moved".
+    emit(EV.FILE_ADDED, { file: items[items.length - 1] });
   }
 
   if (added) emit(EV.FILES_CHANGED, items);
