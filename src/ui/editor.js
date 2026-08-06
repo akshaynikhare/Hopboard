@@ -14,9 +14,26 @@ import { $, on as bind } from "./dom.js";
 
 let ta, gutter;
 
+/**
+ * The gutter is `display:none` below this width (styles/mobile.css): 56px of
+ * line numbers is a sixth of a 360px screen. Rendering it anyway would build a
+ * <div> per line — 1,200 of them for a 50,000-character paste — for something
+ * nobody can see, on the device least able to afford it.
+ *
+ * Must match the breakpoint in styles/mobile.css.
+ */
+const narrow = typeof window !== "undefined" && window.matchMedia
+  ? window.matchMedia("(max-width:900px)")
+  : { matches: false };
+
 export function init() {
   ta = $("editor");
   gutter = $("gutter");
+
+  // Widening the window past the breakpoint has to refill a gutter that was
+  // left empty, and there is no input event coming to do it.
+  if (narrow.addEventListener) narrow.addEventListener("change", () => refresh());
+  else narrow.addListener?.(() => refresh());
 
   ["input", "click", "keyup", "select"].forEach(e => bind(ta, e, refresh));
   bind(ta, "scroll", () => { gutter.scrollTop = ta.scrollTop; });
@@ -75,6 +92,10 @@ function refresh() {
 }
 
 function renderGutter() {
+  if (narrow.matches) {
+    if (gutter.firstChild) gutter.replaceChildren();
+    return;
+  }
   const lines = Math.max(ta.value.split("\n").length, 1);
   if (gutter.childElementCount !== lines) {
     gutter.innerHTML = Array.from({ length: lines }, (_, i) => `<div>${i + 1}</div>`).join("");

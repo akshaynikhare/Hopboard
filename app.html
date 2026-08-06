@@ -34,7 +34,9 @@
 <script type="module" src="./src/main.js"></script>
 </head>
 <body>
-<div class="vs">
+<!-- id: ui/mobileNav.js pins this to the visible viewport when the on-screen
+     keyboard is up, and hangs the current phone view off a data attribute. -->
+<div class="vs" id="shell">
 
   <!-- ============ app header ============
        One bar: identity, the session key, and the mode switch.
@@ -74,7 +76,7 @@
   <div class="body">
 
     <!-- ============ PANEL 1 — editor ============ -->
-    <main class="main">
+    <main class="main" id="mainPane">
 
       <!-- Components mount their own banners here (permission prompts, pending
            clips, split-brain warnings). Keeps index.html free of per-feature
@@ -151,8 +153,11 @@
           </button>
         </div>
         <div class="paneb">
+          <!-- Two labels, one per layout (styles/mobile.css picks). "Drop files"
+               is an instruction a device with no pointer cannot follow. -->
           <div class="drop" id="drop">
-            <b>Drop files or click to add</b>Max 5 MB each · sent peer-to-peer
+            <b><span class="only-wide">Drop files or click to add</span><span
+               class="only-narrow">Tap to add files</span></b>Max 5 MB each · sent peer-to-peer
           </div>
           <div class="grid" id="grid"></div>
           <div class="none" id="noFiles">
@@ -257,6 +262,13 @@
     <div class="sitem plain optional">UTF-8</div>
     <div class="sitem plain optional">Plain Text</div>
   </div>
+
+  <!-- ============ phone tab bar ============
+       Empty on a desktop-width window. ui/mobileNav.js fills it and, below
+       900px, shows exactly one of Text / Files / Clips / Devices at a time —
+       see the header of styles/mobile.css for why the stacked-and-scrolling
+       narrow layout it replaced did not work. -->
+  <div id="mount-mobilenav"></div>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>

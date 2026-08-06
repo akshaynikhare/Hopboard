@@ -37,6 +37,7 @@ import * as syncMode from "./ui/syncMode.js";
 import * as hints from "./ui/hints.js";
 import * as cursors from "./ui/cursors.js";
 import * as ads from "./ui/ads.js";
+import * as mobileNav from "./ui/mobileNav.js";
 
 /* ------------------------------------------------------------------
    session key
@@ -413,6 +414,10 @@ async function boot() {
 
   await loadOptional();
   safeInit("panes", panes.init);
+
+  // After loadOptional(), because the phone tab bar offers a Clips tab only if
+  // the history pane actually mounted.
+  safeInit("mobile nav", mobileNav.init);
 
   console.info(
     `[hopboard] booted · key=${key} intent=${intent} device=${device.name()}`
