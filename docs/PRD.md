@@ -164,7 +164,7 @@ Three panels, no navigation, everything on one screen. Built as [`index.html`](.
 
 ```
 ┌────────────────────────────────────────────┬──────────────────────────────┐
-│ Text Editor      653/50000  ⛶ ⧉ ⎘ ⤳        │ Files & Images    ● P2P idle │
+│ Text Editor      653/24000  ⛶ ⧉ ⎘ ⤳        │ Files & Images    ● P2P idle │
 │────────────────────────────────────────────│──────────────────────────────│
 │  1  https://tibco-p.aws.local:8000/…       │  ┌──────────────────────┐    │
 │  2                                          │  │ Drop files or click  │    │

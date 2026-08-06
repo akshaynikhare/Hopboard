@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://hopboard.fastapicloud.dev wss://hopboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types hopboard">
+
+<!--
+  The conversion page, linked from the top bar rather than the footer: someone
+  who reaches here is deciding, not searching. /help/install/ is the other half
+  — the same platforms written for a search result, linked at the bottom.
+
+  Two rules this page must not break:
+
+  1. NEVER imply the mobile app watches the clipboard. Android 10 restricted
+     clipboard reads to the focused app, the active IME, or an accessibility
+     service; iOS never allowed background pasteboard reads at all. The honest
+     line — the one in docs/CLIPBOARD-FLOW.md — is "switch to Hopboard and it
+     grabs what you copied", and on mobile that is the whole story.
+  2. NEVER hide a platform behind detection. The detected one is promoted; every
+     other one stays visible below it. Detection is wrong often enough that
+     hiding the rest turns a wrong guess into a dead end.
+-->
+<title>Download Hopboard — clipboard sync for Windows, Mac, Linux, Android and iPhone</title>
+<meta name="description" content="Install Hopboard on Windows, macOS and Linux for background clipboard sync, or add it to your home screen on Android and iPhone. Free, open source, end-to-end encrypted.">
+<link rel="canonical" href="https://akshaynikhare.github.io/Hopboard/download/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="../icons/icon.svg" type="image/svg+xml">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Hopboard">
+<meta property="og:title" content="Download Hopboard — clipboard sync for every device">
+<meta property="og:description" content="Desktop apps for Windows, macOS and Linux. A command-line client for servers. Add to home screen on Android and iPhone.">
+<meta property="og:url" content="https://akshaynikhare.github.io/Hopboard/download/">
+<meta property="og:image" content="https://akshaynikhare.github.io/Hopboard/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://akshaynikhare.github.io/Hopboard/download/#page",
+      "url": "https://akshaynikhare.github.io/Hopboard/download/",
+      "name": "Download Hopboard",
+      "description": "Install Hopboard on Windows, macOS, Linux, Android and iPhone.",
+      "isPartOf": { "@id": "https://akshaynikhare.github.io/Hopboard/#website" },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Hopboard", "item": "https://akshaynikhare.github.io/Hopboard/" },
+        { "@type": "ListItem", "position": 2, "name": "Download" }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="../src/landing/landing.css">
+<link rel="stylesheet" href="./download.css">
+<script type="module" src="../src/landing/download.js"></script>
+</head>
+<body>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="../">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <rect x="8" y="3" width="8" height="4" rx="1"/>
+          <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
+          <path d="M9 13l2 2 4-4"/>
+        </svg>
+        <b>Hopboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="../help/">Help</a>
+      <a class="tlink" href="../blog/">Blog</a>
+      <a class="tlink" href="https://github.com/akshaynikhare/Hopboard">GitHub</a>
+      <a class="tlink strong" href="../app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="sec">
+    <div class="in">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="../">Hopboard</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">Download</span>
+      </nav>
+
+      <div class="article">
+        <h1>Download Hopboard</h1>
+        <p class="lede">
+          You do not need any of this. Hopboard runs in a browser tab on every
+          device you own, and that is the whole product. The desktop app adds one
+          thing the browser cannot do at all: it notices what you copy while you
+          are working somewhere else.
+        </p>
+      </div>
+
+      <!-- Filled in by src/landing/download.js when it recognises the platform.
+           Empty and hidden otherwise, so a wrong guess costs nothing and a
+           browser with JS off sees the full list below and nothing missing. -->
+      <div id="pick" class="pick" hidden></div>
+
+      <h2 id="desktop">Desktop — Windows, macOS, Linux</h2>
+      <p>
+        The desktop app is a window around the same page, plus a small native
+        helper that watches the system clipboard. That helper is the reason it
+        exists: copy in any application and it is already on your other devices
+        before you switch to them.
+      </p>
+      <p class="honest">
+        <b>It reads every copy you make while it is running.</b> That is what you
+        are installing. It never writes any of it to disk, and it is encrypted
+        before it leaves the machine — but if you would rather it only sent what
+        you choose, switch it to <b>Manual</b> in the settings, which is the
+        default on desktop for exactly this reason.
+      </p>
+
+      <div class="dlgrid">
+        <div class="dlcard" data-os="windows">
+          <h3>Windows 10 &amp; 11</h3>
+          <a class="btn" href="https://github.com/akshaynikhare/Hopboard/releases/latest" data-dl>Download the installer</a>
+          <p class="hint">.msi · 64-bit · about 10 MB</p>
+          <p class="pm">Or with a package manager:</p>
+          <pre><code>winget install Hopboard.Hopboard</code></pre>
+          <pre><code>scoop install hopboard</code></pre>
+          <p class="cap yes">Background clipboard capture: <b>yes</b></p>
+        </div>
+
+        <div class="dlcard" data-os="mac">
+          <h3>macOS 11 and later</h3>
+          <a class="btn" href="https://github.com/akshaynikhare/Hopboard/releases/latest" data-dl>Download the app</a>
+          <p class="hint">.dmg · Intel and Apple Silicon</p>
+          <p class="pm">Or with Homebrew:</p>
+          <pre><code>brew install --cask hopboard</code></pre>
+          <p class="cap yes">Background clipboard capture: <b>yes</b></p>
+        </div>
+
+        <div class="dlcard" data-os="linux">
+          <h3>Linux</h3>
+          <a class="btn" href="https://github.com/akshaynikhare/Hopboard/releases/latest" data-dl>Download</a>
+          <p class="hint">.deb, .rpm and AppImage</p>
+          <p class="pm">Or from a repository:</p>
+          <pre><code>flatpak install flathub io.github.akshaynikhare.Hopboard</code></pre>
+          <pre><code>yay -S hopboard</code></pre>
+          <p class="cap part">Background capture: <b>yes on X11</b>, and on Wayland
+            under KDE and wlroots. GNOME on Wayland has no clipboard-monitoring
+            portal, so there the app falls back to capturing when you focus it —
+            and says so in its status bar rather than pretending.</p>
+        </div>
+      </div>
+
+      <h2 id="mobile">Android, iPhone and iPad</h2>
+      <p>
+        There is no app to install, and that is a deliberate decision rather than
+        a gap. <b>Neither platform lets any app read the clipboard in the
+        background</b> — Android restricted it in version 10, and iOS has never
+        allowed it. A native app could therefore offer a share-sheet button and a
+        store listing, and nothing else that the page you are reading this on
+        cannot already do.
+      </p>
+      <p>So add it to your home screen instead. It gets its own icon and window, and works offline.</p>
+
+      <div class="dlgrid">
+        <div class="dlcard" data-os="android">
+          <h3>Android &amp; ChromeOS</h3>
+          <ol class="steps-list">
+            <li>Open <a href="../app.html">the app</a> in Chrome.</li>
+            <li>Menu <span aria-hidden="true">⋮</span> → <b>Add to Home screen</b>, or tap the install prompt.</li>
+          </ol>
+          <a class="btn" href="../app.html">Open the app</a>
+          <p class="cap no">Background clipboard capture: <b>not possible</b> — long-press
+            and paste into the app, or copy from it.</p>
+        </div>
+
+        <div class="dlcard" data-os="ios">
+          <h3>iPhone &amp; iPad</h3>
+          <ol class="steps-list">
+            <li>Open <a href="../app.html">the app</a> in Safari. Chrome on iOS cannot install it.</li>
+            <li>Tap <b>Share</b> <span aria-hidden="true">↑</span> → <b>Add to Home Screen</b>.</li>
+          </ol>
+          <a class="btn" href="../app.html">Open the app</a>
+          <p class="cap no">Background clipboard capture: <b>not possible</b>. iOS also
+            shows a paste banner every time an app reads the clipboard, which is
+            Apple's decision and not something any app can turn off.</p>
+        </div>
+      </div>
+
+      <h2 id="cli">Servers, SSH and scripts</h2>
+      <p>
+        A command-line client, for the machines that have no clipboard at all.
+        It speaks the same protocol and the same encryption as the browser —
+        it imports the very same files — so a clip sent from a server appears on
+        your laptop like any other.
+      </p>
+      <pre><code>npx hopboard D75LV</code></pre>
+      <div class="dlgrid">
+        <div class="dlcard wide" data-os="cli">
+          <h3>What it is for</h3>
+          <pre><code># pipe something in
+echo "deploy key" | npx hopboard send D75LV
+
+# take the next clip and stop
+npx hopboard watch D75LV --once &gt; token.txt
+
+# from a box you are ssh'd into
+ssh build-01 'cat /var/log/deploy.log' | npx hopboard send D75LV</code></pre>
+          <p class="hint">Needs Node 22 or newer. Also installable with
+            <code>brew install hopboard</code>, or as a standalone binary from
+            <a href="https://github.com/akshaynikhare/Hopboard/releases/latest">the releases page</a>
+            for machines with no Node at all.</p>
+        </div>
+      </div>
+
+      <h2 id="selfhost">Run your own relay</h2>
+      <p>
+        The relay carries encrypted clips between devices. It never sees anything
+        but a room hash and ciphertext, and it stores nothing — but you do not
+        have to take that on trust, because you can run it yourself. It is one
+        Python file with no database.
+      </p>
+      <pre><code>docker run -p 8000:8000 ghcr.io/akshaynikhare/hopboard-relay</code></pre>
+      <p class="hint">
+        With TLS and a real hostname, use
+        <a href="https://github.com/akshaynikhare/Hopboard/tree/main/deploy">deploy/docker-compose.yml</a>;
+        for Kubernetes there is a Helm chart in the same directory. Then point
+        the app at it under <b>Settings → Relay</b>. If you are deploying this
+        across an organisation, read
+        <a href="https://github.com/akshaynikhare/Hopboard/blob/main/docs/SELF-HOSTING.md">the self-hosting notes</a>
+        first — particularly the part about pinning replicas.
+      </p>
+
+      <p class="hint">
+        Every platform, written out at more length, with the reasons behind the
+        limitations: <a href="../help/install/">the installation guide</a>.
+      </p>
+
+    </div>
+  </section>
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/Hopboard">github.com/akshaynikhare/Hopboard</a></p>
+      <p><a href="../">Home</a> · <a href="./">Download</a> · <a href="../help/">Help</a> · <a href="../blog/">Blog</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

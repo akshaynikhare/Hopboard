@@ -1,0 +1,102 @@
+image:
+  repository: ghcr.io/akshaynikhare/hopboard-relay
+  tag: ""              # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+
+# ─────────────────────────────────────────────────────────────────────────────
+# !! PRD OI-3 — READ THIS BEFORE CHANGING replicaCount !!
+#
+# Room state is a process-local dict. With two or more replicas and no shared
+# backend, two devices can join the same room name, land on different pods, and
+# never see each other. It does not error. It presents as "sync just silently
+# doesn't work", intermittently, and only under load — which is the worst class
+# of bug to be handed six months later.
+#
+# The template REFUSES to render replicaCount > 1 unless redis.enabled is true.
+# That is deliberate: a comment is something you can not-read, and this is the
+# single mistake most likely to be made by someone deploying this quickly.
+#
+# Two safety nets back it up even so:
+#   - GET /health returns an `instance` id
+#   - the client compares it across reconnects and shows a red split-brain
+#     banner if it ever changes
+# If users report that banner, this is why.
+# ─────────────────────────────────────────────────────────────────────────────
+replicaCount: 1
+
+redis:
+  # Turns on the shared fan-out backend that makes replicaCount > 1 safe.
+  enabled: false
+  # A Redis you already run. The relay uses pub/sub and short-TTL keys only —
+  # it stores nothing durable, so this needs no persistence, no backups, and no
+  # AOF. A cache-class instance is the right shape.
+  url: ""              # redis://redis.default.svc.cluster.local:6379/0
+
+# Deployment policy. All optional; each maps to a HOPBOARD_* variable and each
+# defaults to the hosted relay's behaviour. See backend/main.py.
+policy:
+  # Pin to the origin your app is served from. "*" is safe only because there
+  # are no credentials in this design, but a single-origin deployment should
+  # say so.
+  corsOrigins: "*"
+  # Refuse WebRTC signalling and file frames. For an operator whose position is
+  # "text may move between a person's own machines, files may not."
+  disableFiles: false
+  # A shared secret every client must present as ?org=<value>. A door on the
+  # relay, NOT user authentication — everyone holds the same value, and it says
+  # "you may use this relay", never "you may read this room".
+  #
+  # Supply it as an existing Secret in production. joinToken here is for a quick
+  # trial and lands in the release manifest.
+  joinToken: ""
+  joinTokenSecret:
+    name: ""
+    key: joinToken
+  # Hard cap in seconds on how long one room may live. 0 disables.
+  maxSessionSeconds: 0
+  maxPeers: 8
+  roomTtlSeconds: 600
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: nginx
+  host: relay.example.com
+  # !! Two things the relay cannot work without, and which most default ingress
+  # configurations get wrong:
+  #   - proxy-read-timeout must exceed the client's 30 s heartbeat, or a healthy
+  #     idle session is reaped mid-use (PRD §5.4);
+  #   - proxy-buffering must be OFF, or the SSE fallback is buffered and the app
+  #     hangs on exactly the locked-down networks that fallback exists for.
+  # These annotations are nginx's spelling. Translate, do not drop.
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+  tls:
+    enabled: true
+    secretName: hopboard-relay-tls
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+# The relay writes nothing, anywhere, ever. This is that claim, expressed where
+# the cluster can enforce it rather than only in the README.
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
