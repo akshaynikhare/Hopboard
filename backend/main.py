@@ -37,7 +37,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, Response, WebSocket, WebSocketDisconnect
 
 INSTANCE_ID = uuid.uuid4().hex[:8]
 BOOTED_AT = time.time()
@@ -172,7 +172,7 @@ async def health():
 
 
 @app.get("/stats")
-async def stats():
+async def stats(response: Response):
     """Aggregate activity, for the live globe on the landing page.
 
     Deliberately blunt about what it is NOT. This returns counts and country
@@ -191,6 +191,21 @@ async def stats():
     one (OI-3), and they are live rather than cumulative — a device that closes
     its tab stops being counted.
     """
+    # CORS, on this route only.
+    #
+    # The site is served from github.io and the relay from fastapicloud.dev, so
+    # this is a cross-origin fetch. WebSockets never needed CORS, which is why
+    # nothing else here sets it — and without this header the landing page's
+    # globe silently stays dark forever, with the request failing in a way only
+    # the browser console mentions.
+    #
+    # "*" rather than a pinned origin because the payload is public aggregate
+    # counts with no credentials, and pinning would break local development, a
+    # future custom domain and anyone running their own copy. Deliberately not
+    # applied app-wide: the WebSocket route has no business advertising this.
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Cache-Control"] = "public, max-age=15"
+
     countries: dict[str, int] = {}
     for room in rooms.values():
         for peer in room.peers.values():

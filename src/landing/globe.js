@@ -372,8 +372,11 @@ function render() {
     el.classList.toggle("none", value === null);
   }
 
+  // Lit only when the last request actually succeeded. Retained numbers still
+  // show — with their age — but the indicator does not claim a live connection
+  // it has not got.
   const dot = document.getElementById("liveDot");
-  if (dot) dot.classList.toggle("on", !!live);
+  if (dot) dot.classList.toggle("on", !!live && failures === 0);
 
   // Wording, in order of what is true:
   //   no data          → the neutral caption, which claims nothing
