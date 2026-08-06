@@ -332,11 +332,16 @@
         </div>
       </header>
 
-      <div class="tablewrap">
+      <!-- tabindex makes the scroller reachable by keyboard: without it a
+           keyboard-only user can read the first three columns and has no way to
+           reach the rest. role+label give the focus stop a name when it lands. -->
+      <div class="tablewrap" tabindex="0" role="region"
+           aria-label="Comparison table — scrolls sideways">
         <table class="cmp">
           <caption class="sr-only">
             Hopboard compared with Snapdrop, PairDrop, LocalSend, AirDrop, KDE Connect
-            and Pushbullet, by account, install, network, clipboard and encryption.
+            and Pushbullet, by account, install, network, system clipboard, files
+            and platforms.
           </caption>
           <thead>
             <tr>
