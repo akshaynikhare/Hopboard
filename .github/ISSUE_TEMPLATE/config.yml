@@ -17,7 +17,13 @@ contact_links:
 
   # Named separately from the bug form on purpose. Someone who has found a way
   # to read another person's clipboard should not be filing a public issue that
-  # tells everyone else how, and they will not think to look for a policy file.
+  # tells everyone else how, and SECURITY.md is not somewhere they will think to
+  # look while they are staring at the "new issue" screen.
+  #
+  # This link only works because private vulnerability reporting is turned on for
+  # the repo. With it off, an outside reporter gets a form they cannot submit,
+  # which is worse than not offering the route at all — so if it is ever
+  # disabled, point this at the email in SECURITY.md instead.
   - name: Found a security problem?
     url: https://github.com/akshaynikhare/RealtimeClipboard/security/advisories/new
     about: Report it privately instead of opening a public issue — a working attack on someone's session should not be published before it is fixed.
