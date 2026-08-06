@@ -14,12 +14,29 @@
  *   - cross-origin requests of any kind.
  *   - anything that is not a GET.
  *
- * !! BUMP `VERSION` ON EVERY DEPLOY THAT TOUCHES index.html OR src/ !!
- * Static assets are served cache-first, so an unchanged VERSION means clients
- * keep the old shell until the cache is evicted. Changing this file is also what
- * tells the browser there is an update at all: it byte-compares sw.js, sees the
- * new string, installs the new worker and the page shows the reload prompt.
+ * VERSION and SHELL below are both REWRITTEN AT DEPLOY by tools/build.mjs —
+ * VERSION from the release tag, SHELL from the files the bundle actually
+ * produced. The values committed here are the ones development uses, where the
+ * unbundled module tree is what gets served. Editing them by hand for a deploy
+ * does nothing; editing them for local work is fine.
+ *
+ * Static assets are served cache-first, so VERSION is what tells the browser
+ * there is an update at all: it byte-compares sw.js, sees the new string,
+ * installs the new worker, and the page shows the reload prompt.
+ *
+ * ── KILL SWITCH ────────────────────────────────────────────────────────────
+ * A service worker is the one thing here that OUTLIVES a bad deploy. It holds
+ * the app shell in a cache-first cache on every machine that has ever opened
+ * the app, so a compromised or broken build keeps being served from disk after
+ * the origin has been fixed. Reverting the site does not reach those clients.
+ *
+ * To evict everyone: set KILL to true and deploy. Every client that fetches
+ * sw.js — which the browser does on navigation, at most every 24h — drops all
+ * caches, unregisters this worker, and reloads to the network. Recovery is one
+ * commit, and it costs offline support until KILL goes back to false.
  */
+
+const KILL = false;
 
 const VERSION = "v4";
 const CACHE = `hopboard-shell-${VERSION}`;
@@ -33,8 +50,10 @@ const ROOT = new URL("./", self.location).pathname;
 /**
  * The app shell, enumerated by hand.
  *
- * There is no build step to generate this (docs/ARCHITECTURE.md §1), so it is a
- * literal list and adding a module means adding a line here.
+ * This literal list is the DEVELOPMENT shell: the module tree as served by
+ * `npm run serve`, with a line per module. tests/static-check.mjs keeps it
+ * honest against disk. tools/build.mjs REPLACES it wholesale at deploy with the
+ * bundled output, because the paths below do not exist there.
  *
  * Neither kind of drift is fatal. A missing entry still gets cached the first
  * time the page asks for it (see `cacheFirst`), so it costs offline-on-first-
@@ -54,6 +73,7 @@ const SHELL = [
   "./src/core/device.js",
   "./src/core/history.js",
   "./src/core/keys.js",
+  "./src/core/paths.js",
   "./src/core/state.js",
   "./src/core/storage.js",
   "./src/files/chunker.js",
@@ -91,7 +111,9 @@ const SHELL = [
   "./src/ui/syncMode.js",
   "./src/ui/toast.js",
   "./src/ui/whatsNew.js",
+  "./src/landing/download.js",
   "./src/landing/landing.css",
+  "./src/landing/redirect.js",
   "./src/styles/ads.css",
   "./src/styles/appbar.css",
   "./src/styles/banners.css",
@@ -123,6 +145,11 @@ const SHELL = [
 /* ---------------- lifecycle ---------------- */
 
 self.addEventListener("install", event => {
+  // Take over immediately when killed. The usual reason to wait for the user's
+  // consent — not swapping code under someone mid-sentence — is outranked by
+  // the reason this switch is being used at all.
+  if (KILL) return void self.skipWaiting();
+
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     // Deliberately not cache.addAll(): that is atomic, so one renamed file
@@ -144,6 +171,21 @@ self.addEventListener("install", event => {
 });
 
 self.addEventListener("activate", event => {
+  if (KILL) {
+    event.waitUntil((async () => {
+      // Every cache, not just this origin's shell prefix: the point of the
+      // switch is that we no longer trust what is on disk.
+      await Promise.all((await caches.keys()).map(n => caches.delete(n)));
+      await self.registration.unregister();
+      // Reload each open tab. Unregistering alone leaves the current pages
+      // still controlled by this worker until they navigate on their own.
+      for (const client of await self.clients.matchAll({ type: "window" })) {
+        client.navigate(client.url).catch(() => { /* nothing better to try */ });
+      }
+    })());
+    return;
+  }
+
   event.waitUntil((async () => {
     const names = await caches.keys();
     await Promise.all(
