@@ -60,7 +60,7 @@ await new Promise(r => server.listen(PORT, "127.0.0.1", r));
 
 /* ---------- drive the browser ---------- */
 
-const profile = mkdtempSync(join(tmpdir(), "hopboard-csp-"));
+const profile = mkdtempSync(join(tmpdir(), "realtimeclipboard-csp-"));
 const proc = spawn(browser, [
   "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
   "--remote-debugging-port=9223", `--user-data-dir=${profile}`, "about:blank",

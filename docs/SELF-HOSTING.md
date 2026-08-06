@@ -1,4 +1,4 @@
-# Running Hopboard yourself
+# Running RealtimeClipboard yourself
 
 For anyone who wants the relay inside their own network — a homelab, or an
 organisation. It is one Python file with no database, so this is shorter than
@@ -9,7 +9,7 @@ you are expecting.
 ## 1. The relay
 
 ```bash
-docker run -p 8000:8000 ghcr.io/akshaynikhare/hopboard-relay
+docker run -p 8000:8000 ghcr.io/akshaynikhare/realtimeclipboard-relay
 ```
 
 That is a working relay. It holds ciphertext in RAM, writes nothing to disk, and
@@ -21,7 +21,7 @@ content. A relay without a certificate only works on localhost.
 
 ```bash
 cd deploy
-HOPBOARD_DOMAIN=relay.example.com docker compose up -d
+REALTIMECLIPBOARD_DOMAIN=relay.example.com docker compose up -d
 ```
 
 Caddy obtains and renews the certificate itself. Point the app at the relay under
@@ -46,7 +46,7 @@ You get one of two safe configurations:
 | | |
 |---|---|
 | **One replica** | The default. Correct, and fine for a few hundred users. |
-| **Many replicas + Redis** | Set `HOPBOARD_REDIS_URL`. Frames, the replayed last clip and the roster then travel between processes. |
+| **Many replicas + Redis** | Set `REALTIMECLIPBOARD_REDIS_URL`. Frames, the replayed last clip and the roster then travel between processes. |
 
 The Helm chart **refuses to render** `replicaCount > 1` unless `redis.enabled` is
 true, because a comment is something a hurried operator can not-read.
@@ -91,21 +91,21 @@ exactly the relay described above.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `HOPBOARD_CORS_ORIGINS` | `*` | Comma-separated allowlist. Safe as `*` only because there are no credentials anywhere in this design; pin it anyway. |
-| `HOPBOARD_JOIN_TOKEN` | none | A shared secret every client must present as `?org=…`. **A door on the relay, not user authentication** — see below. |
-| `HOPBOARD_DISABLE_FILES` | off | Refuses WebRTC signalling and all file frames. Clipboard text is unaffected. |
-| `HOPBOARD_MAX_SESSION` | `0` | Hard cap in seconds on a room's lifetime. |
-| `HOPBOARD_MAX_PEERS` | `8` | Devices per room. |
-| `HOPBOARD_ROOM_TTL` | `600` | Seconds a room survives after its last peer leaves. |
-| `HOPBOARD_REDIS_URL` | none | Shared backend. See §2. |
-| `HOPBOARD_MAX_FRAME_BYTES` | `32768` | Protocol limit. Changing it desynchronises you from stock clients. |
+| `REALTIMECLIPBOARD_CORS_ORIGINS` | `*` | Comma-separated allowlist. Safe as `*` only because there are no credentials anywhere in this design; pin it anyway. |
+| `REALTIMECLIPBOARD_JOIN_TOKEN` | none | A shared secret every client must present as `?org=…`. **A door on the relay, not user authentication** — see below. |
+| `REALTIMECLIPBOARD_DISABLE_FILES` | off | Refuses WebRTC signalling and all file frames. Clipboard text is unaffected. |
+| `REALTIMECLIPBOARD_MAX_SESSION` | `0` | Hard cap in seconds on a room's lifetime. |
+| `REALTIMECLIPBOARD_MAX_PEERS` | `8` | Devices per room. |
+| `REALTIMECLIPBOARD_ROOM_TTL` | `600` | Seconds a room survives after its last peer leaves. |
+| `REALTIMECLIPBOARD_REDIS_URL` | none | Shared backend. See §2. |
+| `REALTIMECLIPBOARD_MAX_FRAME_BYTES` | `32768` | Protocol limit. Changing it desynchronises you from stock clients. |
 
 `backend/test_policy.py` is the gate for these. Run it after changing any of
 them — a flag that silently does nothing looks exactly like a flag that works,
-and an operator who sets `HOPBOARD_DISABLE_FILES` and sees no error has every
+and an operator who sets `REALTIMECLIPBOARD_DISABLE_FILES` and sees no error has every
 reason to believe files are disabled.
 
-**On `HOPBOARD_JOIN_TOKEN`.** Everyone in your organisation holds the same value.
+**On `REALTIMECLIPBOARD_JOIN_TOKEN`.** Everyone in your organisation holds the same value.
 It says *"you may use this relay"*, never *"you may read this room"* — the session
 key is still the only thing that decrypts anything. Its job is to stop an internal
 deployment being an open relay for anyone who learns the hostname. It travels as a
@@ -132,7 +132,7 @@ container declares no volume. On a client, only preferences — never clip conte
 WebSocket first, falling back to SSE + POST on the same host if a TLS-inspecting
 proxy eats the upgrade. Peer-to-peer file transfer additionally attempts UDP via
 STUN, which corporate networks routinely block; it falls back to relaying the
-chunks, visibly labelled — or set `HOPBOARD_DISABLE_FILES` and remove the question.
+chunks, visibly labelled — or set `REALTIMECLIPBOARD_DISABLE_FILES` and remove the question.
 
 **Can you produce an audit log?** Of metadata, yes: joins, room hashes,
 timestamps, peer counts. Not of content, because the relay provably cannot read

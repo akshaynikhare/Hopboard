@@ -19,7 +19,7 @@ This module is the answer, and it is deliberately the smallest one that works.
                       browser (PRD §7.3); Redis holds exactly what the relay
                       holds, which is nothing readable.
 
-OFF BY DEFAULT. With HOPBOARD_REDIS_URL unset this module is inert and the relay
+OFF BY DEFAULT. With REALTIMECLIPBOARD_REDIS_URL unset this module is inert and the relay
 behaves exactly as it did before it existed — same code path, same in-memory
 dict. That matters because the single-process deployment is the common one and
 must not pay for a feature it does not use.
@@ -39,7 +39,7 @@ try:
 except ImportError:                                       # pragma: no cover
     aioredis = None
 
-REDIS_URL = os.getenv("HOPBOARD_REDIS_URL", "") or None
+REDIS_URL = os.getenv("REALTIMECLIPBOARD_REDIS_URL", "") or None
 
 
 class Backend:
@@ -54,7 +54,7 @@ class Backend:
         self._tasks: dict[str, asyncio.Task] = {}
 
         if url and aioredis is None:
-            print("[relay] HOPBOARD_REDIS_URL is set but the redis package is not "
+            print("[relay] REALTIMECLIPBOARD_REDIS_URL is set but the redis package is not "
                   "installed. Running single-process — do NOT scale this deployment. "
                   "Install with: pip install 'redis>=5'")
 

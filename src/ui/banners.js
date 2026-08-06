@@ -50,7 +50,7 @@ export function init() {
       show("perm", {
         tone: "info",
         title: "Allow clipboard access",
-        body: "Lets Hopboard pick up what you copied when you switch back to this window.",
+        body: "Lets RealtimeClipboard pick up what you copied when you switch back to this window.",
         action: { label: "Allow", onClick: () => capture.requestPermission() },
       });
     }
@@ -199,7 +199,7 @@ export function init() {
         tone: "bad",
         title: "Cannot reach the relay",
         body: "Neither WebSockets nor HTTP streaming is getting through. If you are on "
-            + "a managed network, ask for hopboard.fastapicloud.dev to be allowed on 443.",
+            + "a managed network, ask for realtimeclipboard.fastapicloud.dev to be allowed on 443.",
       });
       return;
     }
@@ -209,7 +209,7 @@ export function init() {
     show("transport", {
       tone: "info",
       title: "Using the HTTP fallback",
-      body: "WebSockets are blocked on this network, so Hopboard switched to HTTP "
+      body: "WebSockets are blocked on this network, so RealtimeClipboard switched to HTTP "
           + "streaming. Everything works and is still end-to-end encrypted; sending is "
           + "a little slower.",
     });

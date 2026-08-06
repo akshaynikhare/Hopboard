@@ -1,4 +1,4 @@
-# Hopboard relay.
+# RealtimeClipboard relay.
 #
 # One Python file, no database, no disk. The image is correspondingly boring,
 # and the two things worth arguing about are both here on purpose:

@@ -1,11 +1,11 @@
-# Hopboard
+# RealtimeClipboard
 #
 # ---------------------------------------------------------------------------
 # HEADS UP: on GitHub Pages this file does nothing.
 # ---------------------------------------------------------------------------
 #
 # robots.txt is only read at the root of an origin. This project deploys to
-# https://akshaynikhare.github.io/Hopboard/ , so this file lands in a
+# https://akshaynikhare.github.io/RealtimeClipboard/ , so this file lands in a
 # subdirectory and no crawler will ever fetch it. The file that actually
 # governs this origin lives in the akshaynikhare/akshaynikhare.github.io
 # repository and is served from https://akshaynikhare.github.io/robots.txt .
@@ -13,11 +13,11 @@
 # The sitemap therefore has to be declared THERE, not here. Add this line to
 # that repo's robots.txt, next to the career-compass one already in it:
 #
-#     Sitemap: https://akshaynikhare.github.io/Hopboard/sitemap.xml
+#     Sitemap: https://akshaynikhare.github.io/RealtimeClipboard/sitemap.xml
 #
 # Until that happens, nothing has told a crawler this sitemap exists.
 #
-# This file is kept so it is ready the day Hopboard moves to its own domain, at
+# This file is kept so it is ready the day RealtimeClipboard moves to its own domain, at
 # which point it becomes the real thing and the lines below take effect.
 #
 # ---------------------------------------------------------------------------
@@ -40,4 +40,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://akshaynikhare.github.io/Hopboard/sitemap.xml
+Sitemap: https://akshaynikhare.github.io/RealtimeClipboard/sitemap.xml

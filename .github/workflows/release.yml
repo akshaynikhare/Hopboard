@@ -95,7 +95,7 @@ jobs:
         with:
           configPath: desktop/src-tauri/tauri.conf.json
           tagName: ${{ github.ref_name }}
-          releaseName: Hopboard ${{ github.ref_name }}
+          releaseName: RealtimeClipboard ${{ github.ref_name }}
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.target }}
@@ -108,7 +108,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, registry-url: "https://registry.npmjs.org" }
       - run: npm ci
-      # `npx hopboard` installs src/core and src/transport — the same modules the
+      # `npx realtimeclipboard` installs src/core and src/transport — the same modules the
       # browser runs. There is nothing to build, which is the point.
       - run: npm publish --provenance --access public
         env:
@@ -134,8 +134,8 @@ jobs:
           # audience for a relay you host yourself.
           platforms: linux/amd64,linux/arm64
           tags: |
-            ghcr.io/${{ github.repository_owner }}/hopboard-relay:${{ github.ref_name }}
-            ghcr.io/${{ github.repository_owner }}/hopboard-relay:latest
+            ghcr.io/${{ github.repository_owner }}/realtimeclipboard-relay:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/realtimeclipboard-relay:latest
 
   # ── the manifests ────────────────────────────────────────────────────────
   # Each of these is a version and a checksum. They run after the artifacts

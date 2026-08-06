@@ -1,5 +1,5 @@
 name: Feature or change
-description: Suggest something Hopboard should do, or do differently
+description: Suggest something RealtimeClipboard should do, or do differently
 labels: ["enhancement"]
 body:
   - type: markdown
@@ -21,7 +21,7 @@ body:
           server to read a clip, a filename or a device's content is out by
           construction.
 
-        These are settled decisions in [docs/PRD.md](https://github.com/akshaynikhare/Hopboard/blob/main/docs/PRD.md) §1.4 and §11.1, not
+        These are settled decisions in [docs/PRD.md](https://github.com/akshaynikhare/RealtimeClipboard/blob/main/docs/PRD.md) §1.4 and §11.1, not
         a lack of interest. Everything else is open.
 
   - type: textarea
@@ -81,6 +81,6 @@ body:
       label: Would you want to build it?
       description: >
         Entirely optional, and a "no" costs nothing. The repo has no build step
-        and the tests run locally in a git hook — see [docs/RELEASING.md](https://github.com/akshaynikhare/Hopboard/blob/main/docs/RELEASING.md).
+        and the tests run locally in a git hook — see [docs/RELEASING.md](https://github.com/akshaynikhare/RealtimeClipboard/blob/main/docs/RELEASING.md).
       options:
         - label: I would be up for opening a PR

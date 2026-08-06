@@ -24,7 +24,7 @@ const ROOT = resolve(dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z
 const OUT = join(ROOT, "dist/manifests");
 
 const OWNER = "akshaynikhare";
-const REPO = "Hopboard";
+const REPO = "RealtimeClipboard";
 const [, , command, rawTag] = process.argv;
 
 if (!command || !rawTag) {
@@ -45,11 +45,11 @@ const base = `https://github.com/${OWNER}/${REPO}/releases/download/${tag}`;
  * them here rather than in three manifests. !!
  */
 const ASSETS = {
-  msi: `Hopboard_${version}_x64_en-US.msi`,
-  nsis: `Hopboard_${version}_x64-setup.exe`,
-  dmg: `Hopboard_${version}_universal.dmg`,
-  deb: `hopboard_${version}_amd64.deb`,
-  appimage: `hopboard_${version}_amd64.AppImage`,
+  msi: `RealtimeClipboard_${version}_x64_en-US.msi`,
+  nsis: `RealtimeClipboard_${version}_x64-setup.exe`,
+  dmg: `RealtimeClipboard_${version}_universal.dmg`,
+  deb: `realtimeclipboard_${version}_amd64.deb`,
+  appimage: `realtimeclipboard_${version}_amd64.AppImage`,
 };
 
 /** SHA256 of a released asset, fetched rather than assumed. */
@@ -74,7 +74,7 @@ const write = (name, body) => {
 
 async function scoop() {
   const hash = await digest(ASSETS.nsis);
-  write("hopboard.json", `
+  write("realtimeclipboard.json", `
 {
     "version": "${version}",
     "description": "An end-to-end encrypted clipboard shared between your devices",
@@ -92,7 +92,7 @@ async function scoop() {
     "checkver": { "github": "https://github.com/${OWNER}/${REPO}" },
     "autoupdate": {
         "architecture": {
-            "64bit": { "url": "${base.replace(tag, "v$version")}/Hopboard_$version_x64-setup.exe#/setup.exe" }
+            "64bit": { "url": "${base.replace(tag, "v$version")}/RealtimeClipboard_$version_x64-setup.exe#/setup.exe" }
         }
     }
 }
@@ -104,38 +104,38 @@ async function scoop() {
 async function homebrew() {
   const hash = await digest(ASSETS.dmg);
   // A cask for the app. The CLI is a separate formula and deliberately not
-  // bundled into it: somebody automating a server wants `hopboard` on PATH and
+  // bundled into it: somebody automating a server wants `realtimeclipboard` on PATH and
   // has no use for a tray icon, and installing a GUI to get a pipe is rude.
-  write("hopboard.rb", `
-cask "hopboard" do
+  write("realtimeclipboard.rb", `
+cask "realtimeclipboard" do
   version "${version}"
   sha256 "${hash}"
 
-  url "${base.replace(tag, "v#{version}")}/Hopboard_#{version}_universal.dmg"
-  name "Hopboard"
+  url "${base.replace(tag, "v#{version}")}/RealtimeClipboard_#{version}_universal.dmg"
+  name "RealtimeClipboard"
   desc "End-to-end encrypted clipboard shared between your devices"
   homepage "https://github.com/${OWNER}/${REPO}"
 
   depends_on macos: ">= :big_sur"
 
-  app "Hopboard.app"
+  app "RealtimeClipboard.app"
 
   # The app writes nothing but its settings. Named explicitly so an uninstall
   # is complete — a clipboard tool that leaves state behind after you remove it
   # has undermined its own pitch.
   zap trash: [
-    "~/Library/Application Support/io.github.akshaynikhare.hopboard",
-    "~/Library/Preferences/io.github.akshaynikhare.hopboard.plist",
-    "~/Library/Saved Application State/io.github.akshaynikhare.hopboard.savedState",
+    "~/Library/Application Support/io.github.akshaynikhare.realtimeclipboard",
+    "~/Library/Preferences/io.github.akshaynikhare.realtimeclipboard.plist",
+    "~/Library/Saved Application State/io.github.akshaynikhare.realtimeclipboard.savedState",
   ]
 end
 `);
 
-  write("hopboard-cli.rb", `
-class HopboardCli < Formula
+  write("realtimeclipboard-cli.rb", `
+class RealtimeClipboardCli < Formula
   desc "Online clipboard on the command line — pipe text between machines"
   homepage "https://github.com/${OWNER}/${REPO}"
-  url "https://registry.npmjs.org/hopboard/-/hopboard-${version}.tgz"
+  url "https://registry.npmjs.org/realtimeclipboard/-/realtimeclipboard-${version}.tgz"
   license "MIT"
 
   depends_on "node"
@@ -146,7 +146,7 @@ class HopboardCli < Formula
   end
 
   test do
-    assert_match(/^[0-9A-Z]{6}$/, shell_output("#{bin}/hopboard new").strip)
+    assert_match(/^[0-9A-Z]{6}$/, shell_output("#{bin}/realtimeclipboard new").strip)
   end
 end
 `);
@@ -158,7 +158,7 @@ async function aur() {
   const hash = await digest(ASSETS.appimage);
   write("PKGBUILD", `
 # Maintainer: ${OWNER} <https://github.com/${OWNER}>
-pkgname=hopboard-bin
+pkgname=realtimeclipboard-bin
 pkgver=${version}
 pkgrel=1
 pkgdesc="End-to-end encrypted clipboard shared between your devices"
@@ -169,14 +169,14 @@ license=('MIT')
 # cleanly and then fails at launch with a missing symbol, which reads as "the
 # app is broken" rather than "the dependency is wrong".
 depends=('webkit2gtk-4.1' 'gtk3')
-provides=('hopboard')
-conflicts=('hopboard')
-source=("\\$pkgname-\\$pkgver.AppImage::${base.replace(tag, "v\\$pkgver")}/hopboard_\\$pkgver_amd64.AppImage")
+provides=('realtimeclipboard')
+conflicts=('realtimeclipboard')
+source=("\\$pkgname-\\$pkgver.AppImage::${base.replace(tag, "v\\$pkgver")}/realtimeclipboard_\\$pkgver_amd64.AppImage")
 sha256sums=('${hash}')
 options=(!strip)
 
 package() {
-  install -Dm755 "\\$srcdir/\\$pkgname-\\$pkgver.AppImage" "\\$pkgdir/usr/bin/hopboard"
+  install -Dm755 "\\$srcdir/\\$pkgname-\\$pkgver.AppImage" "\\$pkgdir/usr/bin/realtimeclipboard"
 }
 `);
 }
@@ -193,10 +193,10 @@ function publish() {
   Manifests for ${tag} are in dist/manifests/.
 
   Open them as pull requests against:
-    hopboard.json      -> ${OWNER}/scoop-hopboard
-    hopboard.rb        -> ${OWNER}/homebrew-tap  (Casks/)
-    hopboard-cli.rb    -> ${OWNER}/homebrew-tap  (Formula/)
-    PKGBUILD           -> aur.archlinux.org/hopboard-bin.git
+    realtimeclipboard.json      -> ${OWNER}/scoop-realtimeclipboard
+    realtimeclipboard.rb        -> ${OWNER}/homebrew-tap  (Casks/)
+    realtimeclipboard-cli.rb    -> ${OWNER}/homebrew-tap  (Formula/)
+    PKGBUILD           -> aur.archlinux.org/realtimeclipboard-bin.git
 
   Not pushed automatically. See the comment in tools/manifest.mjs.`);
 }

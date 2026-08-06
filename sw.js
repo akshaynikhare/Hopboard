@@ -1,14 +1,14 @@
 /**
- * Hopboard service worker — app-shell cache (PRD FR-4.2).
+ * RealtimeClipboard service worker — app-shell cache (PRD FR-4.2).
  *
  * Scope note (PRD OI-9). The site is served from a GitHub Pages *subpath*,
- * https://<user>.github.io/Hopboard/, so nothing in this file may start with a
+ * https://<user>.github.io/RealtimeClipboard/, so nothing in this file may start with a
  * leading "/". Every URL below is relative to this script, which the browser
- * resolves against /Hopboard/sw.js — and a worker's default scope is its own
+ * resolves against /RealtimeClipboard/sw.js — and a worker's default scope is its own
  * directory, so the registration covers exactly the app and nothing else.
  *
  * What is NOT cached, ever:
- *   - the relay (hopboard.fastapicloud.dev) and any ws:/wss: traffic. Clipboard
+ *   - the relay (realtimeclipboard.fastapicloud.dev) and any ws:/wss: traffic. Clipboard
  *     content is live, encrypted and single-delivery; a cached copy would be
  *     both wrong and a disclosure risk.
  *   - cross-origin requests of any kind.
@@ -39,12 +39,12 @@
 const KILL = false;
 
 const VERSION = "v4";
-const CACHE = `hopboard-shell-${VERSION}`;
+const CACHE = `realtimeclipboard-shell-${VERSION}`;
 
 /** Hosts this worker must never touch, whatever the request looks like. */
-const NEVER = new Set(["hopboard.fastapicloud.dev"]);
+const NEVER = new Set(["realtimeclipboard.fastapicloud.dev"]);
 
-/** Directory this worker was served from, e.g. "/Hopboard/" or "/" locally. */
+/** Directory this worker was served from, e.g. "/RealtimeClipboard/" or "/" locally. */
 const ROOT = new URL("./", self.location).pathname;
 
 /**
@@ -190,7 +190,7 @@ self.addEventListener("activate", event => {
     const names = await caches.keys();
     await Promise.all(
       names
-        .filter(n => n.startsWith("hopboard-shell-") && n !== CACHE)
+        .filter(n => n.startsWith("realtimeclipboard-shell-") && n !== CACHE)
         .map(n => caches.delete(n))
     );
     // Take over already-open tabs so the first visit works offline without a
@@ -221,7 +221,7 @@ self.addEventListener("fetch", event => {
   if (url.protocol !== "https:" && url.protocol !== "http:") return;
   if (NEVER.has(url.hostname)) return;                 // the relay
   if (url.origin !== self.location.origin) return;     // any third party
-  if (!url.pathname.startsWith(ROOT)) return;          // outside /Hopboard/
+  if (!url.pathname.startsWith(ROOT)) return;          // outside /RealtimeClipboard/
 
   if (req.mode === "navigate") {
     event.respondWith(networkFirst(req));
@@ -287,7 +287,7 @@ async function cacheFirst(request) {
 
 function offline() {
   return new Response(
-    "Hopboard is offline and the app shell has not been cached yet.",
+    "RealtimeClipboard is offline and the app shell has not been cached yet.",
     { status: 503, headers: { "Content-Type": "text/plain;charset=utf-8" } }
   );
 }

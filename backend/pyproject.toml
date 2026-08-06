@@ -1,7 +1,7 @@
 [project]
-name = "hopboard-relay"
+name = "realtimeclipboard-relay"
 version = "0.1.0"
-description = "Hopboard relay - in-memory WebSocket fan-out for clipboard sync"
+description = "RealtimeClipboard relay - in-memory WebSocket fan-out for clipboard sync"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi[standard]>=0.115.0",

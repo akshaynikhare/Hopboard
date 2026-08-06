@@ -1,5 +1,5 @@
 /**
- * Hopboard — landing page behaviour.
+ * RealtimeClipboard — landing page behaviour.
  *
  * Three jobs, none of which may block first paint:
  *

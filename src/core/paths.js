@@ -7,7 +7,7 @@
  * stops the moment the deploy bundles `src/ui/*.js` into `src/main.js`: every
  * one of those paths shifts by a directory level, all at once, and nothing
  * throws. `install.js` in particular resolved the app root to the GitHub Pages
- * ROOT rather than to `/Hopboard/`, which silently breaks the service-worker
+ * ROOT rather than to `/RealtimeClipboard/`, which silently breaks the service-worker
  * scope and the PWA install criteria — PRD OI-9, the failure its own comment
  * warned about.
  *
@@ -33,7 +33,7 @@ const BASE = typeof document !== "undefined" && document.baseURI
   ? document.baseURI
   : "http://localhost/";
 
-/** `.../Hopboard/` — the directory the app is served from, with trailing slash. */
+/** `.../RealtimeClipboard/` — the directory the app is served from, with trailing slash. */
 export const APP_ROOT = new URL(".", BASE);
 
 /** A file sitting beside `app.html`: `sw.js`, `manifest.webmanifest`, `changelog.json`. */

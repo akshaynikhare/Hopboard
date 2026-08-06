@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Hopboard on the command line.
+ * RealtimeClipboard on the command line.
  *
  * The interesting thing about this file is how little of it there is. It
  * imports the SAME modules the browser runs — core/crypto.js, core/keys.js,
@@ -13,10 +13,10 @@
  * That is also the constraint: nothing in this file may reimplement a protocol
  * detail. If something is missing, it belongs in src/ where both ends get it.
  *
- *   hopboard <KEY>              two-way: prints what arrives, sends what you type
- *   hopboard watch <KEY>        prints incoming clips and nothing else
- *   hopboard send <KEY>         reads stdin to EOF, sends it, exits
- *   hopboard new                prints a fresh key
+ *   realtimeclipboard <KEY>              two-way: prints what arrives, sends what you type
+ *   realtimeclipboard watch <KEY>        prints incoming clips and nothing else
+ *   realtimeclipboard send <KEY>         reads stdin to EOF, sends it, exits
+ *   realtimeclipboard new                prints a fresh key
  *
  * Made for pipes, so the rules are the usual ones: clip content goes to stdout
  * and nothing else does, and the exit code is what a script should branch on.
@@ -58,17 +58,17 @@ function parse(args) {
   return { opts, rest };
 }
 
-const USAGE = `hopboard ${VERSION} — an online clipboard, on the command line
+const USAGE = `realtimeclipboard ${VERSION} — an online clipboard, on the command line
 
-  hopboard <KEY>              two-way; prints what arrives, sends what you type
-  hopboard watch <KEY>        print incoming clips
-  hopboard send <KEY>         read stdin to EOF and send it
-  hopboard new [--long]       print a fresh key
+  realtimeclipboard <KEY>              two-way; prints what arrives, sends what you type
+  realtimeclipboard watch <KEY>        print incoming clips
+  realtimeclipboard send <KEY>         read stdin to EOF and send it
+  realtimeclipboard new [--long]       print a fresh key
 
 Options
   --relay <url>    relay to use            (default ${DEFAULT_RELAY_URL})
-                   or set HOPBOARD_RELAY
-  --pin <pin>      join a locked session   (or set HOPBOARD_PIN)
+                   or set REALTIMECLIPBOARD_RELAY
+  --pin <pin>      join a locked session   (or set REALTIMECLIPBOARD_PIN)
   --once           watch: exit after the first clip
   --json           one JSON object per line instead of raw text
   --timeout <s>    give up after this many seconds
@@ -77,10 +77,10 @@ Options
   -v, --version    version
 
 Examples
-  echo "deploy key" | hopboard send D75LV
-  hopboard watch D75LV > clip.txt
-  hopboard watch D75LV --once --json | jq -r .text
-  ssh box 'cat /etc/hosts' | hopboard send D75LV
+  echo "deploy key" | realtimeclipboard send D75LV
+  realtimeclipboard watch D75LV > clip.txt
+  realtimeclipboard watch D75LV --once --json | jq -r .text
+  ssh box 'cat /etc/hosts' | realtimeclipboard send D75LV
 
 The key is a bearer credential: anyone holding it can read the session while it
 is open. Clip contents are encrypted here, before they are sent; the relay only
@@ -91,7 +91,7 @@ ever sees a room hash and ciphertext.`;
 const note = (msg, opts) => { if (!opts.quiet) stderr.write(`${msg}\n`); };
 
 function die(msg, code = 1) {
-  stderr.write(`hopboard: ${msg}\n`);
+  stderr.write(`realtimeclipboard: ${msg}\n`);
   exit(code);
 }
 
@@ -130,7 +130,7 @@ async function derive(rawKey, pin) {
  * since a pipe that hangs forever is worse than one that fails.
  */
 function connect(session, opts, onClip) {
-  const url = opts.relay ?? env.HOPBOARD_RELAY ?? undefined;
+  const url = opts.relay ?? env.REALTIMECLIPBOARD_RELAY ?? undefined;
   if (opts.relay && !normaliseRelay(opts.relay)) die(`"${opts.relay}" is not a usable relay address`, 2);
 
   return new Promise((resolve, reject) => {
@@ -215,24 +215,24 @@ const { opts, rest } = parse(argv.slice(2));
 if (opts.help) { stdout.write(`${USAGE}\n`); exit(0); }
 if (opts.version) { stdout.write(`${VERSION}\n`); exit(0); }
 
-opts.pin ??= env.HOPBOARD_PIN ?? null;
+opts.pin ??= env.REALTIMECLIPBOARD_PIN ?? null;
 
 let [cmd, keyArg] = rest;
 if (cmd === "new") {
   stdout.write(`${keys.generate(opts.long ? keys.LENGTHS.LONG : keys.LENGTHS.NORMAL)}\n`);
   exit(0);
 }
-// `hopboard D75LV` — no verb, so the first word is the key and the mode is both.
+// `realtimeclipboard D75LV` — no verb, so the first word is the key and the mode is both.
 if (cmd && !["send", "watch"].includes(cmd)) { keyArg = cmd; cmd = "both"; }
 if (!cmd) { stdout.write(`${USAGE}\n`); exit(2); }
-if (!keyArg) die(`${cmd} needs a key — try: hopboard ${cmd} D75LV`, 2);
+if (!keyArg) die(`${cmd} needs a key — try: realtimeclipboard ${cmd} D75LV`, 2);
 
 if (typeof WebSocket === "undefined") {
   die("this needs Node 22 or newer (for the built-in WebSocket)", 3);
 }
 
 const session = await derive(keyArg, opts.pin);
-note(`hopboard · room ${session.roomHash.slice(0, 8)}…${session.locked ? " · locked" : ""}`, opts);
+note(`realtimeclipboard · room ${session.roomHash.slice(0, 8)}…${session.locked ? " · locked" : ""}`, opts);
 
 /**
  * --timeout bounds the WHOLE run, not just the connection.

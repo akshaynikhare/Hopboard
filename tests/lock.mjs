@@ -171,13 +171,13 @@ check("a peer without the PIN cannot read the beacon",
 /* ------------------------------------------------ the open path is untouched
 
    A change to the unlocked derivation would strand every link in existence.
-   These are golden values, computed by this test suite against the original
-   implementation. If one fails, the wire format has changed. */
+   These are golden values, rebaselined when the domain-separation strings were
+   renamed to realtimeclipboard-*. If one fails, the wire format has changed. */
 
 check("the unlocked room hash for D75LV is unchanged",
-  unlocked === "2bab2d0b41e31a44b28eeaacf7ac6249", unlocked);
+  unlocked === "e545a3e184158f9344abe7f3ded4b6e2", unlocked);
 check("the unlocked salt and iteration count are unchanged",
-  CRYPTO.SALT === "hopboard-v1" && CRYPTO.ITERATIONS === 250_000);
+  CRYPTO.SALT === "realtimeclipboard-v1" && CRYPTO.ITERATIONS === 250_000);
 
 console.log(`\n${"=".repeat(58)}`);
 console.log(`LOCK: ${pass}/${pass + fail} passed`);

@@ -180,7 +180,7 @@ export function create({ url, roomHash, auth = null, onOpen, onFrame, onDown }) 
       }
       retried = false;
       inflight = false;
-      console.warn(`[hopboard] dropped ${batch.length} frame(s): relay unreachable`);
+      console.warn(`[realtimeclipboard] dropped ${batch.length} frame(s): relay unreachable`);
       return flush();
     } finally {
       guard.clear();
@@ -196,7 +196,7 @@ export function create({ url, roomHash, auth = null, onOpen, onFrame, onDown }) 
     }
     // Anything else the relay dislikes (too large, rate limited) it also says
     // on the stream as a normal error frame, which the UI already surfaces.
-    if (!res.ok) console.warn(`[hopboard] relay rejected a send: HTTP ${res.status}`);
+    if (!res.ok) console.warn(`[realtimeclipboard] relay rejected a send: HTTP ${res.status}`);
 
     if (outbox.length) flush();
   }

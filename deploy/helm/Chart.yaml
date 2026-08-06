@@ -1,7 +1,7 @@
 apiVersion: v2
-name: hopboard-relay
+name: realtimeclipboard-relay
 description: >-
-  Blind fan-out relay for Hopboard. Holds ciphertext in memory, writes nothing
+  Blind fan-out relay for RealtimeClipboard. Holds ciphertext in memory, writes nothing
   to disk, and has no database. Deploy it inside your own network so clipboard
   text moving between your engineers' machines never leaves it.
 type: application
@@ -17,9 +17,9 @@ keywords:
   - clipboard
   - end-to-end-encrypted
   - self-hosted
-home: https://github.com/akshaynikhare/Hopboard
+home: https://github.com/akshaynikhare/RealtimeClipboard
 sources:
-  - https://github.com/akshaynikhare/Hopboard
+  - https://github.com/akshaynikhare/RealtimeClipboard
 maintainers:
   - name: akshaynikhare
     url: https://github.com/akshaynikhare

@@ -1,5 +1,5 @@
 /**
- * Hopboard — the land mask the globe draws its continents from.
+ * RealtimeClipboard — the land mask the globe draws its continents from.
  *
  * GENERATED FILE. Do not hand-edit: run `node tools/build-land-mask.mjs`
  * against Natural Earth's 1:110m land polygons and commit what comes out. The

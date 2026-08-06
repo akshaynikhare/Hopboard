@@ -18,7 +18,7 @@ const IS_LOCAL = typeof location !== "undefined" &&
   ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 
 /** The relay this build ships pointed at. Self-hosters change this one line. */
-export const DEFAULT_RELAY_URL = "wss://hopboard.fastapicloud.dev";
+export const DEFAULT_RELAY_URL = "wss://realtimeclipboard.fastapicloud.dev";
 const LOCAL_RELAY_URL = "ws://127.0.0.1:8000";
 
 /**
@@ -29,7 +29,7 @@ const LOCAL_RELAY_URL = "ws://127.0.0.1:8000";
  * one, and a cycle between "every constant" and "the thing that persists them"
  * is the sort that works until someone moves a line to module scope.
  */
-export const STORAGE_PREFIX = "hopboard.";
+export const STORAGE_PREFIX = "realtimeclipboard.";
 const RELAY_KEY = "relayUrl";
 
 /**
@@ -197,7 +197,7 @@ export const KEY = {
 };
 
 export const CRYPTO = {
-  SALT: "hopboard-v1",
+  SALT: "realtimeclipboard-v1",
   ITERATIONS: 250_000,        // PBKDF2; derive once per session and cache (OI-8)
   ROOM_HASH_BYTES: 16,
 
@@ -215,7 +215,7 @@ export const CRYPTO = {
    * whole defence and every doubling of the iteration count is a doubling of
    * their cost. It is paid once per session, behind the "unlocking" state.
    */
-  LOCK_SALT: "hopboard-lock-v1:",
+  LOCK_SALT: "realtimeclipboard-lock-v1:",
   LOCK_ITERATIONS: 600_000,
 
   /**
@@ -226,9 +226,9 @@ export const CRYPTO = {
    * cost on a low-end Android. HKDF expansion is a couple of HMACs.
    */
   LOCK_INFO: {
-    AES:  "hopboard-lock/aes",
-    ROOM: "hopboard-lock/room",
-    AUTH: "hopboard-lock/auth",
+    AES:  "realtimeclipboard-lock/aes",
+    ROOM: "realtimeclipboard-lock/room",
+    AUTH: "realtimeclipboard-lock/auth",
   },
 };
 
@@ -262,7 +262,7 @@ export const LOCK = {
    * from "first one here" by whether it decrypts. Receivers drop it instead of
    * rendering it. See core/crypto.js and the beacon note in main.js.
    */
-  BEACON: String.fromCharCode(0) + "hopboard-lock-v1",
+  BEACON: String.fromCharCode(0) + "realtimeclipboard-lock-v1",
 };
 
 export const NET = {
@@ -336,13 +336,13 @@ export const DEFAULT_SYNC_MODE = SYNC_MODES.LIVE;
  * and only happens to match today.
  *
  * !! UNVERIFIED: OWNER is real (the repo is at github.com/akshaynikhare/
- * Hopboard); the sponsors page and the Buy Me a Coffee handle were guessed from
+ * RealtimeClipboard); the sponsors page and the Buy Me a Coffee handle were guessed from
  * it and have NOT been confirmed to exist. Check both before this ships — a
  * donate link that 404s costs more goodwill than no donate link. !!
  */
 export const REPO = {
   OWNER: "akshaynikhare",
-  NAME: "Hopboard",
+  NAME: "RealtimeClipboard",
   COFFEE_HANDLE: "akshaynikhare",
 };
 

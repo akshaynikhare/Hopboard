@@ -1,10 +1,10 @@
 """
-Deployment policy gate — the HOPBOARD_* flags a self-hoster sets.
+Deployment policy gate — the REALTIMECLIPBOARD_* flags a self-hoster sets.
 
 test_relay.py proves the protocol. This proves the switches that change it, and
 it exists because every one of them fails in the same dangerous direction: a
 flag that silently does nothing looks exactly like a flag that works. An
-operator who sets HOPBOARD_DISABLE_FILES and gets no error has every reason to
+operator who sets REALTIMECLIPBOARD_DISABLE_FILES and gets no error has every reason to
 believe files are disabled.
 
 Runs its own relays, on their own ports, with their own environments — the flags
@@ -89,9 +89,9 @@ async def first_frame(url: str, send: dict | None = None, hello: bool = False):
 async def main() -> None:
     print("\nDeployment policy\n")
 
-    # ---- HOPBOARD_JOIN_TOKEN -------------------------------------------
-    token = spawn(PORT_TOKEN, {"HOPBOARD_JOIN_TOKEN": "s3cret"})
-    files = spawn(PORT_FILES, {"HOPBOARD_DISABLE_FILES": "true"})
+    # ---- REALTIMECLIPBOARD_JOIN_TOKEN -------------------------------------------
+    token = spawn(PORT_TOKEN, {"REALTIMECLIPBOARD_JOIN_TOKEN": "s3cret"})
+    files = spawn(PORT_FILES, {"REALTIMECLIPBOARD_DISABLE_FILES": "true"})
     try:
         base = f"ws://127.0.0.1:{PORT_TOKEN}/ws/{'a' * 32}"
 
@@ -116,7 +116,7 @@ async def main() -> None:
         check("an unconfigured relay asks for nothing", got.get("t") == "welcome",
               json.dumps(got)[:90])
 
-        # ---- HOPBOARD_DISABLE_FILES ------------------------------------
+        # ---- REALTIMECLIPBOARD_DISABLE_FILES ------------------------------------
         base = f"ws://127.0.0.1:{PORT_FILES}/ws/{'c' * 32}"
 
         got = await first_frame(base, send={"t": "file-meta", "id": "1", "name": "x",

@@ -1,6 +1,6 @@
 # Development
 
-How to get Hopboard running on your machine, make a change, and know you have
+How to get RealtimeClipboard running on your machine, make a change, and know you have
 not broken anything. For *what the modules are and where a feature belongs*, see
 [ARCHITECTURE.md](ARCHITECTURE.md); for deploying the relay, see
 [backend/README.md](../backend/README.md).

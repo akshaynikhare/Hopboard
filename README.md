@@ -1,11 +1,11 @@
-# Hopboard — an end-to-end encrypted online clipboard that syncs text between devices
+# RealtimeClipboard — an end-to-end encrypted online clipboard that syncs text between devices
 
-Hopboard is a free, open-source online clipboard: open it on two devices, type the
+RealtimeClipboard is a free, open-source online clipboard: open it on two devices, type the
 same five-character key, and whatever you copy on one is ready to paste on the
 other. No account, no install, no database. Files travel peer-to-peer and never
 touch the server.
 
-**[Try it → akshaynikhare.github.io/Hopboard](https://akshaynikhare.github.io/Hopboard/)**
+**[Try it → akshaynikhare.github.io/RealtimeClipboard](https://akshaynikhare.github.io/RealtimeClipboard/)**
 
 ```
   Machine A  ──┐                                  ┌──  Machine B
@@ -42,15 +42,15 @@ Moving a snippet between a work laptop, a desktop and a phone is
 disproportionately annoying. The alternatives want an account, an install with
 admin rights, or an email to yourself. This wants a five-character key.
 
-## How Hopboard compares to Snapdrop, PairDrop, LocalSend and AirDrop
+## How RealtimeClipboard compares to Snapdrop, PairDrop, LocalSend and AirDrop
 
 The nearby tools are mostly *file droppers*: you pick a device and push a file at
-it. Hopboard is a clipboard — what you copy shows up ready to paste, without
+it. RealtimeClipboard is a clipboard — what you copy shows up ready to paste, without
 picking anything.
 
 | Tool | Account | Install | Across networks | Lands on system clipboard | Files |
 |---|---|---|---|---|---|
-| **Hopboard** | None | None — browser | Yes | **Yes** | P2P, 5 MB |
+| **RealtimeClipboard** | None | None — browser | Yes | **Yes** | P2P, 5 MB |
 | PairDrop | None | None — browser | Yes, via a 6-digit code | No — you send a message | P2P |
 | Snapdrop | Optional since the LimeWire acquisition | None — browser | Same network only | No | P2P |
 | LocalSend | None | Native app on both ends | Same network only | No | Unlimited, LAN |
@@ -85,7 +85,7 @@ with a short key, and share a single clipboard between them.
 
 ### How do I sync my clipboard between my phone and my PC?
 
-Open Hopboard on both, type the same five-character key on each, and copy
+Open RealtimeClipboard on both, type the same five-character key on each, and copy
 something. It arrives on the other device ready to paste. Nothing to install, so
 it works on a machine where you do not have admin rights.
 
@@ -107,7 +107,7 @@ credential — anyone who learns it can read that session while it is open.
 ### Can it read my clipboard in the background?
 
 No, and neither can any other web app on any browser. `readText()` requires
-window focus. You switch to the Hopboard tab and it picks up what you copied.
+window focus. You switch to the RealtimeClipboard tab and it picks up what you copied.
 
 ### Which browsers work?
 
@@ -203,7 +203,7 @@ npm run release -- minor             # verify, changelog, tag, push, deploy
 ## Known limitations
 
 - **No background clipboard capture.** No web app can do this on any browser —
-  `readText()` requires window focus. You switch to Hopboard and it grabs what you
+  `readText()` requires window focus. You switch to RealtimeClipboard and it grabs what you
   copied. [Why](docs/CLIPBOARD-FLOW.md).
 - **P2P file transfer may fail on corporate networks**, which block the UDP that
   WebRTC needs. Falls back to relay-chunked transfer, labelled visibly.

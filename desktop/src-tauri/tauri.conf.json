@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Hopboard",
+  "productName": "RealtimeClipboard",
   "version": "0.1.0",
-  "identifier": "io.github.akshaynikhare.hopboard",
+  "identifier": "io.github.akshaynikhare.realtimeclipboard",
 
   "build": {
     "beforeDevCommand": "",
@@ -16,7 +16,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Hopboard",
+        "title": "RealtimeClipboard",
         "url": "app.html",
         "width": 1100,
         "height": 720,
@@ -32,7 +32,7 @@
 
     "//security": "The webview renders clipboard content that arrives from other devices, so it gets the same policy the website has, plus what the shell needs. tauri: and ipc: are the local scheme the frontend uses to reach the four commands in main.rs; asset: is how the bundled files are served. The relay origins must match src/core/config.js — tests/static-check.mjs asserts that for the web pages, and a self-hoster changes both.",
     "security": {
-      "csp": "default-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' asset: data: blob:; connect-src 'self' ipc: http://ipc.localhost https://hopboard.fastapicloud.dev wss://hopboard.fastapicloud.dev; require-trusted-types-for 'script'; trusted-types hopboard",
+      "csp": "default-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' asset: data: blob:; connect-src 'self' ipc: http://ipc.localhost https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev; require-trusted-types-for 'script'; trusted-types realtimeclipboard",
       "assetProtocol": { "enable": true, "scope": [] }
     },
 
@@ -58,7 +58,7 @@
     ],
     "category": "Productivity",
     "shortDescription": "An encrypted clipboard shared between your devices",
-    "longDescription": "Copy on one machine and paste on another. Hopboard watches the system clipboard and sends what you copy, end-to-end encrypted, to the other devices sharing a five-character key. No account, and nothing is written to disk on any machine or on the relay.",
+    "longDescription": "Copy on one machine and paste on another. RealtimeClipboard watches the system clipboard and sends what you copy, end-to-end encrypted, to the other devices sharing a five-character key. No account, and nothing is written to disk on any machine or on the relay.",
     "copyright": "MIT",
     "licenseFile": "../../LICENSE",
 

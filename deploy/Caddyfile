@@ -4,7 +4,7 @@
 # "self-host the relay" fits in one command. Everything below is either required
 # by the protocol or required by the corporate networks this is built for.
 
-{$HOPBOARD_DOMAIN} {
+{$REALTIMECLIPBOARD_DOMAIN} {
 	encode zstd gzip
 
 	# The relay's three ways in. Listed explicitly rather than proxying `/`
@@ -32,7 +32,7 @@
 	}
 
 	handle {
-		respond "Hopboard relay. The app is served separately." 404
+		respond "RealtimeClipboard relay. The app is served separately." 404
 	}
 
 	# The relay holds ciphertext in RAM and logs no clip content; these keep the

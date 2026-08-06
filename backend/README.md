@@ -1,4 +1,4 @@
-# Hopboard relay
+# RealtimeClipboard relay
 
 In-memory fan-out. No database, no disk, no Redis.
 
@@ -144,3 +144,47 @@ the network. `test_sse.py` S7 and `tests/fallback.mjs` cover both halves.
 | Room TTL after last peer leaves | 10 min | FR-3.4 |
 | POST body (fallback) | 768 KB, one frame per line | each line still capped at 32 KB |
 | POST requests (fallback) | 60/s per peer | charged on top of the frames inside them |
+
+## Capacity
+
+Measured against this relay, not estimated — connections opened in batches with
+the server's RSS sampled after each, and frames pushed at a rate the rate
+limiter actually permits:
+
+| | measured |
+|---|---|
+| Baseline RSS, no connections | ~38 MB |
+| Marginal cost per WebSocket | **~80–100 KB** |
+| CPU per `ping` | ~76 µs |
+| CPU per 30 KB `clip`, forwarded | ~214 µs |
+
+**Memory is the binding constraint, and it is not close.** On the hosted free
+tier (0.1 vCPU / 512 MB) that is roughly **5,000 concurrent devices**. CPU is
+nowhere near it: 0.1 vCPU sustains ~1,300 pings/s, which is a 30-second
+heartbeat for about 39,000 clients. You will run out of RAM roughly 25× before
+you run out of processor.
+
+So the number to watch is connections, not traffic — and the thing that moves it
+most is **permessage-deflate**, which `websockets` negotiates by default and
+which this relay turns off at import (see the note above `app = FastAPI(...)`).
+It is worth a factor of ~3.5 here:
+
+| | baseline | per connection | ceiling in 512 MB |
+|---|---|---|---|
+| deflate on | 63.6 MB | 276 KB | ~1,600 |
+| deflate **off** | 38.3 MB | ~80 KB | ~5,900 |
+
+Compression was buying nothing to begin with: every payload is AES-GCM
+ciphertext, which is incompressible by construction. It was a quarter of a
+megabyte of zlib window per peer, spent to make random bytes marginally larger.
+
+`GET /health` reports `ws_deflate`, and `python test_deflate.py <ws-url>` asserts
+it — against a **deployed** relay as well as a local one, which is the case that
+matters, because the fix reaches into uvicorn's internals and the deploy
+resolves that dependency, not us. If `ws_deflate` ever reads `skipped` or
+`could not disable`, the relay still works and silently costs 3.5× the memory.
+
+Two caveats on the numbers: they were taken on Windows without uvloop, while
+`fastapi[standard]` gets uvloop on Linux — so the CPU figures are conservative.
+And the retained clip in each room is attacker-controlled up to ~24 KB, so a
+population of parked, empty rooms costs more than an idle one.

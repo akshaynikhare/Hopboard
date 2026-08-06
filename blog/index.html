@@ -7,7 +7,7 @@
 <!-- One policy, identical on every page of the site. Reasoning and the
      directive-by-directive notes live in app.html, which is the page that
      actually needs them. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://hopboard.fastapicloud.dev wss://hopboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types hopboard">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
 
 <!--
   The blog hub. Empty of posts today, and deliberately shipped anyway: the URL,
@@ -26,10 +26,10 @@
   because the two want opposite treatment from a crawler, one fresh and one
   stable.
 -->
-<title>Blog | Hopboard</title>
-<meta name="description" content="Release notes and design write-ups from Hopboard, an end-to-end encrypted online clipboard.">
+<title>Blog | RealtimeClipboard</title>
+<meta name="description" content="Release notes and design write-ups from RealtimeClipboard, an end-to-end encrypted online clipboard.">
 <meta name="robots" content="noindex, follow">
-<link rel="canonical" href="https://akshaynikhare.github.io/Hopboard/blog/">
+<link rel="canonical" href="https://akshaynikhare.github.io/RealtimeClipboard/blog/">
 <meta name="theme-color" content="#007acc">
 <link rel="icon" href="../icons/icon.svg" type="image/svg+xml">
 
@@ -50,12 +50,12 @@
           <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
           <path d="M9 13l2 2 4-4"/>
         </svg>
-        <b>Hopboard</b>
+        <b>RealtimeClipboard</b>
       </a>
       <span class="spacer"></span>
       <a class="tlink" href="../download/">Download</a>
       <a class="tlink" href="../help/">Help</a>
-      <a class="tlink" href="https://github.com/akshaynikhare/Hopboard">GitHub</a>
+      <a class="tlink" href="https://github.com/akshaynikhare/RealtimeClipboard">GitHub</a>
       <a class="tlink strong" href="../app.html">Open the app</a>
     </div>
   </div>
@@ -66,7 +66,7 @@
     <div class="in">
 
       <nav class="crumb" aria-label="Breadcrumb">
-        <a href="../">Hopboard</a> <span aria-hidden="true">/</span>
+        <a href="../">RealtimeClipboard</a> <span aria-hidden="true">/</span>
         <span aria-current="page">Blog</span>
       </nav>
 
@@ -79,7 +79,7 @@
         <p>
           In the meantime, the <a href="../help/">help guides</a> cover getting
           the clipboard working between your devices, and the
-          <a href="https://github.com/akshaynikhare/Hopboard">repository</a> has
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard">repository</a> has
           the architecture and protocol documents.
         </p>
       </div>
@@ -91,7 +91,7 @@
 <footer class="sec">
   <div class="in">
     <div class="footgrid">
-      <p>Open source — <a href="https://github.com/akshaynikhare/Hopboard">github.com/akshaynikhare/Hopboard</a></p>
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
       <p><a href="../">Home</a> · <a href="../download/">Download</a> · <a href="../help/">Help</a> · <a href="./">Blog</a></p>
       <p>Sessions are held in memory and never written to disk. Clipboard contents are
          encrypted in your browser before they are sent.</p>

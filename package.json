@@ -1,14 +1,14 @@
 {
-  "name": "hopboard",
+  "name": "realtimeclipboard",
   "version": "0.1.0",
   "description": "Live clipboard sharing. Static frontend of native ES modules \u2014 development needs no build, and `npm run build` exists only to assemble the deploy. Nothing here is needed to READ the app.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/akshaynikhare/Hopboard.git"
+    "url": "git+https://github.com/akshaynikhare/RealtimeClipboard.git"
   },
-  "homepage": "https://github.com/akshaynikhare/Hopboard",
-  "bugs": "https://github.com/akshaynikhare/Hopboard/issues",
+  "homepage": "https://github.com/akshaynikhare/RealtimeClipboard",
+  "bugs": "https://github.com/akshaynikhare/RealtimeClipboard/issues",
   "keywords": [
     "clipboard",
     "online-clipboard",
@@ -21,7 +21,7 @@
   ],
   "type": "module",
   "bin": {
-    "hopboard": "cli/hopboard.mjs"
+    "realtimeclipboard": "cli/realtimeclipboard.mjs"
   },
   "files": [
     "cli/",

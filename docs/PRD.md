@@ -1,8 +1,8 @@
-# Hopboard — Product Requirements Document
+# RealtimeClipboard — Product Requirements Document
 
 | Field | Value |
 |---|---|
-| Product | Hopboard — realtime multi-directional clipboard sync |
+| Product | RealtimeClipboard — realtime multi-directional clipboard sync |
 | Version | 0.2 (draft) |
 | Date | 2026-08-05 |
 | Status | Draft — core decisions settled (§11.1), remainder open (§11.2) |
@@ -55,9 +55,9 @@ A static web app. Open it on machine A, get a short share key (e.g. `D75LV`). En
 **P3 — Support/pairing.** Two people on a call share a temporary key to pass tokens/snippets back and forth.
 
 ### Journey A — Create a room
-1. User opens `https://akshaynikhare.github.io/Hopboard/`
+1. User opens `https://akshaynikhare.github.io/RealtimeClipboard/`
 2. App auto-generates key `D75LV` and shows it large, with a Copy-link button and a QR code
-3. URL becomes `.../Hopboard/#D75LV` (shareable, bookmarkable)
+3. URL becomes `.../RealtimeClipboard/#D75LV` (shareable, bookmarkable)
 4. Status pill shows `Connected · 1 device`
 
 ### Journey B — Join from second machine
@@ -67,13 +67,13 @@ A static web app. Open it on machine A, get a short share key (e.g. `D75LV`). En
 
 ### Journey C — Sync a copy
 1. User copies text on machine A (Ctrl+C anywhere in the OS)
-2. Machine A's Hopboard tab detects it (see §5.1 capture modes) and broadcasts
+2. Machine A's RealtimeClipboard tab detects it (see §5.1 capture modes) and broadcasts
 3. Machine B receives it; per its mode setting, either writes it to the system clipboard automatically or shows a "New clip — Paste" card with one-click copy
 4. Both devices show the entry at the top of the session list
 
 ### Journey D — Install as app
 1. Chrome shows the install icon in the address bar (PWA criteria met)
-2. User installs; Hopboard opens in a standalone window with icon, remembering the last key
+2. User installs; RealtimeClipboard opens in a standalone window with icon, remembering the last key
 
 ---
 
@@ -324,7 +324,7 @@ The relay doubles as the WebRTC signalling channel, so P2P costs no extra infras
 
 Hobby tier allowances, and what each means here:
 
-| Allowance | Impact on Hopboard |
+| Allowance | Impact on RealtimeClipboard |
 |---|---|
 | 3 apps, 1 custom domain | Fine — we need one app |
 | 0.1 vCPU / 512 MB shared (burst to 0.5) | Ample. The relay does no crypto and no parsing beyond JSON fan-out |
@@ -434,9 +434,9 @@ User-Agent or it will report a false outage.
 | T3 | `readText()` polling while focused | `clipboard-read` | app window is focused |
 | ~~T4~~ | ~~Chrome extension with `clipboardRead` + offscreen document~~ | ~~install-time~~ | **Unavailable — extensions are blocked by corporate policy (§1.4)** |
 
-**T4 is permanently out of reach, so T1–T3 must carry the whole product.** Practical consequence for design: the user's mental model must be *"switch to Hopboard and it grabs what you copied"*, not *"it watches my clipboard forever"*. Making that switch cheap is therefore a primary UX concern, not a detail:
+**T4 is permanently out of reach, so T1–T3 must carry the whole product.** Practical consequence for design: the user's mental model must be *"switch to RealtimeClipboard and it grabs what you copied"*, not *"it watches my clipboard forever"*. Making that switch cheap is therefore a primary UX concern, not a detail:
 
-- Installed as a PWA, Hopboard is one Alt-Tab / Cmd-Tab away in its own window
+- Installed as a PWA, RealtimeClipboard is one Alt-Tab / Cmd-Tab away in its own window
 - Capture on focus (T2) is instant and silent, so the round trip is: copy → Alt-Tab → it's already sent
 - The UI must confirm capture visibly ("Sent · 2s ago") so the user learns to trust the focus gesture
 - Never present a state that implies background capture is happening when it isn't
@@ -540,8 +540,8 @@ The elegant part of the fragment-based design: the key the user types can serve 
 
 ```
 user key       :  D75LV                       (never transmitted)
-roomHash       :  SHA-256("hopboard:" + key)  → first 16 bytes, hex  (sent in the WS URL)
-encryption key :  PBKDF2-SHA256(key, salt="hopboard-v1", 250k iters) → AES-GCM-256
+roomHash       :  SHA-256("realtimeclipboard:" + key)  → first 16 bytes, hex  (sent in the WS URL)
+encryption key :  PBKDF2-SHA256(key, salt="realtimeclipboard-v1", 250k iters) → AES-GCM-256
 payload        :  AES-GCM(plaintext, random 12-byte IV per message)
 ```
 The relay sees only `roomHash` and ciphertext. It cannot derive the key from the hash, so it cannot decrypt. All of this is `crypto.subtle` — no libraries.
@@ -561,18 +561,18 @@ A second secret that never travels with the link. Implemented in `core/crypto.js
 
 ```
 ── open session (unchanged, wire-compatible) ─────────────────────────────
-roomHash   :  SHA-256("hopboard:" + KEY)[0..16] hex
-aesKey     :  PBKDF2-SHA256(KEY, salt="hopboard-v1", 250k) → AES-GCM-256
+roomHash   :  SHA-256("realtimeclipboard:" + KEY)[0..16] hex
+aesKey     :  PBKDF2-SHA256(KEY, salt="realtimeclipboard-v1", 250k) → AES-GCM-256
 
 ── locked session ────────────────────────────────────────────────────────
 PIN        :  NFC-normalised, ends trimmed, case and interior preserved.
               Never in the link, never on disk, never sent.
 prk        :  PBKDF2-SHA256(password = PIN,
-                            salt     = "hopboard-lock-v1:" + KEY,
+                            salt     = "realtimeclipboard-lock-v1:" + KEY,
                             iters    = 600_000, dkLen = 32)
-aesKey     :  AES-GCM-256( HKDF(prk, info="hopboard-lock/aes",  32) )
-roomHash   :  hex(         HKDF(prk, info="hopboard-lock/room", 16) )   ← sent
-authToken  :  hex(         HKDF(prk, info="hopboard-lock/auth", 16) )   ← sent
+aesKey     :  AES-GCM-256( HKDF(prk, info="realtimeclipboard-lock/aes",  32) )
+roomHash   :  hex(         HKDF(prk, info="realtimeclipboard-lock/room", 16) )   ← sent
+authToken  :  hex(         HKDF(prk, info="realtimeclipboard-lock/auth", 16) )   ← sent
 fragment   :  "#!" + KEY
 ```
 
@@ -589,7 +589,7 @@ PBKDF2 cost on low-end Android. HKDF expansion is a couple of HMACs.
 
 **What the salt does and does not buy.** The share key is the salt, which stops one
 precomputed table covering every session — the open-session path, with its single global
-`"hopboard-v1"`, has exactly that weakness. It buys **nothing** against the attacker this
+`"realtimeclipboard-v1"`, has exactly that weakness. It buys **nothing** against the attacker this
 feature exists for: someone holding the link holds the key and can compute the salt.
 
 #### The honest number
@@ -754,11 +754,11 @@ Severity: **Blocker** = stops the build · **High** = silent wrong behaviour if 
 
 | # | Severity | Issue | Proposed resolution | Owner milestone |
 |---|---|---|---|---|
-| ~~**OI-1**~~ | ✅ **CLOSED** | ~~WebSocket support on FastAPI Cloud is unverified~~ | **Resolved 2026-08-05: it works.** 20/20 gate against `wss://hopboard.fastapicloud.dev`, upgrade accepted in 973 ms. The SSE+POST fallback is no longer needed; the transport interface stays isolated anyway since it cost nothing. See [M0-RESULTS §4](M0-RESULTS.md) | M0 ✅ |
+| ~~**OI-1**~~ | ✅ **CLOSED** | ~~WebSocket support on FastAPI Cloud is unverified~~ | **Resolved 2026-08-05: it works.** 20/20 gate against `wss://realtimeclipboard.fastapicloud.dev`, upgrade accepted in 973 ms. The SSE+POST fallback is no longer needed; the transport interface stays isolated anyway since it cost nothing. See [M0-RESULTS §4](M0-RESULTS.md) | M0 ✅ |
 | **OI-2** | 🟠 High | **Key collision joins a stranger's room.** The app auto-generates a key on first visit and connects. If that key matches a *live* room, two unrelated people silently share a clipboard. The protocol currently has no create-vs-join distinction | Add `intent: "create" \| "join"` to the connect frame. On `create`, if `welcome.peers > 0`, discard the key, regenerate, retry (max 5). On `join`, `peers == 0` is legitimate (first arrival). See §6 | M1 |
 | **OI-3** | 🟠 High | **Multi-replica split-brain** (R1). Room state is a process-local dict; two devices on different replicas silently never see each other | Pin max replicas to 1. Add `GET /health` returning an instance id so the client can detect a mismatch and warn loudly rather than failing quietly | M0 |
-| **OI-4** | 🟡 Medium | **Duplicate sends from multiple tabs.** Two Hopboard tabs on one machine both poll the same system clipboard and both broadcast the same clip | Leader election across tabs via the Web Locks API (fallback: `BroadcastChannel`). Only the leader tab polls and sends; followers render | M2 |
-| **OI-5** | 🟡 Medium | **Password-manager content lingers on remote machines.** A copied credential syncs to another device's system clipboard and stays there indefinitely — Hopboard would be *undoing* the auto-clear that password managers deliberately perform | Product decision needed. Options: auto-clear remote clipboard after N seconds; a "sensitive — don't auto-write" heuristic; or default `auto-write` off and require a click. Recommend surfacing it as an explicit setting with a documented default | M4 |
+| **OI-4** | 🟡 Medium | **Duplicate sends from multiple tabs.** Two RealtimeClipboard tabs on one machine both poll the same system clipboard and both broadcast the same clip | Leader election across tabs via the Web Locks API (fallback: `BroadcastChannel`). Only the leader tab polls and sends; followers render | M2 |
+| **OI-5** | 🟡 Medium | **Password-manager content lingers on remote machines.** A copied credential syncs to another device's system clipboard and stays there indefinitely — RealtimeClipboard would be *undoing* the auto-clear that password managers deliberately perform | Product decision needed. Options: auto-clear remote clipboard after N seconds; a "sensitive — don't auto-write" heuristic; or default `auto-write` off and require a click. Recommend surfacing it as an explicit setting with a documented default | M4 |
 | **OI-6** | 🟡 Medium | **Android Chrome clipboard-read UX is unverified.** Desktop shows a persistent per-origin permission prompt; mobile Chrome's behaviour around `readText()` differs and may require a gesture or a paste chip each time | Verify on a real device in M2. If silent read is unavailable, Android falls back to T1 (long-press paste) — which must therefore be a first-class mobile flow, not a desktop afterthought | M2 |
 | **OI-7** | 🟡 Medium | **Cold-start dead air** (R2). Scale-to-zero means the first connect after idle waits for a container to wake | Measure in M0, then resolve D8. Under ~2 s: show "Waking relay…" and do nothing else. 10 s+: consider a low-frequency keep-alive, weighed against Hobby-tier fair use | M0 → M4 |
 | **OI-8** | 🟢 Low | **PBKDF2 cost on low-end Android.** 250k iterations can take several hundred ms | Derive the `CryptoKey` once per session and cache it in memory — never per message. Show an "Unlocking…" state during derivation | M5 |

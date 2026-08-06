@@ -19,7 +19,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com); versions follow
 - Keyword mine from Google Autocomplete, and the ad-revenue arithmetic
 - Project links from one constant, and the landing page's globe
 - Move the settings out of the sidebar and into the status bar
-- SEO doc: real domain prices, and hopboard.com is already taken
+- SEO doc: real domain prices, and realtimeclipboard.com is already taken
 - Slide the transport menu up out of the item that opens it
 - Pick the transport by hand; stop file requests holding the app hostage
 - Fire the rate-limit probe concurrently, not in a loop
@@ -47,5 +47,5 @@ Format follows [Keep a Changelog](https://keepachangelog.com); versions follow
 - Point RELAY_URL at the deployed relay; trigger rebuild
 - Pages: self-enable on first run
 - Modularise the frontend and add Pages deploy
-- Initial commit: Hopboard — shared clipboard
+- Initial commit: RealtimeClipboard — shared clipboard
 - Initial commit
