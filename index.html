@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html, which is the page that
+     actually needs them; repeating the argument on five pages would guarantee
+     five versions of it. The landing page needs connect-src for the relay too —
+     src/landing/globe.js fetches /stats. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://hopboard.fastapicloud.dev wss://hopboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types hopboard">
+
 <!--
   Title and description target "online clipboard" and "clipboard sync", which is
   what people actually type. The earlier wording led with "shared clipboard" —
@@ -105,6 +112,10 @@
      the stylesheet is small and the script is a module — so nothing here
      competes with first paint. -->
 <link rel="stylesheet" href="./src/landing/landing.css">
+<!-- redirect.js FIRST: deferred modules run in document order, and a visitor who
+     arrived on a share link should be sent to the app before anything else
+     starts building the page they are not going to see. -->
+<script type="module" src="./src/landing/redirect.js"></script>
 <script type="module" src="./src/landing/landing.js"></script>
 <script type="module" src="./src/landing/faq.js"></script>
 </head>
@@ -139,6 +150,10 @@
       </a>
       <span class="tag">pre-alpha</span>
       <span class="spacer"></span>
+      <!-- Download before GitHub: someone reading the landing page is deciding
+           whether to use this, and "which of my machines can run it" is a
+           closer question than "show me the source". -->
+      <a class="tlink" href="./download/">Download</a>
       <a class="tlink" href="https://github.com/akshaynikhare/Hopboard">GitHub</a>
       <a class="tlink strong" href="./app.html">Open the app</a>
     </div>
@@ -716,28 +731,12 @@
            because they are for people who arrived from a search, not for
            someone about to press the button — but a crawler still reaches both,
            and through them every article, from the first page it fetches. -->
-      <p><a href="./help/">Help</a> · <a href="./blog/">Blog</a></p>
+      <p><a href="./download/">Download</a> · <a href="./help/">Help</a> · <a href="./blog/">Blog</a></p>
       <p>Sessions are held in memory and never written to disk. Clipboard contents are
          encrypted in your browser before they are sent.</p>
     </div>
   </div>
 </footer>
 
-<script>
-// A key in the fragment means someone followed a share link to the old app
-// URL. Send them on rather than showing marketing to someone who came to work.
-//
-// An in-page anchor is NOT a key. "#live" and "#compare" are both four or more
-// characters and both used to be swallowed by this, so deep-linking to a
-// section — from a search result, or from anywhere at all — landed the visitor
-// in the app on a room called LIVE. If the fragment names something on this
-// page, it is a destination, not a credential.
-(function () {
-  var raw = location.hash.slice(1).trim();
-  if (!raw || document.getElementById(raw)) return;
-  var shared = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (shared.length >= 4) location.replace("./app.html#" + shared);
-})();
-</script>
 </body>
 </html>

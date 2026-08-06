@@ -72,7 +72,8 @@
 import { on, EV } from "../core/bus.js";
 import * as state from "../core/state.js";
 import * as device from "../core/device.js";
-import { $, esc } from "./dom.js";
+import { $, esc, setHTML } from "./dom.js";
+import { styleHref } from "../core/paths.js";
 
 /** Frame types. "cursor" is ROOM_WIDE in the relay — broadcast, never targeted. */
 export const FT = { CURSOR: "cursor" };
@@ -417,7 +418,7 @@ function upsert(id, x, y, name) {
   if (!c) {
     const el = document.createElement("div");
     el.className = `hb-cursor c${paletteIndex(id)}`;
-    el.innerHTML = `${ARROW}<span class="hb-cursor-name"></span>`;
+    setHTML(el, `${ARROW}<span class="hb-cursor-name"></span>`);
     c = { el, name: null, x, y, seenAt: 0 };
     peers.set(id, c);
     place(c, x, y);                       // position BEFORE the transition exists
@@ -462,7 +463,7 @@ function setName(c, raw) {
   if (name === c.name) return;
   c.name = name;
   const slot = c.el.querySelector(".hb-cursor-name");
-  if (slot) slot.innerHTML = esc(name);
+  if (slot) setHTML(slot, esc(name));
 }
 
 function removePeer(id) {
@@ -577,7 +578,7 @@ export function init() {
  * Stylesheet
  * ------------------------------------------------------------------ */
 
-const STYLE_HREF = new URL("../styles/cursors.css", import.meta.url).href;
+const STYLE_HREF = styleHref("cursors.css");
 
 /**
  * This module owns its own CSS, so styles/main.css needs no edit and a double

@@ -17,7 +17,7 @@
  * It owns none of the *content*. statusbar.js and sessionPanel.js supply that.
  */
 
-import { $, esc } from "./dom.js";
+import { $, esc, setHTML } from "./dom.js";
 
 const menus = new Map();          // button id -> {label, render, onEvent}
 let openId = null;
@@ -99,8 +99,8 @@ function draw() {
   // The label is ours, not a peer's. Escaped anyway, because the repo rule is
   // "everything interpolated into innerHTML goes through esc()" and an
   // exception you have to remember is not a rule.
-  host.innerHTML = `<div class="smenu" role="menu" aria-label="${esc(config.label)}">`
-    + config.render() + `</div>`;
+  setHTML(host, `<div class="smenu" role="menu" aria-label="${esc(config.label)}">`
+    + config.render() + `</div>`);
 
   host.onclick = e => route(e, config);
   host.onchange = e => route(e, config);

@@ -11,7 +11,7 @@ import { on, emit, EV } from "../core/bus.js";
 import { TRANSPORT } from "../core/config.js";
 import * as state from "../core/state.js";
 import * as capture from "../clipboard/capture.js";
-import { $, esc } from "./dom.js";
+import { $, esc, setHTML } from "./dom.js";
 
 const banners = new Map();
 /** key -> a function that cancels that banner's auto-dismiss timer. */
@@ -281,7 +281,7 @@ function show(key, { tone, title, body, action, dismissAfter }) {
   // Populating it once it is being watched is the behaviour they all agree on.
   soon(() => {
     if (banners.get(key) !== el) return;              // dismissed within the frame
-    txt.innerHTML = `<b>${esc(title)}</b><span>${esc(body)}</span>`;
+    setHTML(txt, `<b>${esc(title)}</b><span>${esc(body)}</span>`);
   });
 
   if (dismissAfter > 0) autoDismiss(key, el, dismissAfter);

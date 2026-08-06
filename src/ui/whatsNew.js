@@ -28,11 +28,12 @@ import { emit } from "../core/bus.js";
 import { read, write } from "../core/storage.js";
 import * as modal from "./modal.js";
 import { esc } from "./dom.js";
+import { atRoot, styleHref } from "../core/paths.js";
 
 const SEEN = "seenVersion";
-const SOURCE = new URL("../../changelog.json", import.meta.url).href;
-const FULL_LOG = new URL("../../CHANGELOG.md", import.meta.url).href;
-const STYLE_HREF = new URL("../styles/whatsnew.css", import.meta.url).href;
+const SOURCE = atRoot("changelog.json");
+const FULL_LOG = atRoot("CHANGELOG.md");
+const STYLE_HREF = styleHref("whatsnew.css");
 
 let log = null;          // the parsed changelog, once it has loaded
 

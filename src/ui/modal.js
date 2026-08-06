@@ -27,7 +27,7 @@
  * exercises the encoder through it.
  */
 
-import { esc } from "./dom.js";
+import { esc, setHTML } from "./dom.js";
 
 const SHELL = ".vs";
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -59,11 +59,10 @@ export function show({ className = "modal", html = "", label = "", labelledBy = 
   const name = esc(className);
   const el = document.createElement("div");
   el.className = className;
-  el.innerHTML =
-    `<div class="${name}-back" data-modal-dismiss></div>`
+  setHTML(el, `<div class="${name}-back" data-modal-dismiss></div>`
     + `<div class="${name}-dlg" role="dialog" aria-modal="true" tabindex="-1"`
     + (labelledBy ? ` aria-labelledby="${esc(labelledBy)}"` : ` aria-label="${esc(label)}"`)
-    + `>${html}</div>`;
+    + `>${html}</div>`);
 
   document.body.appendChild(el);
 

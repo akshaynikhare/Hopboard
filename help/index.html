@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html, which is the page that
+     actually needs them. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://hopboard.fastapicloud.dev wss://hopboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types hopboard">
+
 <!--
   The help hub. Two jobs, and they pull in different directions:
 
@@ -88,6 +93,7 @@
         <b>Hopboard</b>
       </a>
       <span class="spacer"></span>
+      <a class="tlink" href="../download/">Download</a>
       <a class="tlink" href="../blog/">Blog</a>
       <a class="tlink" href="https://github.com/akshaynikhare/Hopboard">GitHub</a>
       <a class="tlink strong" href="../app.html">Open the app</a>
@@ -115,6 +121,14 @@
 
       <ul class="hublist">
         <li>
+          <a href="./install/">Installing Hopboard on any device</a>
+          <p>
+            Windows, macOS, Linux, Android, iPhone and the command line — what to
+            install on each, and which of them can watch the clipboard in the
+            background. Two of them cannot, and the reason is not this app.
+          </p>
+        </li>
+        <li>
           <a href="./clipboard-sync-not-working/">Clipboard sync not working?</a>
           <p>
             Why “Sync across your devices” is greyed out on Windows 11 — the
@@ -137,7 +151,7 @@
   <div class="in">
     <div class="footgrid">
       <p>Open source — <a href="https://github.com/akshaynikhare/Hopboard">github.com/akshaynikhare/Hopboard</a></p>
-      <p><a href="../">Home</a> · <a href="./">Help</a> · <a href="../blog/">Blog</a></p>
+      <p><a href="../">Home</a> · <a href="../download/">Download</a> · <a href="./">Help</a> · <a href="../blog/">Blog</a></p>
       <p>Sessions are held in memory and never written to disk. Clipboard contents are
          encrypted in your browser before they are sent.</p>
     </div>
