@@ -30,7 +30,7 @@ try {
   process.exit(0);
 }
 
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join, resolve } from "node:path";
 
@@ -52,7 +52,7 @@ const RELAY = process.argv.find(a => a.startsWith("ws")) || process.env.RELAY_BA
  * the test with it exercises that path rather than adding a test-only hook.
  */
 const dom = new JSDOM(readFileSync(join(REPO, "app.html"), "utf8"), {
-  url: `https://akshaynikhare.github.io/RealtimeClipboard/app.html`
+  url: `https://realtimeclipboard.com/app.html`
      + `?relay=${encodeURIComponent(RELAY)}`
      + `#${LOCKED ? "!" : ""}BOOTTEST`,
   pretendToBeVisual: true,
@@ -78,6 +78,40 @@ put("crypto", globalThis.crypto);
 if (!window.crypto?.subtle) {
   Object.defineProperty(window, "crypto", { value: globalThis.crypto, configurable: true });
 }
+
+/**
+ * Same-origin requests are served from the working tree, not from the internet.
+ *
+ * jsdom is told the page's URL is the production origin, so every relative
+ * fetch the app makes — changelog.json is the only one today — resolved to a
+ * PUBLIC address and went out over the network. A test that boots local files
+ * was quietly asking the deployed site for one of its assets.
+ *
+ * That stayed invisible for as long as the origin answered: the request 404'd
+ * in milliseconds and whatsNew.js's own error path swallowed it. It stopped
+ * being invisible when the site moved to realtimeclipboard.com, because DNS for
+ * a freshly registered domain does not resolve yet — and undici does not merely
+ * reject on a resolver error. It reports timings first, through a
+ * `performance.markResourceTiming` that jsdom's `performance` does not
+ * implement, and takes the whole process down from inside Node's internals with
+ * a stack naming neither this file nor the app.
+ *
+ * Pinning it to disk is also just more correct: this asserts things about THIS
+ * working tree, and silently checking the deployed site's changelog.json
+ * instead was never what it meant to do.
+ */
+const ORIGIN = window.location.origin;
+const netFetch = globalThis.fetch;
+put("fetch", (input, init) => {
+  const url = new URL(String(input?.url ?? input), ORIGIN);
+  // Anything genuinely remote — the relay's /stats, say — still goes out.
+  if (url.origin !== ORIGIN) return netFetch(input, init);
+  const file = join(REPO, decodeURIComponent(url.pathname));
+  return Promise.resolve(existsSync(file)
+    ? new Response(readFileSync(file), { status: 200 })
+    : new Response("not found", { status: 404 }));
+});
+window.fetch = globalThis.fetch;
 
 // jsdom has no clipboard API. The app must degrade rather than crash — which
 // is itself part of what this asserts.

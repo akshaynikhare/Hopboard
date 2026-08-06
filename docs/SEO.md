@@ -6,29 +6,30 @@ than filled in.
 
 ---
 
-## 1. The finding that reorders everything else
+## 1. The finding that reordered everything else — now resolved
 
-**The site is not indexed, and nothing on this page can fix it from this repo.**
+**This was the blocker: the site was not indexed, and nothing in this repo could
+fix it. The domain move fixed it. Kept here because the reasoning still governs
+what `robots.txt` may contain.**
 
-`robots.txt` is only honoured at the root of an origin. This project deploys to
-`https://akshaynikhare.github.io/RealtimeClipboard/`, so `RealtimeClipboard/robots.txt` lands in a
-subdirectory and is never fetched. The file that governs this origin is served
-from `https://akshaynikhare.github.io/robots.txt` and lives in the separate
-`akshaynikhare/akshaynikhare.github.io` repository. It currently declares the
-sitemap for `career-compass` and nothing for RealtimeClipboard.
+`robots.txt` is only honoured at the root of an origin. The project used to
+deploy to `https://akshaynikhare.github.io/RealtimeClipboard/`, so its
+`robots.txt` landed in a subdirectory and was never fetched. The file that
+actually governed that origin was served from
+`https://akshaynikhare.github.io/robots.txt`, lived in a separate repository,
+and declared the sitemap for an unrelated project and nothing for this one.
 
-**Action, in the other repo, one line:**
+Since the move to `https://realtimeclipboard.com` (§7) this repo's `robots.txt`
+sits at an apex and is authoritative. It declares the sitemap itself, and
+`tools/site-check.mjs` fails the build if that line ever stops naming the
+canonical origin.
 
-```
-Sitemap: https://akshaynikhare.github.io/RealtimeClipboard/sitemap.xml
-```
-
-Do **not** also move the old `Disallow: /RealtimeClipboard/app.html` up there. A page
+The rule that survives: do **not** reintroduce `Disallow: /app.html`. A page
 blocked by robots.txt is never fetched, so its `noindex` is never read, and
-Google stays free to list the bare URL from the links pointing at it. The
-`Disallow` was the one change that could actually have got the app indexed. It
-has been removed from this repo's `robots.txt`, and the reasoning is recorded in
-the file itself.
+Google stays free to list the bare URL from the links pointing at it —
+`index.html` links to `app.html` three times. The `Disallow` was the one change
+that could actually have got the app indexed. The reasoning is recorded in the
+file itself.
 
 ---
 
@@ -542,153 +543,160 @@ followers).
 
 ---
 
-## 7. Custom domain
+## 7. Custom domain — done
 
-**Verdict: yes, move — but not for the ranking reason people usually give.**
+**Status: shipped. The site is `https://realtimeclipboard.com`, served by
+Cloudflare Pages.** This section was a recommendation; it is now a record of
+what was actually done and which parts of the original advice turned out to be
+wrong. Read it before touching DNS or the deploy.
+
+Two decisions were taken at once, which the earlier draft of this section
+explicitly advised against ("do the domain move first and separately"). That
+advice assumed the existing GitHub Pages workflow was worth preserving. It was
+not, once the header problem below was weighed properly, and doing both at once
+avoided two service-worker migrations instead of one — which is the expensive,
+user-visible part of either change.
+
+### Why it was worth doing
 
 | Factor | Weight |
 |---|---|
-| **robots.txt control returns to this repo** | **Decisive.** Currently broken and unfixable from here |
+| **Response headers become possible at all** | **Decisive, and under-rated in the original analysis** |
+| **robots.txt control returns to this repo** | **Decisive.** Was broken and unfixable from here |
 | **Brand and trust for a security product** | **Decisive.** `username.github.io/Project/` undercuts an end-to-end-encryption pitch |
 | Clean, host-level Search Console property | High |
 | **Ranking uplift from the domain string itself** | **Low. Do not expect this** |
-| Cost | $14.20/yr for `realtimeclipboard.app`, renewal at the same price |
 
-Supporting facts: `github.io` is on the Public Suffix List (verified in
-`public_suffix_list.dat`, submitted by GitHub's own security team), so a Search
-Console **Domain property is impossible**. Google's **Change of Address tool is
-also unavailable** — it works only at domain level and explicitly cannot move
-path-level properties. Both roads are closed, so equity only ever gets harder to
-move. Site-level quality signals are pooled across `akshaynikhare.github.io`,
-meaning RealtimeClipboard's reputation is entangled with every side project published there.
+`github.io` is on the Public Suffix List (verified in `public_suffix_list.dat`,
+submitted by GitHub's own security team), so a Search Console **Domain property
+was impossible**. Google's **Change of Address tool was also unavailable** — it
+works only at domain level and explicitly cannot move path-level properties.
+Both roads were closed, so equity only ever got harder to move.
 
-**Do it now precisely because there are zero backlinks and zero traffic.** The
-migration cost is near zero today and rises monotonically forever.
+**It was done at zero backlinks and zero traffic**, which is the cheapest this
+migration was ever going to be. The cost rises monotonically forever.
+
+### The header argument, which is the real one
+
+The original draft filed "GitHub Pages cannot set HTTP response headers" under a
+footnote about a possible future move to Workers. That was the wrong altitude
+for it. **A `<meta>` CSP cannot express `frame-ancestors`** — the specification
+says it is ignored there — and `Strict-Transport-Security` is a header or it does
+not exist. So the deployed app had no clickjacking protection at the policy
+level and no HSTS, on a product whose entire pitch is that the server never sees
+your plaintext.
+
+Cloudflare Pages reads a `_headers` file, which closes both. See `_headers` at
+the repo root; `tools/site-check.mjs` asserts its CSP and the `<meta>` CSP agree,
+because browsers **intersect** multiple policies rather than letting one win, and
+a directive that is stricter in only one of them produces an effective policy
+that no file in the repository describes.
 
 ### Name
 
-**`realtimeclipboard.app` is the recommendation.** Not an exact-match domain — Mueller has
-confirmed there is no ranking bonus for keywords in a domain, the 2012 EMD update
-killed that shortcut, and `clipboardsync.com` would make branded search volume
-(a genuine authority signal) impossible to distinguish from generic queries.
+`realtimeclipboard.com`. The earlier revision of this section recommended
+`realtimeclipboard.app` and recorded the `.com` as already registered — that
+changed, and the `.com` was acquired.
 
-The specific argument for `.app`: the **entire `.app` and `.dev` TLDs are
-HSTS-preloaded with `force-https` and `include_subdomains`** — verified in
-Chromium's `transport_security_state_static.json`. GitHub Pages **cannot send an
-HSTS header**, so on a `.com` a first request from a fresh browser can go out over
-plaintext before the 301 upgrades it. On `.app` the browser refuses plaintext
-before sending a packet. For an E2EE tool on a platform that cannot set security
-headers, that converts a real weakness into a non-issue.
+**The `.app` argument does not survive the move to Cloudflare Pages.** It rested
+entirely on the `.app` and `.dev` TLDs being HSTS-preloaded with `force-https`
+(verified in Chromium's `transport_security_state_static.json`), which mattered
+*because GitHub Pages could not send an HSTS header*. That premise is gone:
+`_headers` sends `Strict-Transport-Security: max-age=63072000; includeSubDomains;
+preload` on every response. The `.com` now gets the same protection by the
+ordinary mechanism, and keeps the recognition advantage a `.com` still carries
+with non-technical users — who are most of the audience for "share text between
+my phone and laptop".
 
-Avoid `.io`: roughly 3.5× the cost, no HSTS benefit, and unresolved long-term
-registry uncertainty tied to the British Indian Ocean Territory's status.
+Not an exact-match-domain play: Mueller has confirmed there is no ranking bonus
+for keywords in a domain and the 2012 EMD update killed that shortcut. The name
+was chosen because it is the product's name.
 
-**Where and what it costs.** Cloudflare Registrar, at
-[domains.cloudflare.com](https://domains.cloudflare.com/) — it sells at registry
-wholesale with no markup, **the renewal price equals the registration price**
-(no first-year teaser that jumps later), and WHOIS redaction is included. Prices
-checked 2026-08-06:
+**Worth doing once, and not yet done:** submit the apex to
+[hstspreload.org](https://hstspreload.org/). The header already declares
+`preload`, which is the prerequisite, but declaring it is not the same as being
+on the list — until submission, a genuinely first-ever visit can still make one
+plaintext request.
 
-| Domain | Availability | Cloudflare price/yr |
-|---|---|---:|
-| **`realtimeclipboard.app`** | **available — buy this** | **$14.20** |
-| `realtimeclipboard.dev` | available | $12.20 |
-| `realtimeclipboard.io` | available | $50.00 |
-| `getrealtimeclipboard.com` | available | — |
-| `realtimeclipboard.com` | **already registered** | — |
+### Setup — as actually built
 
-⚠️ Earlier revisions of this document suggested buying `realtimeclipboard.com` alongside
-the `.app` as squatter insurance. **That is not possible — the `.com` is taken.**
-`getrealtimeclipboard.com` is the nearest fallback if you want a second name, but it is
-optional: the `.app` alone is the recommendation, and a prefix domain is worth
-little on its own.
+**DNS.** Nothing to configure by hand. `realtimeclipboard.com` is registered at
+Cloudflare Registrar and the zone is on the same account, so attaching the
+custom domain in the Pages project creates the records itself. There is **no**
+`A`/`AAAA` record set to maintain.
 
-### Setup — the parts that bite
+⚠️ **Ignore any older instructions to point `A` records at `185.199.x.153`.**
+Those are GitHub Pages' anycast IPs. Adding them now would send visitors to the
+tombstone (§ below) instead of the live site.
 
-**DNS, all records set to DNS-only (grey cloud):**
+⚠️ **The grey-cloud rule is also obsolete, and inverting it is the point.** The
+old advice was DNS-only, never proxied, because GitHub's certificate check would
+fail behind Cloudflare's proxy and Let's Encrypt renewal would then fail ~90 days
+later with a 526 long after anyone remembered doing it. Cloudflare Pages *is* the
+origin now — the records it creates are proxied by design, and that is correct.
+
+**Redirect rules configured in the dashboard**, because `_redirects` matches
+paths and cannot see the hostname:
+
+- `www.realtimeclipboard.com/*` → `https://realtimeclipboard.com/:splat`, 301.
+  Both hostnames are attached to the same Pages project, so without this the
+  same content is reachable at two origins — split signals, and two separate
+  service-worker registrations.
+
+In-repo redirects live in `_redirects`; today that is one rule catching the old
+`/RealtimeClipboard/*` path shape against the new host.
+
+**Verification, after DNS resolves:**
 
 ```
-@    A     185.199.108.153
-@    A     185.199.109.153
-@    A     185.199.110.153
-@    A     185.199.111.153
-@    AAAA  2606:50c0:8000::153
-@    AAAA  2606:50c0:8001::153
-@    AAAA  2606:50c0:8002::153
-@    AAAA  2606:50c0:8003::153
-www  CNAME akshaynikhare.github.io        ← the user, not the repo
+curl -sI http://realtimeclipboard.com/                  # 301 -> https://
+curl -sI https://www.realtimeclipboard.com/             # 301 -> apex
+curl -sI https://realtimeclipboard.com/robots.txt       # this repo's file, at last
+curl -sI https://realtimeclipboard.com/ | grep -i 'strict-transport\|content-security'
+curl -sI https://realtimeclipboard.com/RealtimeClipboard/help/   # 301 -> /help/
 ```
 
-Delete any registrar-default parked `@` records first — GitHub's docs say extra
-records block certificate issuance.
+The relay needed **no** change: `backend/main.py` defaults
+`REALTIMECLIPBOARD_CORS_ORIGINS` to `*`, and the payload is ciphertext the relay
+cannot read anyway. Had it been pinned to the old origin, the app would have
+broken the instant the domain cut over — check this first if a self-hosted relay
+starts refusing the browser.
 
-- **SSL/TLS mode: Full (strict). Never Flexible.** Flexible sends plaintext to the
-  origin; GitHub Pages then 301s to HTTPS; Cloudflare returns the 301; the browser
-  retries — `ERR_TOO_MANY_REDIRECTS`. GitHub Pages presents a real Let's Encrypt
-  cert, so Full (strict) validates cleanly.
-- **Grey cloud, not orange.** With the proxy on, GitHub's DNS check sees Cloudflare
-  IPs instead of `185.199.x.153` and **refuses to issue a certificate** — this is
-  why "Enforce HTTPS" greys out. The under-appreciated part is that grey→cert→orange
-  *appears* to work **for up to 90 days**, then Let's Encrypt renewal fails, the
-  origin cert expires, and Cloudflare in Full (strict) hard-fails with a **526 —
-  months later, when you have forgotten you did it.**
-- You do not need the proxy anyway. GitHub Pages is already on Fastly (`Via: 1.1
-  varnish` is in the live response headers). www↔apex redirects are handled by
-  GitHub itself, HTTP→HTTPS by "Enforce HTTPS".
-- **Cloudflare caches `.js` — including `sw.js`.** The deploy workflow stamps
-  `VERSION` from the commit SHA specifically to drive service-worker updates. An
-  edge-cached `sw.js` blunts that and pins users to a stale shell. Another reason
-  for grey cloud.
-- **Do not add a `CNAME` file.** The deploy uses a custom Actions workflow, and
-  GitHub's docs state that in that case *"no CNAME file is created, and any existing
-  CNAME file is ignored and is not required."* Set the domain in Settings → Pages only.
+### The old origin
 
-**Order of operations — step 2 is the one that takes the site down if skipped:**
+`akshaynikhare.github.io/RealtimeClipboard/` is a **tombstone**, published by
+`.github/workflows/tombstone.yml`. It is not merely a redirect, and that
+distinction is the whole reason the workflow exists.
 
-1. Register the domain.
-2. **Add the new origin to the FastAPI relay's CORS allowlist, before anything
-   else.** If it pins `Access-Control-Allow-Origin` to the github.io host, the app
-   breaks the instant you cut over. Keep both origins during transition.
-3. Delete default `@` records; add the nine above, all grey.
-4. `dig +short yourdomain` → exactly the four `185.199.*` and nothing else.
-5. Cloudflare → SSL/TLS → **Full (strict)**.
-6. GitHub → Settings → Pages → Custom domain. No CNAME file.
-7. Wait for the green check and certificate.
-8. Tick **Enforce HTTPS**.
-9. Verify before touching content:
-   ```
-   curl -sI http://yourdomain/                          # 301 → https://
-   curl -sI https://www.yourdomain/                     # 301 → apex
-   curl -sI https://yourdomain/robots.txt               # this repo's file, at last
-   curl -sI https://akshaynikhare.github.io/RealtimeClipboard/   # 301 → custom domain
-   ```
-10. Only then update the URLs in `index.html` (canonical, `og:url`, `og:image`,
-    four JSON-LD `@id`/`url` values), `app.html` (canonical), `robots.txt` and
-    `sitemap.xml`.
+Service workers, Cache Storage and localStorage are all **origin-scoped**, so
+none of it followed the app to the new domain. Worse, the old service worker
+serves the shell **cache-first**: a returning visitor's browser answers the
+navigation from Cache Storage and may never make a request that a 301 could
+intercept, and an installed PWA launches straight at the cached `start_url`.
+Those users would have kept running a pre-move build indefinitely, with no
+server-side lever to reach them.
 
-**The old URLs redirect automatically.** Verified against a real project site:
-setting a custom domain makes `user.github.io/Repo/*` issue a **301 to
-`yourdomain/*`**, repo prefix stripped, path preserved. Caveats: the target is
-`http://` (one extra hop, harmless), GitHub documents this nowhere, and **the
-redirect dies if you rename the repo or turn Pages off.**
+The one channel that still works is `sw.js` — browsers recheck the worker script
+on navigation and byte-compare it. The tombstone uses it to install a worker
+whose only behaviour is to delete every cache, unregister itself, and reload the
+page into the redirect.
 
-**PWA gotcha worth one deploy:** service workers, Cache Storage and localStorage
-are all origin-scoped, so existing installs do not migrate, and the old `sw.js`
-serves the shell cache-first — a returning visitor may never see the 301. Ship one
-final deploy to the old origin with a `sw.js` that calls
-`self.registration.unregister()` and clears `caches.keys()`, wait a few days, then
-cut over. At zero users this is close to theoretical; in six months it would not be.
+**Do not turn GitHub Pages off.** An origin that 404s cannot serve the worker
+that cleans up the installs still out there, and the old URLs are what every
+pre-move link points at. GitHub's own `user.github.io/Repo/*` → custom-domain
+301 is *not* a substitute either: it is undocumented, it targets `http://`, and
+it dies if the repo is renamed or Pages is disabled.
 
-**Cloudflare Pages vs Workers:** if you ever leave GitHub Pages, target **Workers**
-— Cloudflare's own position is *"you should start with Workers"* and that all
-investment now goes there. The real reason to consider it is that **GitHub Pages
-cannot set HTTP response headers at all**, so a genuine `Content-Security-Policy`
-with `frame-ancestors`, and `Strict-Transport-Security`, are both unavailable. For
-an E2EE tool that is a real gap, not a nitpick. It changes nothing for SEO. **Do
-the domain move first and separately** — the deploy workflow here is well-built and
-should not be thrown away in the same change as a DNS migration.
+### Post-migration checklist
 
----
+- [x] Canonicals, `og:url`, `og:image` and JSON-LD `@id`/`url` on every page
+- [x] `robots.txt` — now authoritative for the first time, and it declares the sitemap
+- [x] `sitemap.xml` — all five URLs on the new origin
+- [x] `tools/site-check.mjs` fails the build if any crawlable file names the old host
+- [ ] Search Console: add `realtimeclipboard.com` as a **Domain property** (now possible), verify by DNS, submit the sitemap
+- [ ] Submit to [hstspreload.org](https://hstspreload.org/)
+- [ ] Run `.github/workflows/tombstone.yml`, once, after confirming the new site is live
+
 
 ## 8. Paying for the domain with ads — the arithmetic
 
@@ -789,7 +797,7 @@ the above cost.
 | `index.html` | Title and description retargeted to "online clipboard"; H1 and four H2s made query-shaped; comparison table added; nine-question FAQ added; schema replaced with an `@graph` of Organization / WebSite / WebPage / WebApplication; `summary_large_image` and 1200×630 `og:image` declared |
 | `src/landing/landing.css` | Styles for the comparison table (scrolls inside its own container, never the page) and the FAQ |
 | `app.html` | Canonical made self-referential — it was contradicting its own `noindex` |
-| `robots.txt` | `Disallow: /RealtimeClipboard/app.html` removed (it would have caused the problem it was meant to prevent); the file's inertness documented |
+| `robots.txt` | `Disallow: /RealtimeClipboard/app.html` removed (it would have caused the problem it was meant to prevent); rewritten again for the apex, where it is finally live |
 | `sitemap.xml` | `lastmod` added |
 | `manifest.webmanifest` | Description retargeted |
 | `README.md` | Restructured for Google and LLM extraction: keyword-bearing H1, one-sentence description above the fold, feature bullets in search phrasing, comparison table, question-shaped FAQ |
@@ -798,13 +806,15 @@ the above cost.
 
 **Today, free, ~1 hour**
 
-1. **Add the sitemap line to the root `akshaynikhare.github.io` repo's robots.txt.**
-   Nothing else in this document matters until this is done.
-2. Verify Google Search Console — **URL-prefix property** at
-   `https://akshaynikhare.github.io/RealtimeClipboard/`, **HTML meta-tag method** (DNS is
-   impossible, and file-upload placement in a subdirectory is ambiguously
-   documented). Submit the sitemap. Request indexing once — re-submitting burns
-   quota and speeds nothing.
+1. ~~Add the sitemap line to the root `akshaynikhare.github.io` repo's robots.txt.~~
+   **Obsolete — superseded by the domain move (§7).** This repo's `robots.txt` is
+   now authoritative at the apex and declares the sitemap itself.
+2. Verify Google Search Console — **Domain property** for `realtimeclipboard.com`,
+   verified by **DNS TXT record**. This is the option that was impossible before:
+   `github.io` is on the Public Suffix List, which capped the old site at a
+   URL-prefix property. A Domain property covers `www`, the apex and every
+   scheme in one. Submit the sitemap. Request indexing once — re-submitting
+   burns quota and speeds nothing.
 3. Register Bing Webmaster Tools by **importing from Search Console** (auto-verifies).
    Its **AI Performance report**, launched February 2026, reports Citations and
    *grounding queries* — the only first-party readout of query fan-out that exists

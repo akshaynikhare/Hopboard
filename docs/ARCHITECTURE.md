@@ -34,6 +34,16 @@ The trade was taken exactly as written above:
 - **What it bought:** 113 KB → ~35 KB gzip of eager JavaScript and 40 requests →
   2; CSS 24 KB → 6 KB and 17 serial requests → 1.
 
+Note that the paragraph above this section names "the GitHub Pages deploy" as
+what the no-build choice was protecting. Both halves of that have since gone:
+there is a build, and the host is **Cloudflare Pages** at `realtimeclipboard.com`
+(docs/SEO.md §7). The reason for the second move was one GitHub Pages could
+never satisfy — it cannot set an HTTP response header at all, so `frame-ancestors`
+and `Strict-Transport-Security` were unavailable to an end-to-end-encrypted app.
+They live in `_headers` now. The original text is left standing because the
+decision was correct when it was made and the conditions for revisiting it were
+stated in advance; that is the part worth imitating.
+
 Two things bundling broke that nothing else caught, both worth knowing before
 touching the build:
 

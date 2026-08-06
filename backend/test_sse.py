@@ -413,7 +413,7 @@ async def s7_cors_on_errors():
     """
     print("\nS7  CORS on responses FastAPI generates")
     async with httpx.AsyncClient(timeout=10.0) as client:
-        origin = {"Origin": "https://akshaynikhare.github.io"}
+        origin = {"Origin": "https://realtimeclipboard.com"}
 
         missing = await client.get(f"{HTTP}/no-such-route", headers=origin)
         check("a 404 for an unknown route still carries CORS",

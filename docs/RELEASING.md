@@ -9,13 +9,26 @@ How code gets from a branch to users, and why it works this way.
 ```
   branch ──commit──►  hooks run the tests here, before the commit exists
      │
-     └──merge──►  main        merged is not released; main can sit
+     └──merge──►  main ──► Cloudflare Pages builds and deploys the site
                     │
                     └── npm run release -- minor
                             verifies, writes the changelog, tags, pushes
                                     │
-                                    └── tag v1.2.0 ──► GitHub Pages deploys
+                                    └── tag v1.2.0 ──► .github/workflows/release.yml
+                                            CLI, desktop builds, relay image
 ```
+
+Note that the two arrows out of `main` are now independent, and that is a change
+worth understanding before you rely on it. **The site deploys on merge; the
+release artifacts deploy on tag.** Merging a copy fix to `main` puts it in front
+of users within about a minute without producing a version — which is the point
+— but it also means "merged" and "live" are the same event for the frontend, and
+the tag no longer gates it. The `.husky` hooks are therefore the only thing
+standing between a commit and production for the web app.
+
+If that becomes uncomfortable — a second contributor, or one bad merge — the fix
+is to point Cloudflare's *production branch* at a `release` branch and fast-
+forward it from `main` deliberately. Pages settings, no code change.
 
 Three rules follow from that diagram, and each is enforced rather than trusted:
 
@@ -24,14 +37,47 @@ Three rules follow from that diagram, and each is enforced rather than trusted:
 | No commits directly on `main` | `.husky/pre-commit` |
 | Tests pass before a commit exists | `.husky/pre-commit` → `npm run verify` |
 | A commit says what kind of change it is | `.husky/commit-msg` |
-| Only a tag deploys | `.github/workflows/pages.yml` |
+| A broken site is never promoted | `tools/site-check.mjs`, in the Cloudflare build |
+| Only a tag ships CLI/desktop/relay | `.github/workflows/release.yml` |
+
+---
+
+## Where the site is deployed
+
+**Cloudflare Pages, at `realtimeclipboard.com`.** Settings live in the Cloudflare
+dashboard rather than in this repo, so they are recorded here:
+
+| Setting | Value |
+|---|---|
+| Production branch | `main` |
+| Build command | `npm run build:site` |
+| Build output directory | `_site` |
+| Root directory | `/` |
+| `NODE_VERSION` | `22` |
+
+`npm run build:site` is `tools/build.mjs` followed by `tools/site-check.mjs`. The
+second half is the gate: it asserts the required files exist, that the sitemap
+and `robots.txt` name the canonical origin, that `app.html` still carries its
+`noindex`, that the manifest has no SVG icon, and that the `_headers` CSP and the
+`<meta>` CSP agree. A non-zero exit fails the build, and a failed build is not
+promoted — production keeps serving the previous deploy.
+
+Every non-production branch gets a preview URL automatically. Those are real,
+public, indexable-by-accident URLs; `robots.txt` is served from them too, so
+treat a preview as public.
+
+**It used to be GitHub Pages, on a tag.** The move happened because GitHub Pages
+cannot set an HTTP response header at all, which left `frame-ancestors` and
+`Strict-Transport-Security` unavailable to a product whose pitch is
+end-to-end encryption — see `_headers` and docs/SEO.md §7. The old origin is now
+a tombstone: `.github/workflows/tombstone.yml`, run manually, once.
 
 ---
 
 ## Why the tests are not on GitHub
 
-There is one workflow in this repository and it does nothing but copy files to
-Pages. That is deliberate.
+The workflows in this repository build release artifacts. Nothing in them gates
+a normal commit. That is deliberate.
 
 CI runs *after* a push. By the time it goes red, the mistake is already in the
 history, already fetched by anyone who pulled, and the fix is a second commit
@@ -101,7 +147,13 @@ That single command:
 5. creates an **annotated** tag whose message is that release's changelog section, so `git show v1.2.0` tells you what shipped
 6. pushes `main` and the tag
 
-Pushing the tag is what triggers the deploy. Nothing else does.
+Pushing the tag triggers `release.yml` — the CLI on npm, the desktop builds, the
+relay image. **It does not deploy the site**; step 6's push to `main` already
+did, a minute earlier, via Cloudflare Pages. So by the time the tag artifacts
+finish building, the web app has been live for a while. That ordering is fine —
+the site is versionless and the artifacts are not — but it does mean a release
+is not a single atomic moment, and a download page can briefly advertise a
+version whose binaries are still compiling.
 
 Use `--dry` first if you want to see the commit list and the version it would
 pick without changing anything.
@@ -150,9 +202,24 @@ A missing or malformed `changelog.json` produces silence, not an error.
 
 ### One version, one identity
 
-The deploy stamps `sw.js`'s `VERSION` from the **tag**. So the string that keys
-a user's offline cache, the heading in `CHANGELOG.md`, and the version shown in
-"What's new" are all the same — one release has one name rather than three.
+`tools/build.mjs` stamps `sw.js`'s `VERSION` as **`<package.json version>+<short
+commit sha>`** — `0.3.1+9f2c4ab10e77`. The leading half is the same string that
+heads `CHANGELOG.md` and appears in "What's new", so a cache name still reads as
+a release rather than as an opaque hash.
+
+The commit half is not decoration. `VERSION` is the cache key, and a changed
+`sw.js` is the *only* thing that tells a browser an update exists — so it has to
+change on every deploy, and deploys are now per-commit rather than per-tag. A
+docs fix that ships without touching `package.json` must still invalidate the
+shell; keyed on the version alone it would not, and those users would sit on the
+old bundle until the next release happened to bump a number.
+
+**This is the part that had to change when the site moved to Cloudflare Pages.**
+The stamp read `GITHUB_REF_NAME` before, and none of the `GITHUB_*` variables
+exist in a Cloudflare build. The fallback was the literal string `"dev"` — a
+perfectly stable cache name, which would have meant a byte-identical `sw.js` on
+every deploy, no update ever detected, and every returning visitor pinned to the
+first shell ever published. Nothing would have looked wrong from the outside.
 
 ---
 
@@ -174,11 +241,27 @@ one-second reachability check the pre-push hook uses.
 
 ## If the deploy fails
 
-The workflow does no building, so a failure is almost always the sanity check
+Read the Cloudflare build log. A failure is almost always `tools/site-check.mjs`
 catching something real — a file that moved, a missing `noindex` on `app.html`,
-an SVG that crept back into the manifest's `icons[]`. Read the step that failed;
-each one says what it was protecting.
+an SVG that crept back into the manifest's `icons[]`, a canonical URL still
+naming the old origin. Each check prints what it was protecting.
 
-To redeploy an unchanged tag, use **workflow_dispatch** from the Actions tab and
-pick the tag from the ref dropdown. That path stamps the service worker from the
-commit SHA instead, since there is no tag in the context.
+Reproduce it exactly, locally, without pushing anything:
+
+```bash
+npm run build:site
+```
+
+That is the same command Cloudflare runs. If it passes locally and fails there,
+the difference is the environment — check `NODE_VERSION` is 22 and that
+`package-lock.json` is committed.
+
+**Production is unaffected by a failed build.** Cloudflare only promotes a
+successful one, so the previous deploy keeps serving. To redeploy an unchanged
+commit, use *Retry deployment* in the Pages dashboard; to roll back, promote an
+earlier deployment from the same list.
+
+Note that a rollback does **not** roll back the service worker for anyone who
+already loaded the bad build — their browser holds a shell keyed to that
+version. It will pick up the rollback on its next update check, because the
+restored `sw.js` carries a different `VERSION` string than the one they have.
