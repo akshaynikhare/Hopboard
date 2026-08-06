@@ -335,42 +335,120 @@ an SPDX identifier) and removes the standard rejection reason on the others.
 
 Ranked by measured expected value:
 
-1. **AlternativeTo.** 2.91M visits/month, 36.5K referring domains. The Snapdrop
-   page alone lists 57 alternatives. **New accounts must wait a week before
-   submitting — create the account today**, the clock starts on creation. Tag as an
-   alternative to Pushbullet, KDE Connect, Snapdrop, PairDrop, LocalSend, AirDrop,
-   ShareDrop, Clipt and Universal Clipboard. The "alternative to" graph *is* the
-   value — it is where LLMs go for "X alternative" queries. They reject
-   "apps indistinguishable from widely available alternatives", so lead with the
-   clipboard-not-file-dropper angle, not "another Snapdrop".
+1. **AlternativeTo.** 2.91M visits/month. **New accounts must wait a week before
+   submitting — create the account today**, the clock starts on creation. The
+   opening: the `clipboard-sync` tag holds only **13–15 apps**, most in single
+   digits (Planck 33 likes, Sefirah 32, UniClipboard 20, ClipCascade 8, and a tail
+   at 1–3). Compare the file-transfer side — LocalSend 454, KDE Connect 418. Submit
+   under **clipboard-sync**, listed as an alternative to **KDE Connect** (418 likes
+   is the big funnel), Pushbullet, and Apple Universal Clipboard — whose
+   AlternativeTo page **returns 404 and does not exist**, an unclaimed keyword. Do
+   **not** position as a clipboard *manager* (Ditto 424, CopyQ 342 — saturated) or
+   as "another Snapdrop": they now explicitly decline clones. Descriptions may not
+   contain URLs.
 2. **GitHub topics + awesome lists.** Section 5.
 3. **The Snapdrop-refugee content play** — `/snapdrop-alternative` on your own site.
-4. **Hacker News.** The winning formula is measurable: LocalSend scored 923, 563 and
-   447 with the identical framing *"open-source cross-platform alternative to
-   AirDrop"*; the same link with different titles scored 3–4. But the decisive
-   finding is that **HN's clipboard interest is about privacy, not sync** — the
-   top clipboard stories ever are *"TikTok may snoop clipboard contents"* (1,847),
-   *"LinkedIn is copying my clipboard"* (928), *"Don't touch my clipboard"* (718).
-   **Pitch the E2EE/no-server story, not the sync feature.** "clipboard sync" as a
-   topic has only 6 HN stories ever, all ≤3 points.
-5. **Reddit** — r/SideProject and r/coolgithubprojects first (lowest risk),
-   then r/selfhosted (lead with the self-hostable relay), r/privacy, r/degoogle,
-   r/androidapps. **Subreddit rules could not be verified** — reddit.com was
-   unfetchable from this environment. Check every sidebar before posting; most ban
-   self-promotion. The README's "Known limitations" section is the single greatest
-   asset there: Reddit rewards that and punishes marketing copy.
-6. **Category listicles** — LinuxLinks, LinuxToday, XDA, TextExpander, SourceForge,
+4. **Microsoft Store, via PWABuilder.** Registration is now **free** — the old
+   $19/$99 fees were removed, and most guides online are still wrong about this.
+   You must start at `storedeveloper.microsoft.com`; entering through Partner
+   Center directly lands you in the legacy paid flow. Review is 24–48h, and code
+   changes ship live without resubmission (only manifest changes need a new
+   package). Free bonus: Store-installed PWAs send
+   `Referer: app-info://platform/microsoft-store` on first navigation, so reading
+   `document.referrer` gives exact install attribution at zero cost.
+5. **Hacker News — and the obvious move is the wrong one.** Every large post in this
+   category was a **third-party plain link, not a Show HN**: LocalSend 923, Magic
+   Wormhole 816, LocalSend 563, **Snapdrop 527**, KDE Connect 476, LocalSend 447.
+   Show HNs in the same category top out far lower — LANDrop 250, an AirDrop clone
+   165, a WebRTC transfer tool 44, *"I built a universal clipboard that syncs
+   realtime on multiple devices"* **40**, and every clipboard-sync Show HN from
+   2013–2026 scored **1–5 points**.
+   Two consequences. **Timing dominates over quality:** LocalSend's *same URL*
+   scored 1, 4 and 3 before scoring 563, then 447, then 923 — nothing material
+   changed between the 3-point and 563-point submissions. **Resubmission is the
+   strategy, not the fallback.** And **lead with P2P file transfer, not clipboard**
+   — the clipboard ceiling on HN is ~141 points ever, the file-sharing ceiling is
+   923. ⚠️ But the 5 MB file cap will become the top comment if you lead with
+   files. Raise it or reframe first.
+6. **Reddit.** Rules below are verbatim from Wayback snapshots of each sub's
+   `about/rules`, June–August 2026. Post data is from the PullPush archive.
+
+   | Sub | Members | Verdict |
+   |---|---:|---|
+   | **r/InternetIsBeautiful** | 16.6M | 🥇 **The only 1,000+ shot.** Rule 6 bans sites requiring an email, name or account — practically written for Hopboard. Snapdrop scored **2,744** here, PairDrop **1,645**. Risk is Rule 2 ("Not Unique") since both already ran — **so lead on clipboard, not file transfer**. Link the live site, not GitHub. Rule 8 removes posts whose site buckles: harden for the hug of death |
+   | **r/coolgithubprojects** | 112k | 🟢 **Post here first as a dry run.** Sub exists for this; no promo restriction. Ceiling is low (top hot post: 49) |
+   | **r/SideProject** | 800k | 🟢 No configured rules. Best reach-to-risk. The pinned *"Share your **Not-AI** projects"* thread (652 upvotes) shows what the sub is rewarding now |
+   | **r/opensource** | 373k | 🟡 Rule 4 requires an **OSI licence file** — satisfied as of this pass. Needs correct flair and hours in the comments; Rule 6 removes drive-by posts |
+   | **r/PrivacyGuides** | 98k | 🟡 Small but exactly on-audience. Explicitly dev-friendly *if* you disclose authorship, never ask for stars, and say you are not yet PG-evaluated. ⚠️ See the ad-slot note below before posting here |
+   | **r/degoogle** | 522k | 🟡 PairDrop scored 87. Rule 3 asks for pre-vetting; a solo dev is not "company affiliated", but modmail first costs nothing |
+   | **r/fossdroid** | 102k | 🟡 PairDrop 209, LocalSend 110. Needs a real FOSS licence |
+   | **r/webdev** | 3.3M | 🟡 **Showoff Saturday only** — any other day is auto-removed. Must read as an engineering post: WebRTC signalling, key derivation, Clipboard API quirks |
+   | **r/selfhosted** | 814k | 🔴 **Main feed is closed to you.** Fails three rules at once: not self-hosted, not production-ready, and under 3 months old. Only routes are the **New Project Megathread** or a **Wednesday** tools-flair post. (PairDrop's 306 predates this regime) |
+   | **r/privacy** | 1.7M | 🚫 Rule 3: promotion of any kind risks **"immediate ban without warning."** Being open source does not exempt you. Comment only |
+   | **r/androidapps** | 568k | 🚫 Rule 2 bans **all** self-promo → use **r/droidappshowcase** instead |
+   | **r/AppHookup** | 206k | 🚫 No always-free apps **and** no alpha/beta apps. Doubly ineligible |
+   | **r/somethingimade** | 3.1M | 🚫 Handmade only; apps explicitly excluded |
+   | **r/roastmystartup** | 34k | ⚠️ Rule 1 removes free-subdomain links — **needs the custom domain first** |
+
+   **The title is a checklist, not a headline.** PairDrop's 1,645-upvote title ran
+   verbatim across four subs: *"Pairdrop Is a Free, Open Source, Cross Platform,
+   Browser Based Airdrop Like File and Text Sharing App That Uses Encrypted
+   Peer-To-Peer Connections."* Zero personality, zero "I built" — every adjective
+   pre-answers an objection. The Hopboard version needs: Free, No Account,
+   End-to-End Encrypted, Cross Platform, Browser Based, Clipboard, Peer-to-Peer.
+
+   **Two calibrations.** A dud is not a verdict — PairDrop's first two
+   r/InternetIsBeautiful attempts scored **1 upvote each** before the third hit
+   1,645. And the realistic target is **~150–300 upvotes, not 1,600**: ClipCascade,
+   the true analogue, got 158 in r/selfhosted and is at 1.9k stars today. Note also
+   that LocalSend — the project that actually won, at 86.8k stars against PairDrop's
+   11.1k — **never had a big Reddit post at all.** Budget Reddit as a credibility
+   beachhead, not the growth engine.
+
+7. **Category listicles** — LinuxLinks, LinuxToday, XDA, TextExpander, SourceForge,
    Slashdot. 63% of AI citations point at listicles you do not control.
+8. **YouTube — a lagging indicator you cannot push.** Coverage follows Hacker News
+   by about ten days: LocalSend's HN 563 on 2023-10-19 → Brodie Robertson video on
+   2023-10-29 → Techno Tim (202K views) → eventually Kevin Stratvert at 4.38M subs,
+   **26 months later**. No evidence anyone pitched them; they mine HN and Reddit.
+   Two channels are worth an email *after* traction: **Brodie Robertson**
+   (`brodierobertsonbusiness@gmail.com`, explicitly invites suggestions, most
+   tolerant of early projects) and **Lon.TV** (`lon@lon.tv`, explicitly invites
+   review requests). Do **not** make founder demo videos — every one in this niche
+   measured under 150 views. Make exactly one 45–90 second silent screen recording
+   whose job is to be *embeddable* in the README and in comments.
 
-**Timing gate:** Show HN and Product Hunt are single-shot per project, and the
-frontend network is still stubbed. A Show HN where two devices do not sync is the
-worst available outcome. **Hold both until the product actually syncs end to end.**
+**Timing gate:** the frontend network is still stubbed. A launch where two devices
+do not sync is the worst available outcome, and you get roughly one good shot per
+community. **Hold every public channel until the product syncs end to end.**
 
-Not worth attempting: **Wikipedia** (needs multiple independent reliable reviews;
-a launch-day traffic burst explicitly does not establish notability, and writing it
-yourself is a COI flag that follows the project) and **Privacy Guides** (requires a
-security white paper, audit disclosure and a threat model — submitting now burns
-credibility with exactly the community you want).
+**Fire the channels on one day, not over three weeks.** GitHub Trending ranks star
+*velocity* against a repo's own baseline, so a zero-star repo needs a concentrated
+spike rather than a large one. Spreading launches guarantees you never trend.
+
+⚠️ **The ad slot is a distribution decision, not just a product one.**
+`src/ui/ads.js` is currently an inert placeholder — no third-party script, no
+network request — and while it stays that way nothing here is affected. The moment
+a real ad network goes in, three of the channels above change:
+**pluja/awesome-privacy** requires *"no user-tracking on the project website"* and
+would reject or drop the listing; **r/privacy** and **r/PrivacyGuides** audiences
+will find it and lead with it; and it undercuts the no-telemetry claim that is the
+whole pitch. It sits on `app.html`, which is `noindex`, so **search impact is nil**
+— this is purely about the communities. If the relay needs paying for, a
+self-hosted, no-JS house ad or a sponsor link in the README costs none of this.
+
+Not worth attempting: **Product Hunt** — the decisive number is that **LocalSend
+has 86,691 GitHub stars and 3 Product Hunt upvotes**; the 2026-08-05 leaderboard
+was entirely AI and enterprise products, and #10 needed 123 upvotes. The category
+does not launch there. Also skip **Chrome Web Store** (accepts extensions and
+themes only — a PWA cannot be published, and a wrapper extension is a standard
+rejection), **Wikipedia** (needs multiple independent reliable reviews; a launch
+burst explicitly does not establish notability, and writing it yourself is a COI
+flag that follows the project), **Privacy Guides** (requires a security white
+paper, audit disclosure and a threat model — and a rejection is publicly logged),
+**BetaList** and **SaaSHub** until the domain exists (both reject free
+subdomains), and **Bluesky** (TechHut: 282,000 YouTube subs, 168 Bluesky
+followers).
 
 ---
 
@@ -548,12 +626,59 @@ should not be thrown away in the same change as a DNS migration.
 10. Write `/snapdrop-alternative` — the highest-value single page available, and the
     window is closing.
 
-**After the product actually syncs end to end**
+11. Submit to the **Microsoft Store via PWABuilder** — registration is free now, and
+    it is the exact user base. Start at `storedeveloper.microsoft.com`.
 
-12. AlternativeTo submission → Show HN (privacy framing) → Reddit → Product Hunt →
-    awesome-selfhosted at the four-month mark.
+**Before any public launch — these are the objections that will be raised**
+
+Two Hacker News threads in this precise category show what happens next. On
+QuickClip (a clipboard-sync launch), a commenter opened DevTools, found clipboard
+contents being POSTed in plaintext, and publicly demolished the E2EE claim; the
+founder had to post a mea culpa. On a WebRTC transfer tool, the thread turned into
+TURN-relay mechanics — roughly two-thirds of user pairs cannot connect P2P without
+a relay, and there are no reliable free TURN servers.
+
+12. **Publish a threat model** before posting anywhere. Someone *will* open the
+    network tab. It should state what the key derives, the entropy of a
+    five-character key, rate limiting, room-hash collision handling, session
+    lifetime, and exactly what the relay sees.
+13. **Reconsider PBKDF2.** HN commenters explicitly flagged PBKDF2 as outdated and
+    named Argon2 in the QuickClip thread. Combined with a 5-character shared secret,
+    this is the most likely single point of attack on the launch.
+14. **Document the WebRTC fallback.** Is there TURN? What happens when the direct
+    connection fails? "It silently fails" is the recurring complaint about every
+    tool in this category.
+15. **Answer "why not KDE Connect?" in one line.** It came up twice, unprompted, in
+    the QuickClip thread. The real answers: no install, works on ChromeOS, works
+    across networks rather than one LAN, no pairing step.
+16. **Ship a Dockerfile for the relay** — it is what makes r/selfhosted and
+    awesome-selfhosted read Hopboard as self-hostable rather than as a hosted
+    service, and awesome-selfhosted explicitly excludes *"applications requiring
+    separate synchronization servers."*
+
+**After the product actually syncs end to end — all on one day**
+
+17. AlternativeTo submission → **r/coolgithubprojects as a dry run** →
+    r/InternetIsBeautiful (clipboard-led, live-site link) → r/SideProject →
+    r/opensource → HN as a **plain link, not a Show HN**, titled around P2P file
+    transfer. If HN flops, resubmit in three months: LocalSend needed four tries.
+    Email Brodie Robertson and Lon.TV the day *after* any traction.
+18. **awesome-selfhosted at the four-month mark (December 2026).** The target is
+    reachable: its "File Transfer — Peer-to-peer Filesharing" tag holds only **8
+    entries**, and PrivyDrop — a near-identical WebRTC text/file tool — got in at
+    **136 stars**. Copy its `software/privydrop.yml` as the template. PR the
+    `awesome-selfhosted-data` repo, not the main list.
 
 ## 10. Uncertainty register
+
+**Reddit data is now measured, with one gap.** Subscriber counts come from
+gummysearch, rule text from Wayback snapshots of each sub's `about/rules`
+(June–August 2026), post scores from the PullPush archive. reddit.com itself was
+hard-blocked. Two caveats: PullPush scores for posts from 2024 onward are captured
+seconds after submission and are near-useless, so only pre-2024 scores are cited;
+and rules for r/chromeos, r/software, r/Windows11, r/homelab, r/Android,
+r/androiddev, r/PWA, r/foss and r/webapps could not be retrieved — **check those
+sidebars yourself before posting.**
 
 **Not obtained:** all Google Trends data (§3) · search volumes for 13 of 14 seed
 terms — only "online clipboard" at 201,000 is measured, the rest are inferred from

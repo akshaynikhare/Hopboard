@@ -531,7 +531,9 @@ h3 {
   margin-bottom:clamp(20px,3vw,30px);
   border:1px solid var(--rule2);
   background:var(--panel);
-  /* Tells a trackpad user there is more to the right before they try. */
+  /* Stops the swipe from chaining to the page once the table hits its end —
+     without this, flicking left at the edge triggers the browser's back
+     gesture on a trackpad and on Android. */
   overscroll-behavior-x:contain;
 }
 
@@ -550,8 +552,6 @@ h3 {
   color:var(--dim);
 }
 .cmp thead th {
-  position:sticky;
-  top:0;
   background:var(--sunk);
   color:var(--bright);
   font:11.5px/1.4 var(--mono);
@@ -671,9 +671,6 @@ footer a:hover { color:var(--link); }
   .stats { gap:18px 30px; }
   .topbar .row { height:52px; gap:9px; }
   .tag { display:none; }
-  /* The sticky header needs a scroll container with a height to stick inside;
-     on a phone it just eats a row of screen, so drop it. */
-  .cmp thead th { position:static; }
 }
 
 /* Fine for a phone in landscape, but a 44px-tall dotted path is not worth the
