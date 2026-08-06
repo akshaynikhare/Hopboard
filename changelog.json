@@ -1,7 +1,21 @@
 {
   "generated": "2026-08-07",
-  "current": "v0.2.0",
+  "current": "v0.2.1",
   "releases": [
+    {
+      "version": "v0.2.1",
+      "date": "2026-08-07",
+      "breaking": false,
+      "groups": [
+        {
+          "title": "Fixed",
+          "items": [
+            "test: keep the fallback suite on a local relay"
+          ],
+          "more": 0
+        }
+      ]
+    },
     {
       "version": "v0.2.0",
       "date": "2026-08-07",

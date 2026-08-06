@@ -7,6 +7,12 @@ commit.
 Format follows [Keep a Changelog](https://keepachangelog.com); versions follow
 [Semantic Versioning](https://semver.org).
 
+## v0.2.1 — 2026-08-07
+
+### Fixed
+
+- test: keep the fallback suite on a local relay
+
 ## v0.2.0 — 2026-08-07
 
 ### Added
