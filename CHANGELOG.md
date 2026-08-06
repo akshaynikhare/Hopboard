@@ -7,11 +7,43 @@ commit.
 Format follows [Keep a Changelog](https://keepachangelog.com); versions follow
 [Semantic Versioning](https://semver.org).
 
-## Unreleased
+## v0.2.0 — 2026-08-07
 
 ### Added
 
+- desktop: scaffold a Tauri shell and native capture tier
+- add the download and installation pages
+- relay: optional Redis backend for several replicas
+- relay: add deployment policy flags
+- cli: add a command-line client
+- let the relay address be configured
+- relay: add deployment policy flags
+- cli: add a command-line client
+- let the relay address be configured
+- security: enforce a CSP and Trusted Types on every page
+- implement modal dialog for consistent user experience
 - enhance QR code functionality and session locking
+
+### Fixed
+
+- relay: ship shared.py in the image and the package
+- social: regenerate the OG card, which still said Hopboard
+- test: point the suites at the relay the hook actually found
+
+### Changed
+
+- core: resolve asset paths from document.baseURI
+
+### Documentation
+
+- add a code of conduct and a contributing guide
+- add SECURITY.md and funding metadata
+- self-hosting, and record why there is now a build step
+
+### Build & deploy
+
+- relay: ship a Dockerfile, compose stack and Helm chart
+- assemble the deploy with esbuild
 
 ### Other changes
 
@@ -19,7 +51,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com); versions follow
 - Keyword mine from Google Autocomplete, and the ad-revenue arithmetic
 - Project links from one constant, and the landing page's globe
 - Move the settings out of the sidebar and into the status bar
-- SEO doc: real domain prices, and realtimeclipboard.com is already taken
+- SEO doc: real domain prices, and hopboard.com is already taken
 - Slide the transport menu up out of the item that opens it
 - Pick the transport by hand; stop file requests holding the app hostage
 - Fire the rate-limit probe concurrently, not in a loop
@@ -47,5 +79,5 @@ Format follows [Keep a Changelog](https://keepachangelog.com); versions follow
 - Point RELAY_URL at the deployed relay; trigger rebuild
 - Pages: self-enable on first run
 - Modularise the frontend and add Pages deploy
-- Initial commit: RealtimeClipboard — shared clipboard
+- Initial commit: Hopboard — shared clipboard
 - Initial commit

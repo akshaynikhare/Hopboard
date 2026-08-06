@@ -1,7 +1,7 @@
 {
   "name": "realtimeclipboard",
-  "version": "0.1.0",
-  "description": "Live clipboard sharing. Static frontend of native ES modules \u2014 development needs no build, and `npm run build` exists only to assemble the deploy. Nothing here is needed to READ the app.",
+  "version": "0.2.0",
+  "description": "Live clipboard sharing. Static frontend of native ES modules — development needs no build, and `npm run build` exists only to assemble the deploy. Nothing here is needed to READ the app.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -60,5 +60,5 @@
     "husky": "^9.1.7",
     "jsdom": "^26.1.0"
   },
-  "comment": "esbuild is used ONLY by tools/build.mjs, which assembles the deploy \u2014 src/ stays plain ES modules on disk, so `npm run serve` still needs no build and the .husky checks still run against real modules. jsdom is needed by tests/boot.mjs and tests/bundle.mjs, which skip cleanly when it is absent. tests/fallback.mjs needs a relay on 127.0.0.1:8000 and skips cleanly without one. The app itself still ships with zero RUNTIME dependencies."
+  "comment": "esbuild is used ONLY by tools/build.mjs, which assembles the deploy — src/ stays plain ES modules on disk, so `npm run serve` still needs no build and the .husky checks still run against real modules. jsdom is needed by tests/boot.mjs and tests/bundle.mjs, which skip cleanly when it is absent. tests/fallback.mjs needs a relay on 127.0.0.1:8000 and skips cleanly without one. The app itself still ships with zero RUNTIME dependencies."
 }
