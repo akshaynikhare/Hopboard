@@ -547,6 +547,20 @@ Ranked by measured expected value:
 do not sync is the worst available outcome, and you get roughly one good shot per
 community. **Hold every public channel until the product syncs end to end.**
 
+✅ **Gate cleared 2026-08-07 — this paragraph no longer blocks anything.** The frontend is
+wired to the deployed relay over a WebSocket with an SSE fallback, and `npm run test:e2e`
+runs **32 checks with two real peers and real crypto against the production relay**,
+including locked rooms, PIN separation and eviction. Measured, not assumed.
+
+The reasoning above stands and is worth re-reading before firing anything: one good shot per
+community, and the worst outcome is a launch where two devices do not sync. What has changed
+is only that the condition is met. The remaining pre-launch work is items 12–16 in §10 — the
+threat model, the WebRTC fallback documentation and the relay Dockerfile — which are about
+surviving the *thread*, not about whether the product works.
+
+**Consequence for the status label:** "pre-alpha" was retired on the same day, for the same
+reason. See `LAUNCH-KIT.md` §1 for the argument and for what must *not* be dropped with it.
+
 **Fire the channels on one day, not over three weeks.** GitHub Trending ranks star
 *velocity* against a repo's own baseline, so a zero-star repo needs a concentrated
 spike rather than a large one. Spreading launches guarantees you never trend.
@@ -1016,6 +1030,45 @@ a relay, and there are no reliable free TURN servers.
     awesome-selfhosted read RealtimeClipboard as self-hostable rather than as a hosted
     service, and awesome-selfhosted explicitly excludes *"applications requiring
     separate synchronization servers."*
+
+### Items 12–16, worked 2026-08-07
+
+**12 — done.** `docs/THREAT-MODEL.md`, written from the code rather than from the PRD, and linked
+from the README, the landing FAQ and three keyword pages.
+
+**13 — done, and the premise was wrong.** The HN objection to PBKDF2 is real but it is not this
+project's weak point, and switching to Argon2 would have fixed **nothing**. Reading the derivation
+turned up the actual problem: `aesKey` is stretched with 250k PBKDF2, but the **open room hash is a
+bare `SHA-256("realtimeclipboard:" + KEY)` with no salt and no stretching** — and the room hash is
+the value the relay holds. Sweeping the whole 6-character keyspace against it is **0.07 seconds**
+on one GPU, and the roomHash→key table is **10.2 GB**. A 10-character key does not rescue it: a
+targeted preimage search is ~16 hours on one GPU.
+
+So an unlocked session is **not** end-to-end encrypted against the relay operator, which is the
+party the claim exists to defend against. It still is against every network observer, and locked
+sessions are unaffected — those already derive the room hash through HKDF over a 600k PBKDF2.
+
+The fix is to derive the open room hash from the PBKDF2 output, exactly as `deriveLocked()` already
+does. It is free at runtime (that PBKDF2 is already computed) and takes the same sweeps to **40
+GPU-hours** and **~3,700 GPU-years**. It is a **wire-format break** — every existing share link,
+plus the golden vectors in `tests/unit/lock.mjs` — so it needs its own release and an explicit note
+in the commit body. **This is now the highest-priority item in this list.**
+
+Also done in this pass: the landing FAQ, `llms.txt` and two keyword pages said the server "has no
+way to open" the ciphertext. That was false as written. Corrected — the QuickClip thread is
+precisely what happens when a commenter finds this before you publish it yourself.
+
+**14 — was already done, and is now visible.** `docs/P2P-FILES.md` §4 and the header of
+`src/files/transfer.js` already covered it: STUN only, no TURN deliberately, 5-second ICE timeout,
+then relay-chunked delivery labelled in the UI. It was buried in `docs/`, so it is now a landing
+FAQ answer too — the objection arrives in a comment thread, not in a repository.
+
+**15 — done.** A landing FAQ answer, leading with "use it if it fits", then the four cases it
+rules out: no install, no pairing, works on ChromeOS and iPhone, works across networks.
+
+**16 — was already done.** `backend/Dockerfile` (non-root, no `VOLUME`, healthcheck) and
+`deploy/docker-compose.yml` (Caddy, automatic TLS, `replicas: 1` with the OI-3 warning) both
+predate this list. Nothing to build; the item was stale.
 
 **After the product actually syncs end to end — all on one day**
 

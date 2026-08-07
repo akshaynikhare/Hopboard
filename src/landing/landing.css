@@ -1139,6 +1139,23 @@ kbd {
   padding:0 var(--gut) clamp(40px,6vw,66px);
 }
 
+/* A section whose content keeps to the first two columns and gives an aside the
+   third. The same grid the rules are drawn on, so the aside lands on a real
+   column rather than inventing one — and .faq drops its measure here, because
+   as a grid item that percentage would resolve against the two columns it is
+   already in and take two thirds of them.
+
+   The hairline is .in's ::before; as a grid item it has to be spanned or it
+   stops a third of the way across, the same reason .in.doc spans it. */
+.sec > .in.rail {
+  display:grid;
+  grid-template-columns:repeat(var(--cols),1fr);
+  align-items:start;
+}
+.sec > .in.rail::before,
+.sec > .in.rail > .shead { grid-column:1 / -1; }
+.sec > .in.rail > .faq   { grid-column:1 / span 2; max-width:none; }
+
 /* Each question is a <details>, so the accordion needs no JavaScript at all —
    it opens, it is keyboard-operable, and it is announced correctly, none of
    which a div-and-click-handler gets for free.
@@ -1340,6 +1357,10 @@ footer a:hover { color:var(--link); }
   /* Column counts, restated for two columns. */
   .faq, .flow-fallback { max-width:none; }
   .sec > .in > .hint { max-width:50%; }
+
+  /* Two columns leave no third to put a rail in, so the questions take the
+     width back. The unit itself restacks with the other ad rules, below. */
+  .sec > .in.rail > .faq { grid-column:1 / -1; }
 }
 
 @media (max-width:620px) {
@@ -1476,10 +1497,11 @@ footer a:hover { color:var(--link); }
   .topbar .tag { margin-left:0; }
 }
 
-/* ------------------------------------------------------------ the ad slot --
-   The only paid surface on the site. Styled to sit inside the editorial grid
-   rather than fight it: same container, same rule above, and a label saying
-   what it is — an ad that has to disguise itself is an ad in the wrong place. */
+/* ----------------------------------------------------------- the ad slots --
+   The only paid surfaces on the site, both of them on this page. Styled to sit
+   inside the editorial grid rather than fight it: same container, same rule
+   above, and a label saying what it is — an ad that has to disguise itself is
+   an ad in the wrong place. */
 
 /* The vertical rhythm goes on the CONTENT, never on .in — the horizontal rule
    is .in's ::before, so padding there would push the rule off the section
@@ -1517,6 +1539,40 @@ footer a:hover { color:var(--link); }
 /* Centred under the unit and narrower than a normal .hint: this is a footnote
    for the curious, not a section of the page. */
 .adnote { margin:11px auto 0; max-width:60ch; font-size:12px; opacity:.85; }
+
+/* The rail beside the FAQ. sticky works because the grid start-aligns it, so it
+   has room to travel inside its own cell; the offset clears the sticky top bar,
+   the same 78px scroll-padding-top uses. */
+.adrail {
+  grid-column:3;
+  position:sticky;
+  top:78px;
+  padding:0 var(--gut) clamp(40px,6vw,66px);
+  text-align:center;
+}
+.adrail .adbox { height:600px; max-width:300px; }
+
+/* Two columns leave no third to sit in, so the rail stops being one: it stacks
+   under the questions as a rectangle, with a rule above it to keep it reading
+   as a block of the section rather than an ad adrift in the page.
+
+   This has to live here rather than with the other breakpoints — the base rules
+   above it carry the same specificity, and they come later in the file. */
+@media (max-width:980px) {
+  .adrail {
+    grid-column:1 / -1;
+    position:static;
+    padding-top:26px;
+    border-top:1px solid var(--rule);
+  }
+  .adrail .adbox { height:250px; max-width:300px; }
+}
+
+/* A 600px unit pinned 78px down needs 678px of window to be seen whole, and
+   while it is stuck the rest is unreachable. Shorter than that, it scrolls. */
+@media (max-height:720px) {
+  .adrail { position:static; }
+}
 
 /* A leaderboard does not fit a phone; a 300×250 rectangle does. */
 @media (max-width:760px) {

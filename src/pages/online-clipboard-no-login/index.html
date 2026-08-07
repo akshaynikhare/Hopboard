@@ -226,8 +226,16 @@
           For its intended use — moving text between your own devices — the
           absence of an account makes it safer rather than less safe, because
           there is no account to breach and no stored history to leak. The
-          encryption is done in your browser, so the operator of the service
-          cannot read your clipboard even if they wanted to.
+          encryption is done in your browser, so nobody watching the network —
+          your Wi-Fi, your ISP — can read your clipboard.
+        </p>
+
+        <p>
+          The service <em>operator</em> is a different question, and the honest
+          answer is longer: in an unlocked session the room address is an
+          unstretched hash of your key, so an operator could work back from it.
+          A PIN lock closes that. The
+          <a href="/docs/THREAT-MODEL.md">threat model</a> gives the arithmetic.
         </p>
 
         <p>
@@ -286,11 +294,13 @@
           <div class="qa-a">
             <p>
             The text is encrypted in your browser before it is sent, and the server
-            is addressed by a hash of your key rather than the key itself, so it
-            cannot decrypt anything it routes. Having no account removes the two
-            things most often breached — a credential database and stored history.
-            The trade is that the short key is the only thing protecting a session,
-            so lock it with a PIN for anything sensitive.
+            is addressed by a hash of your key rather than the key itself. Having no
+            account removes the two things most often breached — a credential
+            database and stored history. The trade is that the short key is the only
+            thing protecting an unlocked session, and the room hash is derived from
+            it cheaply enough that the relay operator could reverse it, so lock the
+            session with a PIN for anything sensitive. The
+            <a href="/docs/THREAT-MODEL.md">threat model</a> is specific about it.
             </p>
           </div>
         </details>
@@ -299,8 +309,8 @@
           <summary><h3>Is it really free, and what is the catch?</h3><span class="qa-i" aria-hidden="true"></span></summary>
           <div class="qa-a">
             <p>
-            Free, with no paid tier and no trial. The honest catch is maturity
-            rather than money: it is pre-alpha, file transfers are capped at 5 MB,
+            Free, with no paid tier and no trial. The honest catch is scope
+            rather than money: file transfers are capped at 5 MB,
             and automatic clipboard capture needs a Chromium-based browser. It is
             open source under the MIT licence, so nothing stops you running it
             yourself.

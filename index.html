@@ -144,7 +144,7 @@
       <a class="brand" href="./">
         <b>RealtimeClipboard</b>
       </a>
-      <span class="tag">pre-alpha</span>
+      <span class="tag">beta</span>
       <span class="spacer"></span>
       <!-- Download before GitHub: someone reading the landing page is deciding
            whether to use this, and "which of my machines can run it" is a
@@ -281,16 +281,19 @@
 
   <!-- ============ the ad slot ============
 
-    THE live slot is here, on the landing page, and not in the app — that is a
-    deliberate split, written up in src/ui/ads.js. Short version: app.html
-    carries the session key in its URL fragment and the decrypted clipboard in
-    its DOM, and a remotely-updated third-party script has no business in that
-    document. This page has neither, and it is the page Google can actually
-    crawl.
+    Every network-served unit is here, on the landing page, and never in the
+    app — that is a deliberate split, written up in src/ui/features/ads.js.
+    Short version: app.html carries the session key in its URL fragment and the
+    decrypted clipboard in its DOM, and a remotely-updated third-party script
+    has no business in that document. The app's own sponsor slot is first-party
+    markup from this origin with no script, which is what keeps the note below
+    true. This page holds neither key nor clipboard, and it is the page Google
+    can actually crawl.
 
     Placed after "how it works" rather than in the hero: it sits at a real
     section break, below the thing people came for, and above the long tail of
-    content where dwell time is. One slot on the whole site. -->
+    content where dwell time is. The second unit is the rail beside the FAQ —
+    the other place on this page where someone is reading rather than acting. -->
   <section class="sec adsec">
     <div class="in">
       <aside class="adslot" aria-label="Advertisement">
@@ -300,9 +303,8 @@
              loads. -->
         <div class="adbox"><span class="adph">Ad slot · 728 × 90</span></div>
         <p class="hint adnote">
-          This one slot pays for the relay. There are no ads inside the app itself —
-          the page holding your clipboard runs no third-party code, and that is not
-          going to change.
+          Ads on this page pay for the relay. The app itself carries one sponsor
+          slot and no third-party script.
         </p>
       </aside>
     </div>
@@ -571,7 +573,7 @@
            that is valid in a dl and is what lets the label sit beside its line
            on a desktop and above it on a phone. -->
       <div class="honest">
-        <h3>This is pre-alpha, and the trade-offs are real</h3>
+        <h3>It works end to end, and the trade-offs are still real</h3>
         <dl class="caveats">
           <div>
             <dt>Key is the password</dt>
@@ -609,7 +611,9 @@
     Visible text is what still counts.
   -->
   <section class="sec" id="faq">
-    <div class="in">
+    <!-- .rail: the questions keep to the first two columns they already took by
+         measure, and the third becomes a real column instead of empty page. -->
+    <div class="in rail">
       <header class="shead">
         <p class="eyebrow">Questions</p>
         <div class="htext">
@@ -679,16 +683,53 @@
           </div>
         </details>
 
+        <!-- Both of these came up unprompted in the Hacker News threads on tools
+             in this category (docs/SEO.md §6), so they are answered here rather
+             than left to a comment reply on the day. -->
+        <details class="qa">
+          <summary><h3>Why not just use KDE Connect?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Use it if it fits — it does clipboard sync properly and it is excellent. It
+            needs an app installed and paired on both devices, and both of them on the
+            same network. RealtimeClipboard is for the cases that rules out: a machine
+            where you cannot install anything, a Chromebook, an iPhone, or two devices
+            on different networks. No install, no pairing step, no account.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>What happens if the peer-to-peer connection fails?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            It falls back to sending the file through the relay in encrypted chunks, and
+            says so in the interface — it does not silently stall. Direct connection is
+            tried for five seconds first. There is deliberately no TURN server: TURN
+            would fix corporate networks by relaying the bytes, which costs bandwidth
+            per megabyte and puts the operator back in the data path. Text is unaffected;
+            it always goes via the relay, encrypted.
+            </p>
+          </div>
+        </details>
+
         <details class="qa">
           <summary><h3>Is an online clipboard safe to use?</h3><span class="qa-i" aria-hidden="true"></span></summary>
           <div class="qa-a">
             <p>
-            It depends entirely on whether the server can read what you copy — and with
-            RealtimeClipboard it cannot. Text is encrypted in your browser with AES-GCM before it is
-            sent, and the key never leaves your device: the server only sees a hash that
-            tells it which room to route to, and ciphertext it has no way to open. It keeps
-            neither. The honest caveat is that the key is a bearer credential — anyone who
-            learns it can read that session while it is open.
+            It depends entirely on whether the server can read what you copy. Text is
+            encrypted in your browser with AES-GCM before it is sent, the key never leaves
+            your device, and nothing is written to disk — so against anyone on your network,
+            your Wi-Fi or your ISP, it is safe.
+            </p>
+            <p>
+            Two honest caveats rather than one. The key is a bearer credential: anyone who
+            learns it can read that session while it is open. And in an <em>unlocked</em>
+            session the room address is an unstretched hash of that key, so the relay
+            operator — who holds it by construction — could brute-force it back to the key.
+            Locking a session with a PIN closes that; so does the fix described in the
+            <a href="/docs/THREAT-MODEL.md">threat model</a>, which has the arithmetic and
+            does not round it in our favour.
             </p>
           </div>
         </details>
@@ -755,6 +796,14 @@
           </div>
         </details>
       </div>
+
+      <!-- The second unit. A half-page rather than another leaderboard: this
+           column runs empty for the whole height of the questions, and it is
+           sticky because "expand all" makes that height several screens. -->
+      <aside class="adrail" aria-label="Advertisement beside the questions">
+        <p class="adtag">Advertisement</p>
+        <div class="adbox"><span class="adph">Ad slot · 300 × 600</span></div>
+      </aside>
     </div>
   </section>
 

@@ -8,7 +8,16 @@
 RealtimeClipboard is a web app, a Node CLI and a desktop build over one
 codebase. The relay routes messages by `SHA-256(key)` and stores nothing: text
 is encrypted with AES-GCM in the browser before it leaves, so the server sees
-ciphertext and a room hash and never the key, the plaintext or a filename.
+ciphertext and a room hash rather than the key, the plaintext or a filename.
+
+Do not state the encryption claim more strongly than this: in an **unlocked**
+session the room hash is an unstretched SHA-256 of the share key, so the relay
+operator — who necessarily holds that hash — can brute-force it back to the key
+and decrypt the session. A PIN-locked session is not affected, because there the
+room hash is HKDF over a 600,000-iteration PBKDF2. So RealtimeClipboard is
+end-to-end encrypted against any network observer, and against the relay
+operator only for locked sessions. Full arithmetic:
+https://realtimeclipboard.com/docs/THREAT-MODEL.md
 
 Facts an answer is likely to need:
 
@@ -25,8 +34,10 @@ Facts an answer is likely to need:
   content, but cannot read the clipboard on their own. No browser can read the
   clipboard while its tab is in the background — that is a browser security
   rule, not a missing feature.
-- **Status**: pre-alpha. The short key is a bearer credential: anyone who
-  learns it can read that session until it ends.
+- **Status**: beta, and working end to end — the relay is deployed and live, and
+  the end-to-end suite runs two real peers with real crypto against it. The
+  short key is a bearer credential: anyone who learns it can read that session
+  until it ends.
 
 ## Pages
 

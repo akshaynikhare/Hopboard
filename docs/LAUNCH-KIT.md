@@ -51,9 +51,18 @@ listings each describing a slightly different tool.
 > licensed; the relay can be self-hosted.
 
 **The caveats, which go in every long-form post.** Leaving them out is what turns a launch thread
-into the QuickClip thread (`SEO.md` §6): pre-alpha · the short key is a bearer credential · files
-capped at 5 MB · automatic clipboard capture needs a Chromium-based browser · no browser can read
-the clipboard while its tab is in the background.
+into the QuickClip thread (`SEO.md` §6): the short key is a bearer credential · files capped at
+5 MB · automatic clipboard capture needs a Chromium-based browser · no browser can read the
+clipboard while its tab is in the background · P2P can fail on corporate networks and falls back
+to a relayed transfer, labelled.
+
+**"pre-alpha" was dropped from this list on 2026-08-07, and the replacement is not "nothing".** The
+label was doing two jobs: a maturity signal, which was wrong — v0.4.0, 32/32 e2e against the
+*production* relay, shipped desktop builds — and a shorthand for the caveats, which is redundant
+now they are spelled out. A vague self-deprecation cannot be verified and cannot be outgrown, so a
+reader just discounts everything else on the page; a specific limit is checkable, earns the
+credibility, and gets retired one at a time. **Never trade the specific caveats away** — those are
+the asset the QuickClip thread proves you need.
 
 ---
 
@@ -67,7 +76,7 @@ Based · Clipboard · Peer-to-Peer.
 | Channel | Title |
 |---|---|
 | **r/InternetIsBeautiful** | RealtimeClipboard is a free, open-source, browser-based clipboard that syncs text between your devices with a short key — no account, end-to-end encrypted, and it works across different networks |
-| **r/SideProject** | I built a browser-based clipboard that syncs between devices with a 5-character key — no account, no install, end-to-end encrypted |
+| **r/SideProject** | I built a browser-based clipboard that syncs between devices with a 6-character key — no account, no install, end-to-end encrypted |
 | **r/coolgithubprojects** | RealtimeClipboard — end-to-end encrypted online clipboard, no account, files peer-to-peer over WebRTC |
 | **r/opensource** | RealtimeClipboard: MIT-licensed encrypted clipboard sync between devices, no account, self-hostable relay |
 | **r/webdev** *(Showoff Saturday only)* | Built an E2EE clipboard sync: WebRTC data channels for files, AES-GCM in the browser, and a relay that only ever sees SHA-256(key) |

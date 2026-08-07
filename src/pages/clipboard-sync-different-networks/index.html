@@ -269,9 +269,12 @@
 
         <p>
           What it does see is that <em>some</em> room hash was busy at some time,
-          and the IP addresses of the two connections. What it cannot see is
-          your key, your text, your filenames or who you are, because it is
-          never given any of them. The
+          and the IP addresses of the two connections. It is never given your key,
+          your text, your filenames or who you are. One caveat it would be
+          dishonest to leave out: in an unlocked session that room hash is derived
+          from your key cheaply enough that the operator could work backwards to it
+          — locking the session with a PIN removes that, and the
+          <a href="/docs/THREAT-MODEL.md">threat model</a> shows the numbers. The
           <a href="https://github.com/akshaynikhare/RealtimeClipboard">code is MIT-licensed</a>
           and the relay is a small enough Python service to read in one sitting
           — and if you would rather not take anyone's word for it,
