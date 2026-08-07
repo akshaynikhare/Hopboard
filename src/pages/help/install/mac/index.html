@@ -133,9 +133,19 @@
         <h2 id="pkg">Or from a package manager</h2>
         <pre><code>brew install --cask akshaynikhare/tap/realtimeclipboard</code></pre>
         <p>
-          <b>Not published yet.</b> The cask is generated from each release by
-          <code>tools/release/manifest.mjs</code>, but the tap it belongs in has
-          to be pushed by hand and has not been yet.
+          The cask lives in
+          <a href="https://github.com/akshaynikhare/homebrew-tap">akshaynikhare/homebrew-tap</a>
+          and is generated from each release by
+          <code>tools/release/manifest.mjs</code>, so its version and checksum
+          come off an artifact that was actually built. No <code>brew tap</code>
+          first — naming the tap in the install command is enough.
+        </p>
+        <p>
+          It is also the easiest way past the Gatekeeper problem above: the cask
+          strips the quarantine attribute after installing, so the app opens
+          without the trip to Privacy &amp; Security. That is Homebrew doing on
+          your behalf what you would otherwise do by hand, not a signature — the
+          build is still unsigned.
         </p>
         <p>
           The command-line client is a separate formula,

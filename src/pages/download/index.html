@@ -305,23 +305,26 @@
         <div class="cmdgrid">
           <div class="cmdcard">
             <h4><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-windows"/></svg> Windows — winget</h4>
-            <span class="tag">not published yet</span>
+            <span class="tag">in review</span>
             <pre><code>winget install AkshayNikhare.RealtimeClipboard</code></pre>
             <p class="hint">
-              Submitted to <code>microsoft/winget-pkgs</code> after each release
-              and merged by their reviewers, which takes days rather than
-              minutes.
+              The 0.3.0 manifest is
+              <a href="https://github.com/microsoft/winget-pkgs/pull/413661">submitted</a>
+              and waiting on Microsoft's reviewers, which takes days rather than
+              minutes. This command starts working the moment it merges, and not
+              before.
               <a href="/help/install/windows/#pkg">Windows package notes</a>
             </p>
           </div>
 
           <div class="cmdcard">
             <h4><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-apple"/></svg> macOS — Homebrew</h4>
-            <span class="tag">not published yet</span>
             <pre><code>brew install --cask akshaynikhare/tap/realtimeclipboard</code></pre>
             <p class="hint">
               The cask installs the same universal build the button above hands
-              you, and updates with <code>brew upgrade</code>.
+              you, and updates with <code>brew upgrade</code>. It also strips the
+              quarantine flag, so you skip the Gatekeeper dance the manual
+              download needs.
               <a href="/help/install/mac/#pkg">macOS package notes</a>
             </p>
           </div>
@@ -350,7 +353,6 @@
         <div class="cmdgrid">
           <div class="cmdcard wide">
             <h4><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-node"/></svg> What it is for</h4>
-            <span class="tag">not published yet</span>
             <pre><code># pipe something in
 echo "deploy key" | npx realtimeclipboard send D75LV
 
