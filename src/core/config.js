@@ -193,14 +193,32 @@ export const FILES = {
 export const KEY = {
   // Crockford-ish: no 0/O, no 1/I/L. Ambiguity here becomes a support ticket.
   ALPHABET: "23456789ABCDEFGHJKMNPQRSTVWXYZ",
-  LENGTH: 6,                  // PRD D3 — the web default
-  LONG_LENGTH: 10,            // "high security" option, PRD §7.3
+  /**
+   * Ten, not six. PRD D3 chose six for the phone keyboard and that argument was
+   * sound about typing and wrong about arithmetic.
+   *
+   * The open room hash is derived through the same 250k PBKDF2 as the AES key
+   * (crypto.js `deriveOpen`), so a guess costs a full derivation rather than one
+   * SHA-256. But `SALT` is a single global constant, so the table an attacker
+   * builds is built ONCE and then opens every unlocked session of that length,
+   * for every user, for as long as the salt stands. That is the number that
+   * matters, and at six characters it is ~12 minutes on 100 rented GPUs:
+   *
+   *     6 chars   7.3e8 keys       12 min on 100 GPUs      29.4 bits
+   *    10 chars   5.9e14 keys      19 years on 100 GPUs    49.1 bits
+   *    16 chars   5.3e23 keys      out of reach            78.5 bits
+   *
+   * Six is therefore not a preference, it is a defect, and no iteration count
+   * fixes a keyspace. Typing cost is paid once per session and only when someone
+   * declines the QR code and the copied link, both of which are in front of it.
+   */
+  LENGTH: 10,
+  LONG_LENGTH: 16,            // "high security" option, PRD §7.3
 
   /**
-   * PRD §7.3's argument for six characters is convenience, and the convenience
-   * is a phone keyboard. An installed app links a device by QR or copied link,
-   * so it does not pay the typing cost — and it is the surface running all day
-   * reading every copy, which §7.3 says should take the 10-character option.
+   * An installed app links a device by QR or copied link, so it does not pay the
+   * typing cost at all — and it is the surface running all day reading every
+   * copy, which is the one that should take the longer option.
    */
   DEFAULT_LONG: IS_DESKTOP,
 };
@@ -211,9 +229,25 @@ export const CRYPTO = {
   ROOM_HASH_BYTES: 16,
 
   /**
+   * One PBKDF2 run, two outputs — see crypto.js `deriveOpen`.
+   *
+   * The room hash used to be `SHA-256("realtimeclipboard:" + KEY)`: unsalted,
+   * unstretched, and the one value the relay holds by construction. Anyone with
+   * it could sweep the whole 6-character keyspace in 0.07s and read back the
+   * key, which made the 250k iterations on the AES key worth exactly one
+   * derivation to an attacker. Deriving both from the same PRK costs nothing —
+   * that PBKDF2 was already being awaited before the connection opened.
+   */
+  OPEN_INFO: {
+    AES:  "realtimeclipboard/aes",
+    ROOM: "realtimeclipboard/room",
+  },
+
+  /**
    * The lock salt is a PREFIX, completed with the share key — random per
    * session, which is what a salt is for. The open-session salt above is one
-   * global constant, so a single precomputed table covers every user on earth.
+   * global constant, so a single precomputed table covers every user on earth;
+   * KEY.LENGTH is what has to make that table too large to build.
    *
    * 600k rather than 250k because the threat differs: a locked session's secret
    * is a PIN held by someone who may already have the link, so the PIN is the

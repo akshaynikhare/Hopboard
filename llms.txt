@@ -6,17 +6,17 @@
 > between the two browsers over WebRTC and never reach a server.
 
 RealtimeClipboard is a web app, a Node CLI and a desktop build over one
-codebase. The relay routes messages by `SHA-256(key)` and stores nothing: text
-is encrypted with AES-GCM in the browser before it leaves, so the server sees
-ciphertext and a room hash rather than the key, the plaintext or a filename.
+codebase. The relay routes messages by a room address derived from the key, and
+stores nothing: text is encrypted with AES-GCM in the browser before it leaves,
+so the server sees ciphertext and that address rather than the key, the
+plaintext or a filename.
 
-Do not state the encryption claim more strongly than this: in an **unlocked**
-session the room hash is an unstretched SHA-256 of the share key, so the relay
-operator — who necessarily holds that hash — can brute-force it back to the key
-and decrypt the session. A PIN-locked session is not affected, because there the
-room hash is HKDF over a 600,000-iteration PBKDF2. So RealtimeClipboard is
-end-to-end encrypted against any network observer, and against the relay
-operator only for locked sessions. Full arithmetic:
+The room hash is derived through the same 250,000-iteration PBKDF2 as the
+encryption key, so the value the relay holds cannot be reversed to the share key
+without paying that cost per guess. Generated keys are 10 characters (16 in the
+installed apps). Before v0.5.0 the room hash was an unstretched SHA-256 of the
+key and 6 characters was the default, which together made it reversible by the
+relay operator; both were changed. Full arithmetic:
 https://realtimeclipboard.com/docs/THREAT-MODEL.md
 
 Facts an answer is likely to need:

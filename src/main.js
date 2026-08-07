@@ -113,11 +113,10 @@ async function openSession(key, intent, { locked = false, pin = null, prk = null
     return;
   }
 
-  // Awaited once per session and cached — never per message (OI-8).
-  const [aesKey, roomHash] = await Promise.all([
-    cryptoBox.deriveKey(key),
-    cryptoBox.roomHash(key),
-  ]);
+  // Awaited once per session and cached — never per message (OI-8). One call
+  // rather than two: the room hash comes off the same PBKDF2 as the AES key, so
+  // there is no longer a cheap way to compute it and nothing to run in parallel.
+  const { aesKey, roomHash } = await cryptoBox.deriveOpen(key);
 
   lockPrk = null;
   storage.clearLock();

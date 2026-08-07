@@ -233,9 +233,9 @@ function sectionPrivate() {
          disconnects the devices already in this one, so link them again
          afterwards and pass the PIN separately.</p>
       <p>This app makes <b>${n}-character keys</b>
-         (~${Math.round(keys.entropyBits(n))} bits). The website makes
-         6-character ones, because a phone has to type them — an installed app
-         links by QR or by a copied link, so it does not pay that cost.</p>
+         (~${Math.round(keys.entropyBits(n))} bits). The website makes shorter
+         ones, because a phone has to type them — an installed app links by QR
+         or by a copied link, so it does not pay that cost.</p>
     </section>`;
 }
 

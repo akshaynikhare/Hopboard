@@ -95,8 +95,8 @@ async function main() {
 
   // --- session setup, exactly as the browser does it ---------------------
   const key = keys.generate();
-  const roomHash = await cryptoBox.roomHash(key);
-  const aesKey = await cryptoBox.deriveKey(key);
+  const roomHash = (await cryptoBox.deriveOpen(key)).roomHash;
+  const aesKey = (await cryptoBox.deriveOpen(key)).aesKey;
 
   console.log("Session");
   check("key generated", keys.isValid(key), key);
@@ -162,9 +162,9 @@ async function main() {
   // --- wrong key is a different room ---------------------------------------
   console.log("\nKey isolation");
   const otherKey = keys.generate();
-  const otherHash = await cryptoBox.roomHash(otherKey);
+  const otherHash = (await cryptoBox.deriveOpen(otherKey)).roomHash;
   check("different key => different room", otherHash !== roomHash);
-  const d = new Peer("D", otherHash, await cryptoBox.deriveKey(otherKey));
+  const d = new Peer("D", otherHash, (await cryptoBox.deriveOpen(otherKey)).aesKey);
   await d.connect("create");
   const wd = await d.next(m => m.t === "welcome");
   check("and that room is empty", wd.existing === 0,
@@ -185,7 +185,7 @@ async function main() {
   const lkey = keys.generate();
   const right = await cryptoBox.deriveLocked(lkey, "correct horse battery");
   const wrong = await cryptoBox.deriveLocked(lkey, "incorrect horse battery");
-  const openHash = await cryptoBox.roomHash(lkey);
+  const openHash = (await cryptoBox.deriveOpen(lkey)).roomHash;
 
   check("locked and unlocked are different rooms for one key",
         right.roomHash !== openHash);
@@ -235,7 +235,7 @@ async function main() {
 
   // Someone who has the LINK but no PIN at all — the attacker this feature is
   // for. They can only compute the unlocked room hash.
-  const l4 = new Peer("L4", openHash, await cryptoBox.deriveKey(lkey));
+  const l4 = new Peer("L4", openHash, (await cryptoBox.deriveOpen(lkey)).aesKey);
   await l4.connect("join");
   const wl4 = await l4.next(m => m.t === "welcome");
   check("holding the link without the PIN reaches an empty room", wl4.existing === 0);
@@ -254,8 +254,8 @@ async function main() {
   console.log("\nLocking with company");
 
   const okey = keys.generate();
-  const oroom = await cryptoBox.roomHash(okey);
-  const oaes = await cryptoBox.deriveKey(okey);
+  const oroom = (await cryptoBox.deriveOpen(okey)).roomHash;
+  const oaes = (await cryptoBox.deriveOpen(okey)).aesKey;
 
   const founder = new Peer("F", oroom, oaes);
   const guest   = new Peer("G", oroom, oaes);

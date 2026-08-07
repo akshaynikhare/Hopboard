@@ -302,9 +302,9 @@ never fails for a reason unrelated to your change. See
 ```bash
 mkdir -p /tmp/t && cp -r src /tmp/t/ && echo '{"type":"module"}' > /tmp/t/package.json
 cd /tmp/t && node -e 'import("./src/core/crypto.js").then(async c => {
-  const k = await c.deriveKey("D75LV");
-  const { payload, iv } = await c.encrypt(k, "hello");
-  console.log(await c.decrypt(k, payload, iv));
+  const { aesKey } = await c.deriveOpen("D75LV");
+  const { payload, iv } = await c.encrypt(aesKey, "hello");
+  console.log(await c.decrypt(aesKey, payload, iv));
 })'
 ```
 

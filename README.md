@@ -29,8 +29,8 @@ is proven, and [Known limitations](#known-limitations) for what is not.
 - **Sync clipboard text between devices** — Windows, macOS, Android, ChromeOS and Linux
 - **Works across different networks**, not just the same Wi-Fi, and not just the same LAN
 - **No account, no sign-up, no email** — a short key is the whole identity of a session
-  (six characters on the web, ten in the installed apps, and either works on both)
-- **End-to-end encrypted** in the browser with AES-GCM; `PBKDF2` derives the key, `SHA-256` routes the room
+  (ten characters on the web, sixteen in the installed apps, and either works on both)
+- **End-to-end encrypted** in the browser with AES-GCM; one `PBKDF2` derivation produces both the key and the room address
 - **Peer-to-peer file transfer** over a WebRTC data channel, 5 MB per file
 - **Copy and paste images** — a screenshot copied on one machine previews on the other
 - **Installable progressive web app** — own window, own icon, works offline
@@ -71,7 +71,7 @@ welcome — open an issue.
 | Text | WebSocket through the relay, AES-GCM encrypted in the browser |
 | Blocked networks | If a proxy eats the WebSocket, the client moves itself to SSE + POST on the same host and says so |
 | Files | WebRTC data channel, direct between peers, 5 MB cap |
-| Key | `SHA-256(key)` routes the room; `PBKDF2(key)` encrypts. The key itself is never transmitted |
+| Key | `PBKDF2(key)` is expanded with HKDF into the AES key and the room address. Neither the key nor anything reversible to it is transmitted |
 
 The relay only ever sees a room hash and ciphertext. It cannot decrypt anything,
 and it stores nothing beyond the last message in RAM.
@@ -237,12 +237,11 @@ npm run release -- minor             # verify, changelog, tag, push, deploy
 - **P2P file transfer may fail on corporate networks**, which block the UDP that
   WebRTC needs. Falls back to relay-chunked transfer, labelled visibly.
 - **The share key is a bearer credential.** Anyone holding it can read the session.
-- **An unlocked session is not end-to-end encrypted against the relay operator.**
-  The room hash is an unstretched SHA-256 of the share key, so whoever holds that
-  hash can brute-force it back to the key — trivially for a 6-character key. It is
-  still E2EE against any network observer, and a PIN-locked session is unaffected.
-  The fix is known and cheap but breaks the wire format:
-  [THREAT-MODEL.md §4](docs/THREAT-MODEL.md).
+- **Share links created before v0.5.0 no longer work.** The room hash is now
+  derived through the same 250k PBKDF2 as the encryption key, and generated keys
+  went from 6 characters to 10. Both were needed to stop the relay operator being
+  able to reverse a room hash back to a share key — the reasoning and the
+  arithmetic are in [THREAT-MODEL.md §4](docs/THREAT-MODEL.md).
 - Chromium-first. Firefox and Safari can receive and can send via paste, but
   cannot silently read the clipboard.
 

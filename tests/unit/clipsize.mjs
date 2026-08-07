@@ -42,7 +42,7 @@ const crypto = await load("src/core/crypto.js");
  *  external constant the test exists to hold us to, not one of ours. */
 const RELAY_FRAME_BYTES = 32 * 1024;
 
-const key = await crypto.deriveKey("D75LV");
+const { aesKey: key } = await crypto.deriveOpen("D75LV");
 
 /** The real path: encrypt -> proto.clip -> JSON, and what the relay measures. */
 async function wireBytes(text) {

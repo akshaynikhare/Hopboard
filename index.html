@@ -722,13 +722,11 @@
             your Wi-Fi or your ISP, it is safe.
             </p>
             <p>
-            Two honest caveats rather than one. The key is a bearer credential: anyone who
-            learns it can read that session while it is open. And in an <em>unlocked</em>
-            session the room address is an unstretched hash of that key, so the relay
-            operator — who holds it by construction — could brute-force it back to the key.
-            Locking a session with a PIN closes that; so does the fix described in the
-            <a href="/docs/THREAT-MODEL.md">threat model</a>, which has the arithmetic and
-            does not round it in our favour.
+The honest caveat is that the key is a bearer credential: anyone who learns
+            it can read that session while it is open. The room address is derived through
+            the same 250,000-iteration PBKDF2 as the encryption key, so it cannot be worked
+            back to your key cheaply — the <a href="/docs/THREAT-MODEL.md">threat model</a>
+            has the arithmetic and does not round it in our favour.
             </p>
           </div>
         </details>

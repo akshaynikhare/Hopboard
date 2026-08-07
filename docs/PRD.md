@@ -552,7 +552,7 @@ The clipboard carries passwords, tokens, and PII. The share key is a **bearer cr
 ### 7.2 Risks
 | Risk | Mitigation |
 |---|---|
-| Key guessing / enumeration | 6-char Crockford base32 ≈ 30 bits; server-side rate limiting on connect; short room TTL; offer 10-char "high security" keys in settings |
+| Key guessing / enumeration | 10-char Crockford base32 ≈ 49 bits (16-char option ≈ 78); the room hash is HKDF over the same 250k PBKDF2 as the AES key, so each guess costs a full derivation; server-side rate limiting on connect; short room TTL. **Was 6 chars over a bare SHA-256 until v0.5.0** |
 | Relay operator reads clips | E2E encryption (§7.3) — relay only ever sees ciphertext |
 | Key leaks via URL sharing | Fragment is not sent to the server and not stored in server logs; warn on "Copy link" that the link *is* the password |
 | Persistence | Nothing written to disk anywhere; browser keeps history in `sessionStorage` only; server keeps one clip in RAM with a 10-min idle eviction |
@@ -567,13 +567,20 @@ The elegant part of the fragment-based design: the key the user types can serve 
 
 ```
 user key       :  D75LV                       (never transmitted)
-roomHash       :  SHA-256("realtimeclipboard:" + key)  → first 16 bytes, hex  (sent in the WS URL)
-encryption key :  PBKDF2-SHA256(key, salt="realtimeclipboard-v1", 250k iters) → AES-GCM-256
+prk            :  PBKDF2-SHA256(key, salt="realtimeclipboard-v1", 250k iters)
+roomHash       :  HKDF(prk, "realtimeclipboard/room") → 16 bytes, hex  (sent in the WS URL)
+encryption key :  HKDF(prk, "realtimeclipboard/aes")  → AES-GCM-256
 payload        :  AES-GCM(plaintext, random 12-byte IV per message)
 ```
+
+⚠️ **Amended in v0.5.0.** `roomHash` was `SHA-256("realtimeclipboard:" + key)[0..16]` — unsalted,
+unstretched, and the one derived value the relay holds. Anyone with it could sweep the whole
+6-character keyspace in ~0.07s and recover the key, which made the 250k iterations on the
+encryption key worth a single derivation to an attacker. Deriving both from one PRK costs nothing:
+that PBKDF2 was already awaited before the connection opened. See `docs/THREAT-MODEL.md` §4.
 The relay sees only `roomHash` and ciphertext. It cannot derive the key from the hash, so it cannot decrypt. All of this is `crypto.subtle` — no libraries.
 
-**Honest caveat:** a 6-char key is ~30 bits of entropy, so an attacker who captures ciphertext could brute-force it offline. PBKDF2 stretching raises the cost, but for genuinely sensitive material the UI should offer (and document) the 10-char key option. This tradeoff is deliberate: short keys are the product's core UX, so the default optimises for convenience and the app says so.
+**Honest caveat, amended in v0.5.0:** this section originally argued that a 6-character key (~30 bits) was an acceptable default because short keys are the product's core UX, with a 10-character option for sensitive material. That reasoning does not survive the arithmetic. The open salt is a single global constant, so one precomputed table covers every user and every session of a given length forever — ~12 minutes on 100 rented GPUs at 6 characters. The default is now **10 characters** (~49 bits) and the option is **16** (~78 bits). Typing cost is paid once per session, and only by someone who has declined both the QR code and the copied link.
 
 ### 7.4 Notices required in UI
 - On room creation: "Anyone with this key can read what you copy here."
@@ -588,9 +595,10 @@ The relay sees only `roomHash` and ciphertext. It cannot derive the key from the
 A second secret that never travels with the link. Implemented in `core/crypto.js`.
 
 ```
-── open session (unchanged, wire-compatible) ─────────────────────────────
-roomHash   :  SHA-256("realtimeclipboard:" + KEY)[0..16] hex
-aesKey     :  PBKDF2-SHA256(KEY, salt="realtimeclipboard-v1", 250k) → AES-GCM-256
+── open session (v0.5.0 — no longer wire-compatible with earlier links) ──
+prk        :  PBKDF2-SHA256(KEY, salt="realtimeclipboard-v1", 250k)
+roomHash   :  HKDF(prk, info="realtimeclipboard/room")[0..16] hex
+aesKey     :  HKDF(prk, info="realtimeclipboard/aes")  → AES-GCM-256
 
 ── locked session ────────────────────────────────────────────────────────
 PIN        :  NFC-normalised, ends trimmed, case and interior preserved.

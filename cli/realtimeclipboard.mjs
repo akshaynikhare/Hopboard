@@ -138,13 +138,8 @@ async function derive(rawKey, pin) {
     const d = await cryptoBox.deriveLocked(key, clean);
     return { key, roomHash: d.roomHash, aesKey: d.aesKey, auth: d.authToken, locked: true };
   }
-  return {
-    key,
-    roomHash: await cryptoBox.roomHash(key),
-    aesKey: await cryptoBox.deriveKey(key),
-    auth: null,
-    locked: false,
-  };
+  const open = await cryptoBox.deriveOpen(key);
+  return { key, roomHash: open.roomHash, aesKey: open.aesKey, auth: null, locked: false };
 }
 
 /**
