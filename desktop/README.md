@@ -110,9 +110,18 @@ the app had never been compiled. The reasoning they held lives here instead.
 - **`security.csp`** is the website's policy plus what the shell needs. The
   webview renders clipboard content arriving from other devices, so it gets the
   same protection. `tauri:` and `ipc:` are how the frontend reaches the four
-  commands in `main.rs`; `asset:` is how bundled files are served. The relay
-  origins must match `src/core/config.js` — `tests/unit/static-check.mjs` asserts
-  that for the web pages, and a self-hoster changes both.
+  commands in `main.rs`. The relay origins must match `src/core/config.js` —
+  `tests/unit/static-check.mjs` asserts that for the web pages, and a self-hoster
+  changes both.
+
+- **`security.assetProtocol.enable: false`.** It was `true`, with an empty
+  `scope` — a protocol switched on that was permitted to serve zero files, and
+  which nothing calls: there is no `convertFileSrc` anywhere in `src/`. It also
+  broke the build outright, because enabling it requires the `protocol-asset`
+  feature on the `tauri` dependency, which `Cargo.toml` does not carry. Bundled
+  files are served over `tauri://`, not `asset:` — the latter is for reading
+  arbitrary paths off the disk, which this app has no reason to do. `asset:` is
+  gone from `img-src` for the same reason.
 
 - **`trayIcon.iconAsTemplate: false`**, and it must stay false while the tray
   icon is `icons/icon.png`. A macOS template image is drawn from its **alpha

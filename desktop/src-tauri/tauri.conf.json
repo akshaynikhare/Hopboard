@@ -29,8 +29,8 @@
     ],
 
     "security": {
-      "csp": "default-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' asset: data: blob:; connect-src 'self' ipc: http://ipc.localhost https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev; require-trusted-types-for 'script'; trusted-types realtimeclipboard",
-      "assetProtocol": { "enable": true, "scope": [] }
+      "csp": "default-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' ipc: http://ipc.localhost https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev; require-trusted-types-for 'script'; trusted-types realtimeclipboard",
+      "assetProtocol": { "enable": false, "scope": [] }
     },
 
     "trayIcon": {

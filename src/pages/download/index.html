@@ -215,11 +215,13 @@
             <h3>Linux</h3>
             <a class="btn" href="https://github.com/akshaynikhare/RealtimeClipboard/releases/latest" data-dl="deb">Download</a>
             <p class="hint" data-dl-meta="deb">.deb, .rpm and AppImage</p>
-            <p class="cap part">Background capture: <b>yes on X11</b>, and on Wayland
-              under KDE and wlroots. GNOME on Wayland has no clipboard-monitoring
-              portal, so there the app falls back to capturing when you focus it —
-              and says so in its status bar rather than pretending.</p>
-            <p class="doclink"><a href="/help/install/linux/">Linux install guide</a> <span aria-hidden="true">→</span></p>
+            <!-- The compositor matrix is a table on the guide, not four lines in
+                 a card. What has to survive here is that the answer is "it
+                 depends" and that GNOME is the one that says no. -->
+            <p class="cap part">Background capture: <b>yes on X11</b>, and on
+              Wayland under KDE and wlroots — <b>not on GNOME</b>, which has no
+              portal for it.</p>
+            <p class="doclink"><a href="/help/install/linux/#wayland">Which compositors, and why</a> <span aria-hidden="true">→</span></p>
           </div>
         </div>
 
@@ -256,9 +258,8 @@
               <li>Tap <b>Share</b> <span aria-hidden="true">↑</span> → <b>Add to Home Screen</b>.</li>
             </ol>
             <a class="btn" href="/app.html">Open the app</a>
-            <p class="cap no">Background clipboard capture: <b>not possible</b>. iOS also
-              shows a paste banner every time an app reads the clipboard, which is
-              Apple's decision and not something any app can turn off.</p>
+            <p class="cap no">Background clipboard capture: <b>not possible</b> —
+              paste into the app, or share to it.</p>
             <p class="doclink"><a href="/help/install/iphone/">iPhone install guide</a> <span aria-hidden="true">→</span></p>
           </div>
         </div>
