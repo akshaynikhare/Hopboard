@@ -22,7 +22,7 @@ Development and release scripts. None of this ships to a browser.
 
 | Script | What it does | Run by |
 |---|---|---|
-| `release.mjs` | Verify, write the changelog, commit, tag, push — in that order | `npm run release -- minor` |
+| `release.mjs` | Verify, write the changelog, land it through a pull request, tag the merge — in that order | `npm run release -- minor` |
 | `changelog.mjs` | Builds `CHANGELOG.md` and `changelog.json` from Conventional Commit subjects | `npm run changelog` |
 | `manifest.mjs` | Homebrew and winget manifests from one release | the release workflow |
 | `relay-up.mjs` | Is a relay reachable? Prints the one it found | `.husky/pre-push` |

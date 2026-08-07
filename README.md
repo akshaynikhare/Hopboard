@@ -208,7 +208,7 @@ message format the changelog is generated from are in
 ```bash
 npm run verify                       # what the pre-commit hook runs
 npm test                             # everything, needs a relay
-npm run release -- minor             # verify, changelog, tag, push, deploy
+npm run release -- minor             # verify, changelog, release PR, tag, deploy
 ```
 
 ## Docs

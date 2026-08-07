@@ -26,7 +26,7 @@ node tests/live/e2e.mjs ws://127.0.0.1:8000     # any single suite takes a relay
 RELAY_BASE=ws://127.0.0.1:8000 npm test    # point the whole suite at a local relay
 
 npm run build:site                # tools/build/build.mjs + site-check → _site (what Cloudflare runs)
-npm run release -- minor          # verify, changelog, tag, push
+npm run release -- minor          # verify, changelog, release PR, tag
 ```
 
 The relay **must be on port 8000**: `src/core/config.js` points at `ws://127.0.0.1:8000` when

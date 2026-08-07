@@ -12,7 +12,8 @@ How code gets from a branch to users, and why it works this way.
      └──merge──►  main ──► Cloudflare Pages builds and deploys the site
                     │
                     └── npm run release -- minor
-                            verifies, writes the changelog, tags, pushes
+                            verifies, writes the changelog, opens the release PR,
+                            squashes it into main, then tags what main ended up with
                                     │
                                     └── tag v1.2.0 ──► .github/workflows/release.yml
                                             CLI, desktop builds, relay image
@@ -35,6 +36,7 @@ Every rule that follows from that diagram is enforced rather than trusted:
 | Rule | Enforced by |
 |---|---|
 | No commits directly on `main` | `.husky/pre-commit` |
+| Every change to `main` arrives as a squashed pull request | the ruleset on `main` — no bypass actors, the release included |
 | Tests pass before a commit exists | `.husky/pre-commit` → `npm run verify` |
 | A commit says what kind of change it is | `.husky/commit-msg` |
 | A broken site is never promoted | `tools/check/site-check.mjs`, in the Cloudflare build |
@@ -230,19 +232,28 @@ npm run release -- minor        # or patch, major, or v1.4.2 exactly
 
 That single command:
 
-1. refuses if you are not on `main`, the tree is dirty, or `main` is behind the remote
+1. refuses if you are not on `main`, the tree is dirty, `main` is behind the remote, or `gh` is not logged in
 2. runs `npm run verify`
 3. writes `CHANGELOG.md` and `changelog.json` from the commits since the last tag
-4. commits them with the version bump, as `chore(release): v1.2.0`
-5. creates an **annotated** tag whose message is that release's changelog section, so `git show v1.2.0` tells you what shipped
-6. pushes `main` and the tag
+4. commits them with the version bump on `release/v1.2.0`, as `chore(release): v1.2.0`
+5. pushes that branch, opens a pull request whose body is the changelog section, and squash-merges it
+6. pulls `main`, and refuses to go on unless `main` now really carries that version
+7. creates an **annotated** tag on the squashed commit, whose message is that release's changelog section, so `git show v1.2.0` tells you what shipped
+8. pushes the tag
+
+Steps 4-6 are the shape of the thing, and the order is not arbitrary: the
+ruleset on `main` takes changes only through a squashed pull request, and
+squashing gives the release commit a **new SHA**. A tag cut before the merge —
+which is what this script used to do — points at a commit `main` will never
+have, and `release.yml` refuses exactly that. So the tag has to come last, and
+it has to be cut against what the merge produced rather than what was pushed.
 
 Pushing the tag triggers `release.yml` — the CLI on npm, the desktop builds, the
-relay image. **It does not deploy the site**; step 6's push to `main` already
-did, a minute earlier, via Cloudflare Pages. So by the time the tag artifacts
-finish building, the web app has been live for a while. That ordering is fine —
-the site is versionless and the artifacts are not — but it does mean a release
-is not a single atomic moment.
+relay image. **It does not deploy the site**; the merge in step 5 already did, a
+minute earlier, via Cloudflare Pages. So by the time the tag artifacts finish
+building, the web app has been live for a while. That ordering is fine — the
+site is versionless and the artifacts are not — but it does mean a release is
+not a single atomic moment.
 
 The download page is built for that gap rather than damaged by it. It asks the
 releases API for the current assets at load time instead of being told them at
@@ -279,51 +290,42 @@ a tag `main` does not contain, so tagging the fix on its branch will not work.
 Use `--dry` first if you want to see the commit list and the version it would
 pick without changing anything.
 
-### Step 6 does not work, and you will hit it
+### The release goes through a pull request, like everything else
 
 The ruleset on `main` (Settings → Rules) requires every change to arrive through
-a pull request, with no bypass actors. `npm run release` makes the version-bump
-commit **on `main`** and pushes it, so it dies at the last step:
+a pull request, allows **squash** as the only merge method, and has no bypass
+actors — not even for a repository admin.
+
+`npm run release` used to make the version-bump commit **on `main`** and push
+it, so every release died at the last step:
 
 ```
+remote: - Changes must be made through a pull request.
 Error: Command failed: git push origin main
 ```
 
-Everything before that has already happened and is correct — the changelog is
-written, the versions are bumped, the tag exists locally. Only the push was
-refused. Recover by moving the commit onto a branch and landing it the normal
-way:
+Everything before that had already happened and was correct — changelog written,
+versions bumped, tag created locally — and the recovery was seven manual git
+commands, of which the non-obvious one was deleting the local tag before
+re-cutting it on the squashed commit. `release.mjs` now does all of that itself
+(steps 4-8 above), so there is nothing left to remember.
 
-```bash
-git tag -d v0.3.0                    # the local tag points at a commit main will never have
-git branch release/v0.3.0            # keep the release commit
-git reset --hard origin/main         # put main back
-git switch release/v0.3.0 && git push -u origin release/v0.3.0
-gh pr create --title "chore(release): v0.3.0" --fill
-gh pr merge --squash
+Two ways out of this were on the table. **Adding a bypass actor for repository
+admins** would have made the old script work unchanged, and was not taken: it
+weakens the rule for the one account most able to do damage with it, and it
+means the release commit is the only change to `main` nobody could review.
+Teaching the script the policy costs one branch per release and leaves the rule
+absolute.
 
-git switch main && git pull
-git tag -a v0.3.0 -m "…"             # the changelog section, as release.mjs writes it
-git push origin v0.3.0               # THIS is what starts release.yml
-```
+**Tags are not covered by the ruleset**, which is why the final `git push origin
+v1.2.0` works and is what starts `release.yml`. That hole is deliberate and
+closed on the other side: `release.yml`'s first step refuses any tag whose commit
+`main` does not already contain, so a tag cut on a branch builds nothing.
 
-Tags are not covered by the ruleset, which is why the last line works.
-
-**`git tag -d` on the first line is not optional, and the reason changed.** It
-used to be tidiness — a local tag pointing at a commit `main` will never have.
-Now it is the gate: `release.yml` refuses any tag whose commit `main` does not
-already contain, so pushing that first tag would fail the release rather than
-mis-release it. The two lines after the merge re-cut the tag on the squashed
-commit, which is the one main actually has. Do the steps in the order written.
-
-**Two ways to stop paying this every release**, and it is worth picking one:
-
-1. Add a bypass actor for **Repository admin** on the ruleset. `npm run release`
-   then works exactly as written above. The protection still applies to
-   everyone else.
-2. Change `tools/release/release.mjs` to push a `release/vX.Y.Z` branch and open
-   the pull request itself, then tag after the merge. More faithful to the
-   policy, and nobody has to remember the recovery above.
+If a release stops half-way — the network drops, `gh` is not logged in, the
+merge is refused — the script prints the remaining commands and exits without
+tagging anything. The branch is pushed and the tree is intact; nothing is
+tagged, so nothing has been released.
 
 ### First release — the one-time manual steps
 
@@ -393,10 +395,12 @@ other, and a half-update leaves the site contradicting itself.
 
 ### The one place `--no-verify` is used on purpose
 
-The release commit is made on `main`, which the pre-commit hook exists to
-prevent. `tools/release/release.mjs` passes `--no-verify` for that one commit, having
-already run the checks itself a moment earlier. It is the only automated bypass
-in the repository.
+The release commit lands on a branch now, so the pre-commit hook's branch guard
+no longer applies to it — but its gate is `npm run verify`, which
+`tools/release/release.mjs` ran itself seconds earlier against the same tree.
+Passing `--no-verify` for that one commit skips a duplicate, not a check. It is
+the only automated bypass in the repository, and the pushes are not bypassed:
+`pre-push` runs the full suite before the branch and the tag leave the machine.
 
 ---
 
