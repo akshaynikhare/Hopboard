@@ -7,6 +7,18 @@ commit.
 Format follows [Keep a Changelog](https://keepachangelog.com); versions follow
 [Semantic Versioning](https://semver.org).
 
+## v0.4.0 — 2026-08-07
+
+### Added
+
+- ui: one header row for the app offer, a gate on locked links (#19)
+- sync: Off/App/Clipboard ladder, and typing that streams (#18)
+- download: Homebrew is live, winget is in review — say which (#17)
+
+### Documentation
+
+- release: npm run release cannot push to main, and says so (#16)
+
 ## v0.3.0 — 2026-08-07
 
 ### Added
@@ -15,6 +27,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com); versions follow
 
 ### Fixed
 
+- ci: do not define APPLE_* at all when there is no certificate (#15)
+- ci: stop the ad-hoc signature breaking the macOS build (#14)
+- ci: do not let a failed npm publish hide the installers (#11)
+- desktop: make beforeBuildCommand independent of its cwd (#10)
 - release: match the Cargo version through CRLF line endings (#8)
 - cli: read the version from package.json
 
