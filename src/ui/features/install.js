@@ -1,10 +1,11 @@
 /**
  * PWA installability and service-worker lifecycle (PRD §3.4, FR-4.1 – FR-4.6).
  *
- * Self-contained by design. It creates its own DOM under #mount-banners, links
- * its own stylesheet and manifest, and reaches the rest of the app only through
- * the bus — nothing else in the repo has to change to switch it on, which is
- * the boundary test in docs/ARCHITECTURE.md §4.
+ * Self-contained by design. It creates its own DOM — the app offer in
+ * #mount-notice, the update banner in #mount-banners — links its own stylesheet
+ * and manifest, and reaches the rest of the app only through the bus. Nothing
+ * else in the repo has to change to switch it on, which is the boundary test in
+ * docs/ARCHITECTURE.md §4.
  *
  * Every path here goes through core/paths.js rather than being written out.
  * The site is served from an origin root now and subpath hosting is no longer
@@ -15,7 +16,8 @@
  */
 
 import { emit, EV } from "../../core/bus.js";
-import { $, esc, setHTML, scriptURL } from "../primitives/dom.js";
+import { OFFER } from "../../core/config.js";
+import { $, esc, setHTML, clear, scriptURL, autoDismiss } from "../primitives/dom.js";
 import { fromUrl, isValid, fragment } from "../../core/keys.js";
 import { loadLastKey, read, write } from "../../core/storage.js";
 import { APP_ROOT, atRoot, lazyStyleHref } from "../../core/paths.js";
@@ -31,6 +33,7 @@ const MANIFEST_URL = atRoot("manifest.webmanifest");
 const CSS_URL = lazyStyleHref("install.css");
 
 const DISMISSED = "installDismissed";
+const DESKTOP_DISMISSED = "desktopDismissed";
 
 let deferredPrompt = null;    // the stashed beforeinstallprompt event
 let wantsReload = false;      // the user asked for the update, so reload on swap
@@ -141,7 +144,91 @@ function banner({ id, kind, icon, message, action, onAction, onClose }) {
 
 const drop = id => $(id)?.remove();
 
-/* ---------------- install prompt (FR-4.4) ---------------- */
+/* ---------------- the app offer, in the header (FR-4.4) ---------------- */
+
+/**
+ * Two offers, one row, in the header's spare room.
+ *
+ * These were two stacked banners above the editor, which spent two rows of the
+ * thing people came here to type in on saying "there is also an app" — twice,
+ * in a tinted box that reads like a warning. They are one offer with two
+ * destinations, so they share a line up here, in --dim, and clear themselves
+ * after OFFER.DISMISS_MS.
+ *
+ * `message` is only used when an offer is alone; with both live the row has no
+ * space for either sentence and the buttons carry the meaning.
+ */
+const OFFERS = {
+  desktop: {
+    dismissed: DESKTOP_DISMISSED,
+    action: "Desktop app",
+    message: "There is a desktop app. It picks up what you copy without you switching here.",
+    run: () => {
+      write(DESKTOP_DISMISSED, true);        // they have seen it; do not re-ask
+      window.open(atRoot("download/"), "_blank", "noopener");
+    },
+  },
+  install: {
+    dismissed: DISMISSED,
+    action: "Install",
+    message: "Install RealtimeClipboard for its own window, icon and offline shell.",
+    run: () => promptInstall(),
+  },
+};
+
+const BOTH = "RealtimeClipboard also runs as an app.";
+
+const live = new Set();
+let stopOfferTimer = null;
+
+function offer(key) {
+  if (live.has(key) || read(OFFERS[key].dismissed, false)) return;
+  live.add(key);
+  renderOffers();
+}
+
+/** `forever` writes the dismissal; without it the offer returns on a later visit. */
+function retire(keys, forever) {
+  for (const key of keys) {
+    live.delete(key);
+    if (forever) write(OFFERS[key].dismissed, true);
+  }
+  renderOffers();
+}
+
+function renderOffers() {
+  const host = $("mount-notice");
+  if (!host) return;
+
+  stopOfferTimer?.();
+  stopOfferTimer = null;
+  clear(host);
+  if (!live.size) return;
+
+  const keys = [...live];
+  const el = document.createElement("div");
+  el.className = "topnotice";
+  el.setAttribute("role", "status");
+  setHTML(el,
+    `<svg class="topnotice-ico" viewBox="0 0 24 24" aria-hidden="true">${ICON.install}</svg>` +
+    `<span class="topnotice-msg">${esc(keys.length > 1 ? BOTH : OFFERS[keys[0]].message)}</span>` +
+    keys.map(key => `<button class="topnotice-act" type="button" data-offer="${esc(key)}">` +
+      `${esc(OFFERS[key].action)}</button>`).join("") +
+    `<button class="topnotice-x" type="button" aria-label="Dismiss this notice">` +
+    `<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>`);
+
+  for (const btn of el.querySelectorAll("[data-offer]")) {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.offer;
+      retire([key]);
+      OFFERS[key].run();
+    });
+  }
+  el.querySelector(".topnotice-x").addEventListener("click", () => retire(keys, true));
+
+  host.appendChild(el);
+  stopOfferTimer = autoDismiss(el, OFFER.DISMISS_MS, () => retire(keys));
+}
 
 /** Already running as an installed app? Then there is nothing to offer. */
 function installed() {
@@ -150,27 +237,16 @@ function installed() {
     || navigator.standalone === true;      // iOS Safari's non-standard flag
 }
 
-function showInstall() {
-  if (installed() || read(DISMISSED, false)) return;
-  banner({
-    id: "pwaInstall",
-    kind: "info",
-    icon: ICON.install,
-    message: "Install RealtimeClipboard for its own window, icon and offline shell.",
-    action: "Install app",
-    onAction: promptInstall,
-    // Remember the dismissal: Chrome re-fires beforeinstallprompt on later
-    // visits and re-offering every time is nagware.
-    onClose: () => write(DISMISSED, true),
-  });
+function offerInstall() {
+  if (installed()) return;
+  offer("install");
 }
 
 async function promptInstall() {
   const evt = deferredPrompt;
-  if (!evt) { drop("pwaInstall"); return; }
+  if (!evt) return;
 
   deferredPrompt = null;                   // a prompt event is single-use
-  drop("pwaInstall");
   try {
     evt.prompt();
     const { outcome } = await evt.userChoice;
@@ -268,12 +344,12 @@ export function init() {
   window.addEventListener("beforeinstallprompt", event => {
     event.preventDefault();          // suppress Chrome's own mini-infobar
     deferredPrompt = event;
-    showInstall();
+    offerInstall();
   });
 
   window.addEventListener("appinstalled", () => {
     deferredPrompt = null;
-    drop("pwaInstall");
+    retire(["install"]);
     write(DISMISSED, false);         // a later uninstall should offer it again
     emit(EV.TOAST, "RealtimeClipboard installed");
   });
@@ -281,13 +357,11 @@ export function init() {
   // Installing from Chrome's own address-bar affordance never fires our click
   // handler, so watch the display mode too.
   window.matchMedia?.("(display-mode: standalone)")
-    .addEventListener?.("change", event => { if (event.matches) drop("pwaInstall"); });
+    .addEventListener?.("change", event => { if (event.matches) retire(["install"]); });
 
-  showDesktop();
+  offerDesktop();
   registerSW();
 }
-
-const DESKTOP_DISMISSED = "desktopDismissed";
 
 /**
  * Offer the desktop app, from inside the browser version.
@@ -304,9 +378,8 @@ const DESKTOP_DISMISSED = "desktopDismissed";
  *     either and the claim would simply be false;
  *   - come back after it has been dismissed.
  */
-function showDesktop() {
+function offerDesktop() {
   if (IS_DESKTOP) return;                              // already the real thing
-  if (read(DESKTOP_DISMISSED, false)) return;
 
   // Coarse on purpose: this only decides whether a sentence is true. A pointer
   // that can hover is a mouse, which is a desktop, which is a platform where
@@ -315,17 +388,5 @@ function showDesktop() {
     && !/android|iphone|ipad|ipod/i.test(navigator.userAgent);
   if (!desktop) return;
 
-  banner({
-    id: "pwaDesktop",
-    kind: "info",
-    icon: ICON.install,
-    message: "There is a desktop app. It picks up what you copy without you switching here.",
-    action: "See it",
-    onAction: () => {
-      drop("pwaDesktop");
-      write(DESKTOP_DISMISSED, true);        // they have seen it; do not re-ask
-      window.open(atRoot("download/"), "_blank", "noopener");
-    },
-    onClose: () => write(DESKTOP_DISMISSED, true),
-  });
+  offer("desktop");
 }

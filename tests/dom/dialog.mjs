@@ -192,6 +192,55 @@ check("pointing at where the PIN is changed instead",
   /already locked/i.test(toast), toast);
 check("still only one lock request in total", asked === 1);
 
+/* ---- the gate ----
+   What a cancelled PIN prompt leaves behind. The app underneath is connected to
+   nothing, so the only failure that matters here is the app being usable — and
+   the subtle version of it is the shell coming back to life when the PIN dialog
+   on TOP of the gate closes. */
+
+console.log("\nThe gate over an unopened locked session\n");
+
+const gate = await import("../../src/ui/shell/lockGate.js");
+gate.init();
+
+check("nothing is gated to begin with", !$(".lockgate"));
+
+bus.emit(bus.EV.LOCK_REQUIRED, { required: true });
+check("a cancelled PIN prompt greys out the app", !!$(".lockgate"));
+check("...and the app behind it cannot be used or tabbed into",
+  $(".vs").inert === true, "the editor accepted text into a session that did not exist");
+check("...it announces itself", $(".lockgate").getAttribute("role") === "alert");
+check("...and focus is on the way back in",
+  document.activeElement === $(".lockgate [data-pin]"));
+
+bus.emit(bus.EV.LOCK_REQUIRED, { required: true });
+check("saying so twice does not stack two of them",
+  document.querySelectorAll(".lockgate").length === 1);
+
+let relocks = 0, rotates = 0;
+bus.on("session:relock", () => { relocks++; });
+bus.on("session:rotate", () => { rotates++; });
+
+$(".lockgate [data-pin]").click();
+check("Enter PIN asks for the PIN again", relocks === 1);
+
+/* THE REGRESSION: the prompt opens on top of the gate, and closing it must not
+   hand the app back while the gate is still standing in front of it. */
+const onGate = dlg.ask({ mode: "join", key: "D75LV" });
+check("the prompt opens over the gate", !!$(".lockmodal-dlg"));
+click("[data-modal-dismiss]");
+check("...and cancelling it resolves rather than hanging", (await onGate) === null);
+check("cancelling it leaves the gate up", !!$(".lockgate"));
+check("...and the app still inert behind it",
+  $(".vs").inert === true, "the modal's close must not out-vote the gate");
+
+$(".lockgate [data-new]").click();
+check("Start a new session asks for a new key", rotates === 1);
+
+bus.emit(bus.EV.LOCK_REQUIRED, { required: false });
+check("opening a session takes the gate down", !$(".lockgate"));
+check("...and gives the app back", $(".vs").inert === false);
+
 console.log(`\n${"=".repeat(58)}`);
 console.log(`DIALOG: ${pass}/${pass + fail} passed`);
 console.log("=".repeat(58));

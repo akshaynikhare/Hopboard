@@ -106,7 +106,12 @@
       </button>
     </div>
 
-    <span class="tabspace"></span>
+    <!-- The header's spare room, and the one notice allowed to use it: the
+         desktop-app / install offer, built by ui/features/install.js. It was
+         two tinted banners above the editor, which is two rows of the text
+         area spent on an advert. Empty the rest of the time, when it is
+         nothing but the spacer that pushes the switch right. -->
+    <div class="tabspace" id="mount-notice"></div>
     <!-- The sync ladder — Off / App / Clipboard. The single most consequential
          setting, so it lives here rather than in the settings pane. It no
          longer sits hard right: the project links took that corner, and the

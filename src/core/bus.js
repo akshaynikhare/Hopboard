@@ -80,6 +80,13 @@ export const EV = {
    * way; the bus does no namespacing of its own and a collision is silent.
    */
   LOCK_STATE:      "session:lockstate",
+  /**
+   * {required} — a locked link is open and its PIN has not been given, so there
+   * is no session and nothing behind the UI is connected to anything. Reported
+   * separately from LOCK_STATE because `state.locked` is still false at that
+   * point: no session was ever opened to be locked.
+   */
+  LOCK_REQUIRED:   "session:lockrequired",
   FOUNDER:         "session:founder",  // {founder} — first into this room? null = not yet known
 
   // files

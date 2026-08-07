@@ -6,7 +6,7 @@
 | Folder | Prerequisite | Suites |
 |---|---|---|
 | `unit/` | nothing | `static-check` `relay-url` `lock` `files` `transfer` `clipsize` `syncmode` |
-| `dom/` | jsdom | `dialog` `whatsnew` `tiles` `guide` `editor` `bundle` (also needs a build) |
+| `dom/` | jsdom | `dialog` `whatsnew` `tiles` `guide` `editor` `offer` `bundle` (also needs a build) |
 | `live/` | a reachable relay | `e2e` `boot` `fallback` `cli` |
 
 A suite needing two things is filed under the heavier one — `boot` needs jsdom *and* a relay, so it
@@ -17,7 +17,7 @@ Keep it that way; the modules are pure enough not to need one.
 
 ## Which gate runs what
 
-`npm run verify` is all of `unit/` plus the four `dom/` suites that need no build — that is what a
+`npm run verify` is all of `unit/` plus the `dom/` suites that need no build — that is what a
 pre-commit hook can afford, and it is what `.husky/pre-commit` runs. `npm test` adds `dom/bundle`
 and everything under `live/`, and runs in `.husky/pre-push`.
 

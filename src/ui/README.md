@@ -17,6 +17,7 @@ and shell, and all three compose primitives.
 |---|---|
 | `statusbar.js` | The bottom bar, and the transport picker on it |
 | `banners.js` | Inline notices: clipboard permission, a pending clip, a peer joining |
+| `lockGate.js` | The app greyed out and inert while a locked link has no PIN |
 | `panes.js` | Collapsible sidebar panes |
 | `resizer.js` | Draggable splitters |
 | `mobileNav.js` | The phone layout's bottom tab bar |

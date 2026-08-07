@@ -11,20 +11,30 @@ name: Desktop build
 # toolchain was available to check it, so the first green run of this workflow
 # is the first evidence that desktop/ is real rather than plausible.
 
-# Three runners and about four minutes per run, so it is deliberately hard to
-# trigger by accident.
+# Three runners and about four minutes per run, so it runs ONLY when someone
+# asks for it: `gh workflow run desktop.yml`. There is no push trigger and no
+# pull_request trigger.
 #
-# There is NO pull_request trigger, and that is the whole point rather than an
-# oversight. GitHub evaluates a pull_request path filter against the entire
-# diff between base and head — not against the commits just pushed — so on a
-# branch that has touched desktop/ even once, every subsequent push rebuilds
-# all three platforms however unrelated the change. A branch that edits the
-# download page twenty times spends sixty runners proving the same Rust still
-# compiles.
+# pull_request was ruled out first, and for a reason that outlived it: GitHub
+# evaluates a pull_request path filter against the entire diff between base and
+# head — not against the commits just pushed — so on a branch that has touched
+# desktop/ even once, every subsequent push rebuilds all three platforms however
+# unrelated the change. A branch that edits the download page twenty times
+# spends sixty runners proving the same Rust still compiles.
 #
-# So: run it by hand while working on the Rust (`gh workflow run desktop.yml`),
-# and automatically on merge to main, which is the commit that matters. A tag
-# builds everything again in release.yml regardless.
+# `push: branches: [main]` with those same path filters replaced it, and then
+# went too. Path filters make a run *conditional*, not *rare*: every merge that
+# touches desktop/ is three runners, on top of the Cloudflare Pages build the
+# same merge already triggers, to answer a question a tag is about to ask again
+# in release.yml. Two automatic builds of the same commit is one too many when
+# the budget being protected is a monthly build quota.
+#
+# What is lost is the merge-time signal, and it is worth being honest that it
+# was real: this shell was written before a Rust toolchain was available to
+# check it. What replaces it is sequencing — run this by hand while working on
+# the Rust, and once more before cutting a tag. release.yml compiles everything
+# again anyway; this exists so a tag is not the first place a compile error is
+# discovered.
 on:
   workflow_dispatch:
     inputs:
@@ -32,22 +42,14 @@ on:
         description: "Also bundle the installers and upload them (nothing is published)"
         type: boolean
         default: false
-  push:
-    branches: [main]
-    # Only things that can change what the compiler sees. A README edit is not
-    # worth three runners, and neither is editing this file.
-    paths:
-      - "desktop/**"
-      - "!desktop/**/*.md"
-      - "tools/build/build.mjs"
 
-# A second push supersedes the first: nobody needs the compile result for a
-# commit that has already been replaced.
+# A second dispatch on the same ref supersedes the first: nobody needs the
+# compile result for a commit that has already been replaced.
 #
 # The bundle runs get their own group. They take five times as long as a compile
 # check and are dispatched deliberately to read the artifact names off a real
-# build — having an unrelated push twenty minutes later cancel one is how you
-# lose an afternoon to a workflow doing exactly what it was told.
+# build — having a quick compile check kicked off twenty minutes later cancel
+# one is how you lose an afternoon to a workflow doing exactly what it was told.
 concurrency:
   group: desktop-${{ github.ref }}-${{ inputs.bundle && 'bundle' || 'compile' }}
   cancel-in-progress: true

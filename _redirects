@@ -25,8 +25,12 @@
 # before this domain, so the repo name is baked into every link that was ever
 # shared, every bookmark, and every search result. GitHub itself 301s those to
 # the apex with the prefix stripped — but only for as long as the old Pages site
-# exists, and it is a tombstone now (.github/workflows/tombstone.yml). This
-# catches anyone who reconstructs the old shape against the new host.
+# exists, and it does not: it 404s, and the tombstone workflow that was to
+# replace it was never run and is now deleted (docs/SEO.md §7). So this rule is
+# no longer the backstop it was written as — it is the only thing left, and it
+# catches only requests that reach this host. Someone who reconstructs the old
+# shape here lands correctly; someone following an old github.io link does not
+# arrive at all. Keep it: it costs nothing and it is all there is.
 #
 # :splat carries the rest of the path through, so /RealtimeClipboard/help/ lands
 # on /help/ rather than on the homepage. A redirect that drops the path is worse

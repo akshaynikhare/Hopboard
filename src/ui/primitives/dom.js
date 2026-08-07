@@ -106,6 +106,39 @@ export function lazyStyle(name) {
   document.head.appendChild(link);
 }
 
+/** rAF where it exists, a timer otherwise, so callers still work headless. */
+export const nextFrame = fn =>
+  (typeof requestAnimationFrame === "function" ? requestAnimationFrame(fn) : setTimeout(fn, 0));
+
+/**
+ * Run `done` after `ms` — but never while `el` is being read or used.
+ *
+ * Anything that vanishes on a timer takes its buttons with it. A delay that is
+ * comfortable if you watched it arrive is nowhere near enough if a screen reader
+ * is still on the sentence before it, or if you are partway through tabbing to
+ * the action (WCAG 2.2.1). So the clock stops whenever the element holds focus
+ * or the pointer, and restarts from the top when attention moves away. Nothing
+ * expires out from under someone who is looking at it.
+ *
+ * Returns a function that cancels the timer.
+ */
+export function autoDismiss(el, ms, done) {
+  let timer = 0;
+  let hovering = false;
+
+  const held = () => hovering || el.contains(document.activeElement);
+  const stop = () => { clearTimeout(timer); timer = 0; };
+  const start = () => { if (!timer && !held()) timer = setTimeout(done, ms); };
+
+  el.addEventListener("pointerenter", () => { hovering = true; stop(); });
+  el.addEventListener("pointerleave", () => { hovering = false; start(); });
+  el.addEventListener("focusin", stop);
+  el.addEventListener("focusout", () => nextFrame(start));   // focus lands next tick
+
+  start();
+  return stop;
+}
+
 export function on(el, event, handler, opts) {
   (typeof el === "string" ? $(el) : el)?.addEventListener(event, handler, opts);
 }

@@ -44,5 +44,7 @@ feeding the same funnel as paste and focus.
   `tests/unit/static-check.mjs` asserts that for the web pages; a self-hoster changes both.
 - Build on the oldest supported runner (`ubuntu-22.04`, webkit2gtk 4.1). A newer image silently
   raises the glibc floor and the binary then refuses to start on the distributions we claim.
-- `.github/workflows/desktop.yml` answers "does it compile" on every push; `release.yml` signs and
-  publishes, and only on a tag.
+- `.github/workflows/desktop.yml` answers "does it compile", and **only when you ask it to** —
+  `gh workflow run desktop.yml`. It has no push trigger. Run it while working on the Rust and once
+  before cutting a tag; nothing else will. `release.yml` signs and publishes, and only on a `v*` tag
+  that `main` already contains.

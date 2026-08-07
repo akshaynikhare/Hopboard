@@ -11,7 +11,7 @@ import { on, emit, EV } from "../../core/bus.js";
 import { TRANSPORT } from "../../core/config.js";
 import * as state from "../../core/state.js";
 import * as capture from "../../clipboard/capture.js";
-import { $, esc, setHTML } from "../primitives/dom.js";
+import { $, esc, setHTML, autoDismiss, nextFrame } from "../primitives/dom.js";
 
 const banners = new Map();
 /** key -> a function that cancels that banner's auto-dismiss timer. */
@@ -118,7 +118,8 @@ export function init() {
       action: locked
         ? { label: "Change PIN", onClick: () => emit("session:repin") }
         : { label: "New key", onClick: () => emit("session:rotate") },
-      // Auto-dismissed, but only while nobody is reading it — see show().
+      // Fifteen seconds is comfortable if you saw it arrive; the clock stops
+      // while it holds focus or the pointer — autoDismiss() in primitives/dom.js.
       dismissAfter: 15000,
     });
   });
@@ -135,25 +136,9 @@ export function init() {
    * Only raised once peers have had a chance to appear; a banner that fires the
    * instant a creator opens their own new session would be pure noise.
    */
-  /**
-   * The prompt was cancelled, so nothing is connected and nothing will be.
-   *
-   * This is the one state the app can end up in with no route forward: the
-   * dialog is gone, the session was never opened, and the status bar alone does
-   * not offer a way back. Raised off the connection detail rather than a
-   * dedicated event because "idle, because a PIN is required" is exactly what
-   * that field already says.
-   */
-  on(EV.CONN_STATE, ({ state: connState, detail }) => {
-    if (connState !== "idle" || !detail?.includes("PIN")) return;
-    show("lock", {
-      tone: "info",
-      title: "This session is locked",
-      body: "It needs its PIN before this device can join. The PIN is not in the "
-          + "link — whoever sent it to you has to pass it on separately.",
-      action: { label: "Enter PIN", onClick: () => emit("session:relock") },
-    });
-  });
+  /* A cancelled PIN prompt used to be a banner here. It is now the whole
+     screen — ui/shell/lockGate.js — because nothing behind it was connected to
+     anything, and a banner in a stack of three said that far too quietly. */
 
   on(EV.LOCK_STATE, ({ locked, verified }) => {
     if (!locked || verified) return dismiss("lock");
@@ -161,12 +146,20 @@ export function init() {
     lockDoubt = setTimeout(() => {
       const s = state.get();
       if (!s.locked || s.verified || s.connection !== "connected") return;
+      // Two ways out, because the app cannot tell which one is needed: this is
+      // either a wrong PIN or an empty session you opened first, and only the
+      // person reading it knows which. It stays a banner rather than the gate
+      // the cancelled prompt gets — greying out a session because its creator
+      // is alone in it would be wrong far more often than right.
       show("lock", {
         tone: "warn",
         title: "Nobody else is here yet",
         body: "If someone should be, the PIN may not match theirs — a different "
             + "PIN is a different session, so neither of you would see the other.",
-        action: { label: "Re-enter PIN", onClick: () => emit("session:relock") },
+        action: [
+          { label: "Re-enter PIN", onClick: () => emit("session:relock") },
+          { label: "New session", onClick: () => emit("session:rotate") },
+        ],
       });
     }, LOCK_DOUBT_MS);
   });
@@ -225,10 +218,6 @@ export function init() {
   });
 }
 
-/** rAF where it exists; a timer otherwise, so this module works headless. */
-const soon = fn =>
-  (typeof requestAnimationFrame === "function" ? requestAnimationFrame(fn) : setTimeout(fn, 0));
-
 /**
  * A banner appears without anyone asking for it, so it has to announce itself
  * or a screen-reader user simply never learns that a clip is waiting or that
@@ -253,14 +242,17 @@ function show(key, { tone, title, body, action, dismissAfter }) {
   txt.className = "banner-txt";
   el.appendChild(txt);
 
-  if (action) {
+  // One or several. A banner offering a choice — re-enter the PIN, or give up
+  // and start again — is the case that made this a list; the first alternative
+  // is styled as the quieter one because it is the destructive answer.
+  [].concat(action ?? []).forEach((act, i) => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "btn sm";
-    btn.textContent = action.label;
-    btn.onclick = () => action.onClick();
+    btn.className = i === 0 ? "btn sm" : "btn sm ghost";
+    btn.textContent = act.label;
+    btn.onclick = () => act.onClick();
     el.appendChild(btn);
-  }
+  });
 
   const close = document.createElement("button");
   close.type = "button";
@@ -279,38 +271,12 @@ function show(key, { tone, title, body, action, dismissAfter }) {
   // with its text already inside it is announced inconsistently across screen
   // readers — some treat the whole subtree as one insertion and say nothing.
   // Populating it once it is being watched is the behaviour they all agree on.
-  soon(() => {
+  nextFrame(() => {
     if (banners.get(key) !== el) return;              // dismissed within the frame
     setHTML(txt, `<b>${esc(title)}</b><span>${esc(body)}</span>`);
   });
 
-  if (dismissAfter > 0) autoDismiss(key, el, dismissAfter);
-}
-
-/**
- * A banner that vanishes on a timer takes its action button with it.
- *
- * Fifteen seconds is comfortable if you saw it arrive, and nowhere near enough
- * if a screen reader is still reading the sentence before it, or if you are
- * partway through tabbing to "New key" (WCAG 2.2.1). So the clock stops
- * whenever the banner has focus in it or the pointer over it, and restarts
- * from the top when attention moves away. Nothing auto-dismisses out from
- * under someone who is looking at it.
- */
-function autoDismiss(key, el, ms) {
-  let timer = 0;
-  let hovering = false;
-
-  const held = () => hovering || el.contains(document.activeElement);
-  const stop = () => { clearTimeout(timer); timer = 0; };
-  const start = () => { if (!timer && !held()) timer = setTimeout(() => dismiss(key), ms); };
-
-  el.addEventListener("pointerenter", () => { hovering = true; stop(); });
-  el.addEventListener("pointerleave", () => { hovering = false; start(); });
-  el.addEventListener("focusin", stop);
-  el.addEventListener("focusout", () => soon(start));   // focus lands next tick
-  timers.set(key, stop);
-  start();
+  if (dismissAfter > 0) timers.set(key, autoDismiss(el, dismissAfter, () => dismiss(key)));
 }
 
 function dismiss(key) {
