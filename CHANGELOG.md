@@ -7,6 +7,21 @@ commit.
 Format follows [Keep a Changelog](https://keepachangelog.com); versions follow
 [Semantic Versioning](https://semver.org).
 
+## v0.5.0 — 2026-08-08
+
+### Breaking
+
+- Stretch the open room hash, and drop 6-character keys (#24)
+
+### Added
+
+- site: threat model, corrected E2EE claim, SEO pages and a real 404
+
+### Fixed
+
+- release: land the release through a pull request (#25)
+- ui: the app offer stays put instead of clearing itself (#22)
+
 ## v0.4.0 — 2026-08-07
 
 ### Added
