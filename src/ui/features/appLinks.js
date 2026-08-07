@@ -1,19 +1,16 @@
 /**
  * Report / sponsor, in the far-right corner of the app header.
  *
- * The two places the app asks the user for something rather than doing
- * something for them: a bug report and a sponsorship. They sit together and
- * they sit last, because that is the honest weight of an ask inside a tool you
- * opened to move text between two machines.
+ * The two places the app asks the user for something rather than doing something
+ * for them. They sit together and they sit last, which is the honest weight of
+ * an ask inside a tool you opened to move text between two machines.
  *
- * Rendered here rather than written into app.html so the URLs come from
- * core/config.js and exist once. Hard-coded markup would have meant the same
- * github.com/<owner>/<repo> in the header, the landing page and the manifest,
- * with nothing keeping them equal after a rename.
+ * Rendered here rather than in app.html so the URLs come from core/config.js and
+ * exist once — hard-coded markup would repeat the same owner/repo in the header,
+ * the landing page and the manifest, with nothing keeping them equal.
  *
- * Anchors, not buttons: they leave the app, so middle-click, "copy link
- * address" and "open in new tab" all have to work, and a button gives you none
- * of that.
+ * Anchors, not buttons: they leave the app, so middle-click, "copy link address"
+ * and "open in new tab" all have to work.
  */
 
 import { LINKS } from "../../core/config.js";

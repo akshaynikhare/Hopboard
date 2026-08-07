@@ -6,11 +6,20 @@ Static binary files, served from the site root at the path they sit at on disk.
 
 | File | Used by |
 |---|---|
-| `icon.svg` | favicon on every page |
-| `icon-192.png` `icon-512.png` | `manifest.webmanifest`, `purpose=any` |
+| `icon.svg` | the favicon, and the mark in the header of every page and the app bar |
+| `icon-192.png` `icon-512.png` | `manifest.webmanifest`, `purpose=any`; also `apple-touch-icon` |
 | `maskable-192.png` `maskable-512.png` | `manifest.webmanifest`, `purpose=maskable` |
 
 All of it is precached by `sw.js`, so the installed app renders offline.
+
+**Generated, not hand-drawn** — `tools/build/build-icons.py` draws all five from one geometry
+table, along with the seventeen files in `desktop/src-tauri/icons/`. There is no second copy of the
+artwork anywhere: the page headers point an `<img>` at `icon.svg` rather than redrawing it.
+
+```bash
+npm run build:icons     # regenerate all twenty-two
+npm run check:icons     # exit non-zero if any is stale
+```
 
 ### social/ — the Open Graph card
 

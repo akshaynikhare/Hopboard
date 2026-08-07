@@ -109,20 +109,18 @@ runs `tauri-build`, which compiles the first `.ico` into the Windows resource, s
 a missing icon set fails `cargo build` on Windows — not just `tauri build`. That
 is exactly what it did, silently, through the v0.2.0 and v0.2.1 tags.
 
-Regenerate it only when the logo changes:
+Regenerate it only when the logo changes, and never on its own:
 
 ```bash
-# assets/icons/icon.svg at 1024, because `tauri icon` wants >=1024 and the
-# committed PNG is 512. Any SVG rasteriser does; headless Chrome is already here.
-chrome --headless=new --disable-gpu --window-size=1024,1024 \
-       --screenshot=icon-1024.png file:///…/icon.svg
-
-npx --yes @tauri-apps/cli@2 icon icon-1024.png -o desktop/src-tauri/icons
-rm -rf desktop/src-tauri/icons/{android,ios}   # no mobile target ships
+npm run build:icons     # this directory AND assets/icons/, from one source
+npm run check:icons     # exit non-zero if either set is stale
 ```
 
-Transient `npx` rather than a devDependency: this runs when the logo changes, and
-nobody should pay 35 MB of native binaries on every `npm install` for it.
+`tools/build/build-icons.py` draws all seventeen files here plus the five web
+icons from the same geometry, so the launcher icon and the favicon cannot come
+apart. It replaced a recipe — headless Chrome to raster the SVG, then a transient
+`npx @tauri-apps/cli icon` — that produced these two sets in two separate runs
+and left nothing able to tell that only one of them had been done.
 
 > **Not yet compiled.** This scaffold was written without a Rust toolchain
 > available, so it has never been through `cargo build`. Treat the first build as

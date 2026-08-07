@@ -1,22 +1,17 @@
 /**
  * Panel 1 — the main editor. Line-number gutter, Ln/Col, char counter.
  *
- * Line numbers matter more than they look: what people paste in here is stack
+ * Line numbers matter more than they look: what people paste here is stack
  * traces and JSON, and line numbers are what make a shared error discussable.
  *
- * ============================================================================
- * STREAM vs COMMIT — the split this file exists to keep
- * ============================================================================
- * Typing is streamed so the far editor updates as you go. A CLIP is still a
- * discrete thing, made when the text settles. Two channels, and they must not
- * be confused for one:
+ * STREAM vs COMMIT, the split this file exists to keep:
  *
  *   stream  — EV.TEXT_TYPED, throttled, view only. No history, no clipboard
  *             write, no dedupe, no size check. Superseded by the next one.
  *   commit  — EV.TEXT_CAPTURED, on idle or blur. THE clip: history records it,
  *             peers write it to their clipboard, the size cap applies.
  *
- * Stream everything and history fills with `h`, `he`, `hel` and every other
+ * Stream everything and history fills with `h`, `he`, `hel` while every other
  * device's clipboard is rewritten per keystroke. Commit everything and the far
  * editor does not move until you stop typing. The split is not an optimisation.
  *

@@ -1,30 +1,18 @@
 /**
  * The app, greyed out and unusable, while a locked link has no PIN.
  *
- * ── WHY THIS EXISTS ────────────────────────────────────────────────────────
- * Cancelling the PIN prompt left a fully working-looking app in front of
- * somebody who was in no session at all. The editor accepted text, the history
- * pane marked it SENT, the files pane offered to send files — and none of it
- * went anywhere, because nothing was connected and nothing ever would be. The
- * only thing saying so was one line in the status bar and a banner competing
- * with two others above it.
+ * Cancelling the prompt used to leave a working-looking app in front of somebody
+ * in no session at all: the editor accepted text, history marked it SENT, the
+ * files pane offered to send — none of it going anywhere. That is the failure
+ * this app is least willing to have, so the shell goes inert behind a scrim and
+ * the only two things on screen are the two ways out.
  *
- * That is the failure this app is least willing to have: not a broken feature,
- * but a working-looking one that quietly does nothing. So the state gets the
- * treatment it deserves — the shell goes inert behind a scrim, and the only two
- * things on screen are the two ways out of it.
+ * It does NOT cover a WRONG PIN, which is not detectable: a wrong PIN lands you
+ * in a different, empty room, exactly what being first to arrive looks like, and
+ * gating on "alone in a locked room" would grey out every session the moment its
+ * creator opened it. That case stays a banner — see ui/shell/banners.js.
  *
- * ── WHAT IT DELIBERATELY DOES NOT COVER ────────────────────────────────────
- * A WRONG PIN. It is not detectable: the PIN is part of the room hash, so a
- * wrong one lands you in a different room, which is empty, which is exactly
- * what being the first device to arrive looks like. Gating on "alone in a
- * locked room" would grey out every session the moment its creator opened it.
- * That case stays a banner offering the same two ways out — see
- * ui/shell/banners.js, and the beacon note in main.js for why the app can
- * sometimes tell and often cannot.
- *
- * Both buttons are bus events. This module knows nothing about keys, rooms or
- * the relay, and imports nothing that does.
+ * Both buttons are bus events; this module knows nothing about keys or rooms.
  */
 
 import { on, emit, EV } from "../../core/bus.js";

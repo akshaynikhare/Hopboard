@@ -1,25 +1,21 @@
 /**
  * The one place that knows there is a native shell underneath.
  *
- * Rank 0 and DOM-free, because the answer also decides the default key length
- * in config.js — and core/ is imported by the node tests and shipped in the npm
- * package that cli/ runs on.
+ * Rank 0 and DOM-free, because the answer also decides the default key length in
+ * config.js — and core/ is imported by the node tests and shipped in the npm
+ * package cli/ runs on.
  *
- * Before this module existed, three files feature-tested `globalThis.__TAURI__`
- * independently and all three failed the same way at once: `withGlobalTauri`
- * had never been switched on in tauri.conf.json, so the global did not exist,
- * T0 never started, and the desktop app silently degraded to a browser tab that
- * cannot watch the clipboard. One owner, one feature test, one place to look.
+ * Three files used to feature-test `globalThis.__TAURI__` independently and all
+ * three failed at once: `withGlobalTauri` had never been switched on, so the
+ * global did not exist, T0 never started, and the desktop app silently degraded
+ * to a browser tab that cannot watch the clipboard.
  */
 
 const g = globalThis;
 
-/**
- * `__TAURI_INTERNALS__` is injected into every Tauri webview; `__TAURI__` only
- * when `withGlobalTauri` is on. Both are checked so the SURFACE answer stays
- * correct even if that flag is ever turned off again — which is exactly the
- * failure this module was written after.
- */
+// `__TAURI_INTERNALS__` is injected into every Tauri webview; `__TAURI__` only
+// when `withGlobalTauri` is on. Both are checked so the answer survives that
+// flag being turned off again — the failure this module was written after.
 const IN_TAURI = typeof g.__TAURI_INTERNALS__ === "object"
               || typeof g.__TAURI__ === "object";
 
@@ -44,8 +40,8 @@ export async function invoke(command, args) {
 }
 
 /**
- * Subscribe to an event the shell emits. Resolves to an unsubscribe function,
- * or null off the desktop so callers can treat "no shell" as ordinary.
+ * Subscribe to an event the shell emits. Resolves to an unsubscribe function, or
+ * null off the desktop so callers can treat "no shell" as ordinary.
  */
 export async function listen(event, fn) {
   const api = g.__TAURI__?.event;

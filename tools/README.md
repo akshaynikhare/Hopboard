@@ -9,6 +9,7 @@ Development and release scripts. None of this ships to a browser.
 | `build.mjs` | Assembles the deployable site into `_site` — the only build step in the project | `npm run build:site` |
 | `build-land-mask.mjs` | Regenerates `src/landing/land.js` from Natural Earth data. Not a build step; output is committed | by hand |
 | `build-og-card.py` | The Open Graph social card | `npm run build:og` |
+| `build-icons.py` | The app icon — `assets/icons/` and `desktop/src-tauri/icons/`, twenty-two files from one geometry table | `npm run build:icons` |
 
 ### check/ — answers yes/no, writes nothing
 
@@ -23,7 +24,7 @@ Development and release scripts. None of this ships to a browser.
 |---|---|---|
 | `release.mjs` | Verify, write the changelog, commit, tag, push — in that order | `npm run release -- minor` |
 | `changelog.mjs` | Builds `CHANGELOG.md` and `changelog.json` from Conventional Commit subjects | `npm run changelog` |
-| `manifest.mjs` | Scoop, Homebrew and AUR manifests from one release | the release workflow |
+| `manifest.mjs` | Homebrew and winget manifests from one release | the release workflow |
 | `relay-up.mjs` | Is a relay reachable? Prints the one it found | `.husky/pre-push` |
 
 ### seo/ — research, wired into nothing

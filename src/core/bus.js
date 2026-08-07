@@ -1,9 +1,7 @@
 /**
- * Tiny pub/sub. The only way modules talk to each other.
- *
- * The rule that keeps this codebase modular: UI modules never import transport
- * or clipboard modules, and vice versa. They publish and subscribe to events
- * here. main.js is the only file that knows the full graph.
+ * Tiny pub/sub. The only way modules talk to each other — UI never imports
+ * transport or clipboard, and vice versa. main.js is the only file that knows
+ * the full graph.
  */
 
 const listeners = new Map();
@@ -33,16 +31,11 @@ export const EV = {
   // clipboard
   TEXT_CAPTURED:   "text:captured",    // {text, how} — a clip settled here, needs sending
   TEXT_RECEIVED:   "text:received",    // {text, from} — a clip arrived from a peer
-  /**
-   * Typing, not clips. {text, caret} out, {text, caret, name, from} in.
-   *
-   * The pair above is the COMMIT channel: a clip that settled, bound for
-   * history, the OS clipboard and the size cap. This pair is the VIEW channel —
-   * what the text looks like mid-keystroke. Keeping them apart is what stops a
-   * streamed sentence becoming six history entries and six clipboard writes.
-   */
-  TEXT_TYPED:      "text:typed",
-  TEXT_STREAMED:   "text:streamed",
+  // The VIEW channel — what the text looks like mid-keystroke. The pair above is
+  // the COMMIT channel. Keeping them apart is what stops a streamed sentence
+  // becoming six history entries and six clipboard writes.
+  TEXT_TYPED:      "text:typed",       // {text, caret} out
+  TEXT_STREAMED:   "text:streamed",    // {text, caret, name, from} in
   TIER_CHANGED:    "clipboard:tier",   // {tier, note}
   PENDING_CLIP:    "clipboard:pending",// {pending, text} — arrived while unfocused
   CLIP_OFFERED:    "clipboard:offered",// {text} — arrived, but the editor has unsent work
@@ -63,29 +56,13 @@ export const EV = {
 
   // session
   KEY_CHANGED:     "session:key",      // {key, locked}
-  /**
-   * {locked, verified} — see core/crypto.js.
-   *
-   * "lockstate", not "lock", and the extra syllable is load-bearing. The name
-   * used to be "session:lock", which is ALSO the imperative the UI emits to
-   * mean "lock this session" (main.js). One name, two opposite meanings: a
-   * report and an order. So every state.setKey() — one per session, on every
-   * single boot — delivered a report to the handler that acts on the order,
-   * and the app opened the "Lock this session" PIN dialog by itself the moment
-   * it started. Nothing failed, nothing was logged, and the dialog looked
-   * exactly like a feature.
-   *
-   * Announcements are past tense here (`session:key`, `peers:changed`) and
-   * commands are bare verbs (`session:lock`, `session:leave`). Keep it that
-   * way; the bus does no namespacing of its own and a collision is silent.
-   */
-  LOCK_STATE:      "session:lockstate",
-  /**
-   * {required} — a locked link is open and its PIN has not been given, so there
-   * is no session and nothing behind the UI is connected to anything. Reported
-   * separately from LOCK_STATE because `state.locked` is still false at that
-   * point: no session was ever opened to be locked.
-   */
+  // Announcements are past tense, commands are bare verbs, and the extra
+  // syllable here is load-bearing — see core/CLAUDE.md. The bus does no
+  // namespacing of its own, so a collision between the two is silent.
+  LOCK_STATE:      "session:lockstate",// {locked, verified} — see core/crypto.js
+  // {required} — a locked link is open and its PIN has not been given. Separate
+  // from LOCK_STATE because `state.locked` is still false: no session was ever
+  // opened to be locked.
   LOCK_REQUIRED:   "session:lockrequired",
   FOUNDER:         "session:founder",  // {founder} — first into this room? null = not yet known
 

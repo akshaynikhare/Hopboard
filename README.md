@@ -16,9 +16,9 @@ touch the server.
                      (never touch the server)
 ```
 
-**Status: pre-alpha, and it works end to end.** The relay is deployed and live,
+**Status: beta, and it works end to end.** The relay is deployed and live,
 the frontend is wired to it over a WebSocket with an SSE fallback, and the
-17-check end-to-end suite runs two real peers with real crypto against the
+32-check end-to-end suite runs two real peers with real crypto against the
 production relay. See [docs/M0-RESULTS.md](docs/M0-RESULTS.md) for exactly what
 is proven, and [Known limitations](#known-limitations) for what is not.
 
@@ -215,6 +215,7 @@ npm run release -- minor             # verify, changelog, tag, push, deploy
 
 | Doc | What it covers |
 |---|---|
+| [THREAT-MODEL.md](docs/THREAT-MODEL.md) | **What is protected and what is not, with the arithmetic.** Read this before trusting the encryption claim |
 | [PRD.md](docs/PRD.md) | Requirements, architecture, security model, open issues |
 | [DEVELOPMENT.md](docs/DEVELOPMENT.md) | Running it locally, the test suite, the landing-page grid and globe, and the traps |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Module layout, boundaries, and how to add a feature |
@@ -236,6 +237,12 @@ npm run release -- minor             # verify, changelog, tag, push, deploy
 - **P2P file transfer may fail on corporate networks**, which block the UDP that
   WebRTC needs. Falls back to relay-chunked transfer, labelled visibly.
 - **The share key is a bearer credential.** Anyone holding it can read the session.
+- **An unlocked session is not end-to-end encrypted against the relay operator.**
+  The room hash is an unstretched SHA-256 of the share key, so whoever holds that
+  hash can brute-force it back to the key — trivially for a 6-character key. It is
+  still E2EE against any network observer, and a PIN-locked session is unaffected.
+  The fix is known and cheap but breaks the wire format:
+  [THREAT-MODEL.md §4](docs/THREAT-MODEL.md).
 - Chromium-first. Firefox and Safari can receive and can send via paste, but
   cannot silently read the clipboard.
 

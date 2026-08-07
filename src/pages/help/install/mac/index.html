@@ -13,6 +13,7 @@
 <link rel="canonical" href="https://realtimeclipboard.com/help/install/mac/">
 <meta name="theme-color" content="#007acc">
 <link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
 
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="RealtimeClipboard">
@@ -70,11 +71,6 @@
   <div class="in">
     <div class="row">
       <a class="brand" href="/">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <rect x="8" y="3" width="8" height="4" rx="1"/>
-          <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
-          <path d="M9 13l2 2 4-4"/>
-        </svg>
         <b>RealtimeClipboard</b>
       </a>
       <span class="spacer"></span>
@@ -107,14 +103,6 @@
       </header>
 
       <div class="article">
-
-        <p class="honest">
-          <b>The first release has not been published yet.</b> The download link
-          below lands on an empty releases page until
-          <a href="https://github.com/akshaynikhare/RealtimeClipboard/blob/main/.github/workflows/release.yml">the release pipeline</a>
-          runs against a tag.
-          <a href="/app.html">The browser version</a> needs no install and works now.
-        </p>
 
         <h2 id="install">Install it</h2>
         <ol class="steps">
@@ -178,7 +166,7 @@
         </ol>
         <p class="honest">
           Nothing happened? Check the switch at the top of the window says
-          <b>Live</b>. On <b>Manual</b>, nothing leaves the Mac until you paste
+          <b>Clipboard</b>. On <b>App</b>, nothing leaves the Mac until you paste
           it in. It is worth knowing that switch is there: macOS grants clipboard
           access to any running application with no prompt at all, so nothing in
           the operating system would tell you this app had begun reading every
@@ -220,12 +208,13 @@
           There is not one to appear. Unlike the camera, the microphone or the
           screen, the pasteboard is readable by any running application on macOS
           without asking. The app cannot show you a system prompt that does not
-          exist, so the Manual default is the substitute for it.
+          exist, so the app saying so itself on first launch is the substitute
+          for it.
         </p>
 
         <h3>Clips arrive on the Mac but not from it</h3>
         <p>
-          That is the Manual/Live setting, not a bug: receiving always works,
+          That is the App/Clipboard setting, not a bug: receiving always works,
           sending is what you opt into.
         </p>
 

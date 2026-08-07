@@ -228,7 +228,7 @@ ManifestVersion: 1.6.0
 PackageIdentifier: ${id}
 PackageVersion: ${version}
 PackageLocale: en-US
-Publisher: Akshay Nikhare
+Publisher: CadNative
 PublisherUrl: https://github.com/${OWNER}
 PackageName: RealtimeClipboard
 PackageUrl: https://realtimeclipboard.com/

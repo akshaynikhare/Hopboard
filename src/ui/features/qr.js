@@ -1,26 +1,17 @@
 /**
  * QR code for the current room — PRD FR-1.5.
  *
- * ── BUS CONTRACT ───────────────────────────────────────────────────────────
- * Listens "ui:qr" {text, note} — open the modal for this payload.
- * Also exported directly as showQr(text, note) for ui/sessionPanel.js to call.
+ * Listens "ui:qr" {text, note}; also exported as showQr(text, note).
  *
- * ── WHY A HAND-ROLLED ENCODER ──────────────────────────────────────────────
- * No libraries, no CDN. The deploy is a file copy (docs/ARCHITECTURE.md §1) and
- * a CDN script tag would be a third party sitting on a page whose entire pitch
- * is "the key never leaves your machine". The full spec is large; this is the
- * useful subset: byte mode, error correction level M, versions 1–10. That holds
- * 213 bytes, and a share link is ~50.
+ * Hand-rolled because a CDN script tag would be a third party sitting on a page
+ * whose entire pitch is "the key never leaves your machine". This is the useful
+ * subset of ISO/IEC 18004: byte mode, error correction M, versions 1–10 — 213
+ * bytes, against a share link of ~50. The layout arithmetic (format bits, zigzag
+ * order, mask conditions) follows Project Nayuki's formulation.
  *
- * Structure follows ISO/IEC 18004. The layout arithmetic (format-bit placement,
- * zigzag order, mask conditions) matches the reference formulation in Project
- * Nayuki's QR Code generator, which is the clearest correct statement of it.
- *
- * ── CONTRAST ───────────────────────────────────────────────────────────────
- * The symbol is always dark-on-white with a 4-module quiet zone, in both
- * themes. Inverting it for dark mode is the classic mistake: scanners look for
- * a dark 1:1:3:1:1 finder ratio against light, and an inverted symbol is
- * unreadable on many of them. See styles/qr.css.
+ * The symbol is always dark-on-white with a 4-module quiet zone in BOTH themes.
+ * Inverting it for dark mode is the classic mistake: scanners look for a dark
+ * 1:1:3:1:1 finder ratio against light.
  *
  * Encoding is pure and DOM-free (`encode`, `toSvg` are exported for tests).
  */

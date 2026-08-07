@@ -10,18 +10,15 @@
  * There is no clipboard-change event on the web platform, so in a browser
  * "capture" means "look at the moments we are allowed to look".
  *
- * T0 is the exception, and the entire reason the desktop app exists. Inside the
- * Tauri shell a native listener — AddClipboardFormatListener on Windows,
- * NSPasteboard changeCount on macOS, XFixes on X11 — reports every change,
- * whether or not this window is focused. T4 stays impossible; T0 is not T4,
- * because the code doing the watching is not the web page.
+ * T0 is the exception and the entire reason the desktop app exists: inside the
+ * Tauri shell a native listener reports every change whether or not this window
+ * is focused. T4 stays impossible; T0 is not T4, because the code doing the
+ * watching is not the web page.
  *
- * !! T0 makes the loop-suppression ordering in apply() far more dangerous than
- * it already was. T3 only ever polled while focused, so a mistake there was
- * bounded by the user looking at the window. T0 sees every clipboard change on
- * the machine, forever, so the lastSent-before-write ordering is now the only
- * thing between the user and an endless clipboard storm across every device in
- * the session. See docs/CLIPBOARD-FLOW.md §6. !!
+ * !! T0 makes the loop-suppression ordering in writeNow() far more dangerous.
+ * T3 only polled while focused, so a mistake was bounded by the user looking at
+ * the window; T0 sees every clipboard change on the machine, forever. See
+ * clipboard/CLAUDE.md and docs/CLIPBOARD-FLOW.md §6. !!
  */
 
 import { POLL_OPTIONS, TEXT, bindsClipboard, IMAGES } from "../core/config.js";
@@ -215,20 +212,12 @@ export function capture(text, how) {
 }
 
 /**
- * Apply an incoming clip to the OS clipboard.
- *
- * Two reasons the write is deferred rather than done, and they queue into the
- * same place so there is one rule to learn instead of two:
- *
- *   - writeText() requires focus, so a clip arriving in the background cannot
- *     be written at all.
- *   - a clip YOU copied here seconds ago outranks one arriving now. Without
- *     this, two devices both in use overwrite each other's system clipboard,
- *     and the moment it costs you is reaching for something you just copied and
- *     finding it replaced.
- *
- * Neither case drops the clip: it is held and offered, and flushed by the same
- * focus gesture the user already makes.
+ * An incoming clip. Deferred for two reasons, queued into the same place so
+ * there is one rule instead of two: writeText() requires focus, and a clip YOU
+ * copied here seconds ago outranks one arriving now — without that, two devices
+ * in use overwrite each other's clipboard and you reach for something you just
+ * copied to find it replaced. Neither case drops the clip; it is held and
+ * flushed by the same focus gesture the user already makes.
  */
 export async function apply(text) {
   if (!bindsClipboard(state.get().settings.syncMode)) return false;
@@ -242,13 +231,9 @@ export async function apply(text) {
 }
 
 /**
- * The actual write, and the ordering that makes it safe.
- *
  * lastSent and the suppression window are set BEFORE writing, so our own poller
- * recognises the value it is about to see and does not bounce it straight back
- * to the sender. Both deferral paths above route through here rather than
- * calling os.write() themselves, because that ordering is the only thing
- * between the user and an endless clipboard storm — see the file header.
+ * recognises the value it is about to see rather than bouncing it back to the
+ * sender forever. Every path routes through here for that reason alone.
  */
 function writeNow(text) {
   state.get().lastSent = text;
@@ -257,19 +242,13 @@ function writeNow(text) {
 }
 
 /**
- * Put text on this machine's clipboard because the user deliberately asked —
- * restoring from history, not a clip arriving from a peer.
+ * The user deliberately asking — restoring from history, not a clip from a peer.
+ * Bypasses the local-copy grace window, which exists to stop a REMOTE clip
+ * taking away something you just copied. Still gated on the rung.
  *
- * Bypasses the local-copy grace window on purpose: that window exists to stop
- * a REMOTE clip taking away something you just copied, and this is not remote.
- * Still gated on the rung, so below Clipboard it is a no-op rather than a
- * surprise write.
- *
- * This is also what makes restoring a clip stick on the top rung. Without it,
- * the poll tick a second later reads the OS clipboard, finds whatever is
- * actually there rather than the clip just restored, and broadcasts that
- * instead — so the click appears to do nothing. Writing the restored clip means
- * the poller reads back what it expects and dedupes on lastSent.
+ * Also what makes a restore stick on the top rung: without it the poll tick a
+ * second later reads the clipboard, finds whatever is actually there, and
+ * broadcasts that instead, so the click appears to do nothing.
  */
 export async function putOnClipboard(text) {
   if (!bindsClipboard(state.get().settings.syncMode)) return false;

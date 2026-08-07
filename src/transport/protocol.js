@@ -35,27 +35,18 @@ export const clip = ({ payload, iv, originId }) => ({
 });
 
 /**
- * Typing, for the far editor to render. A VIEW frame, and the distinction from
- * `clip` is the whole design:
+ * Typing, for the far editor to render — a VIEW frame:
  *
- *   clip   — a discrete thing that settled. Goes to history, to the OS
- *            clipboard, through the dedupe and against the size cap. Retained
- *            by the relay and replayed to late joiners (FR-3.3).
- *   stream — what the text looks like right now. Renders and nothing else. Not
- *            retained, not replayed, never written to anyone's clipboard.
+ *   clip   — a discrete thing that settled. History, OS clipboard, dedupe, size
+ *            cap. Retained by the relay and replayed to late joiners (FR-3.3).
+ *   stream — what the text looks like right now. Renders and nothing else.
  *
- * It carries the WHOLE text rather than a diff, which is what lets live typing
- * exist here without positions or operational transform. That trade is bounded
- * by TEXT.STREAM_MAX_BYTES — above it the editor stops streaming and the text
- * syncs on commit only, because re-sending 20 KB per keystroke is not a thing
- * anybody should do to a relay.
+ * Carries the WHOLE text rather than a diff, which is what lets live typing
+ * exist without positions or operational transform, bounded by
+ * TEXT.STREAM_MAX_BYTES. `name` rides along because nothing replays these, so a
+ * device joining mid-sentence would otherwise render an unattributed caret.
  *
- * `name` rides along for the same reason it does on a cursor frame: nothing
- * replays these, so a device that joins mid-sentence would otherwise render an
- * unattributed caret until the next roster frame happened to arrive.
- *
- * Everything but `t` and `originId` is sealed by main.js encryptFrame(), so the
- * relay forwards a blob and never sees a keystroke.
+ * Everything but `t` and `originId` is sealed by main.js encryptFrame().
  */
 export const stream = ({ text, caret, name, originId }) => ({
   t: T.STREAM, text, caret, name, originId,
@@ -82,15 +73,12 @@ export const ERRORS = {
   ROOM_FULL:    "This session already has the maximum number of devices",
   BAD_JSON:     "The relay sent something unreadable",
   NO_STREAM:    "The connection expired — reconnecting",
-  // Only ever shown after the transport has given up retrying: the usual cause
-  // is our own just-closed connection still holding the name, which clears on
-  // its own. See relay.js reclaimIdentity().
+  // Only shown after the transport gives up retrying — the usual cause is our
+  // own just-closed connection still holding the name. See reclaimIdentity().
   PEER_ID_TAKEN: "Another device in this session is using the same id — files may not reach this one",
-  // Locked sessions. In practice unreachable from a correct client: a locked
-  // room's name is derived from the PIN, so a device that got the PIN wrong is
-  // addressing a different room entirely rather than being turned away from
-  // this one. It fires if a client's room derivation and key derivation ever
-  // disagree — which is a bug, and this is how it surfaces instead of a
-  // session that connects and then reads nothing.
+  // Unreachable from a correct client: a wrong PIN addresses a different room
+  // entirely rather than being turned away from this one. It fires if room and
+  // key derivation ever disagree, which is a bug, and this is how it surfaces
+  // instead of a session that connects and then reads nothing.
   AUTH_FAILED:  "This session's PIN does not match the one already in use here",
 };

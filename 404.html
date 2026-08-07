@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html, which is the page that
+     actually needs them. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+
+<!--
+  This file's REASON FOR EXISTING is the HTTP status, not the design.
+
+  Cloudflare Pages falls back to serving /index.html with **HTTP 200** for any
+  path it cannot match when no 404.html is present at the project root. The
+  live site did exactly that: /definitely-not-a-real-page returned 200 and the
+  full landing page, and so did every typo, every probe and every stale link.
+
+  Google calls that a soft 404. It costs crawl budget on a site that has none to
+  spare, fills the Search Console coverage report with duplicates of the
+  homepage, and means a mistyped URL shared anywhere becomes an indexable page.
+  The homepage's self-referential canonical was the only thing limiting the
+  damage, and a canonical is a hint rather than a status code.
+
+  Merely EXISTING here fixes it — Pages serves this file with a real 404. So
+  keep it small and keep it at the root: it earns its place by being found, not
+  by what is on it.
+
+  noindex is belt-and-braces. A 404 is already not indexed; the tag costs a line
+  and removes any argument. It also keeps this page out of the sitemap orphan
+  check in tools/check/site-check.mjs, which skips noindex pages by design.
+-->
+<title>Page not found | RealtimeClipboard</title>
+<meta name="description" content="That page does not exist. Open the clipboard, or start from the help index.">
+<meta name="robots" content="noindex, follow">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+
+<link rel="stylesheet" href="/src/landing/landing.css">
+</head>
+<body>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="/">
+        <b>RealtimeClipboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="/help/">Help</a>
+      <a class="tlink" href="https://github.com/akshaynikhare/RealtimeClipboard">GitHub</a>
+      <a class="tlink strong" href="/app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="sec">
+    <div class="in doc">
+
+      <header class="pagehead">
+        <h1>That page does not exist</h1>
+
+        <p class="lede">
+          The link may be out of date, or there may be a typo in it. Nothing is
+          broken — the clipboard itself is fine.
+        </p>
+      </header>
+
+      <div class="article">
+        <p>
+          If you arrived on a share link, note that a session key lives after the
+          <code>#</code> in the address and is never part of the path. Open the
+          app and type the key instead:
+        </p>
+
+        <p>
+          <a class="btn" href="/app.html">Open the clipboard</a>
+        </p>
+
+        <p>
+          Otherwise, try
+          <a href="/">the home page</a>,
+          <a href="/help/">the help index</a>,
+          <a href="/help/install/">the install guides</a> or
+          <a href="/download/">the downloads</a>. If a link on this site brought
+          you here,
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/issues">please report it</a>.
+        </p>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <p><a href="/">Home</a> · <a href="/help/">Help</a> · <a href="/blog/">Blog</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

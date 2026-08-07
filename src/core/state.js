@@ -1,9 +1,8 @@
 /**
  * Single source of truth for session state.
  *
- * Deliberately not reactive. Modules mutate through the setters here and the
- * bus announces the change; nothing observes this object directly. That keeps
- * the data flow one-directional and greppable.
+ * Deliberately not reactive: modules mutate through the setters here and the bus
+ * announces the change. Nothing observes this object directly.
  */
 
 import { emit, EV } from "./bus.js";
@@ -14,27 +13,17 @@ const state = {
   key: null,
   roomHash: null,
   aesKey: null,
-  /**
-   * Locked session — a PIN outside the link (core/crypto.js).
-   *
-   * `verified` is a separate fact from `locked` and the difference is the whole
-   * honesty of the feature. A wrong PIN does not fail loudly: it derives a
-   * different, empty room, which looks exactly like being the first one to
-   * arrive. `verified` means something in this room actually decrypted, so we
-   * KNOW the PIN is right rather than assuming it.
-   */
   locked: false,
+  /**
+   * A wrong PIN does not fail loudly — it derives a different, empty room, which
+   * looks exactly like being first to arrive. `verified` means something here
+   * actually decrypted, so we KNOW the PIN is right rather than assuming it.
+   */
   verified: false,
   /**
-   * Were we the first device into this room?
-   *
-   * `null` until the relay's `welcome` answers it — "not yet known" is a third
-   * state and must not be spelled `false`, or the lock button would be refused
-   * for the fraction of a second before the room reports itself and refused
-   * again for the whole of an offline session.
-   *
-   * Only locking reads it (see canLock). The relay's `existing` count is the
-   * source: it is the peers already present at the moment we joined.
+   * Were we first into this room? `null` until the relay's `welcome` answers.
+   * "Not yet known" must not be spelled `false`, or the lock button is refused
+   * for a moment on connect and for the whole of an offline session.
    */
   founder: null,
   authToken: null,           // proves PIN knowledge to the relay; not a secret
@@ -48,10 +37,8 @@ const state = {
   suppressUntil: 0,          // loop-suppression deadline (FR-2.6)
   lastLocalCopyAt: 0,        // a local copy outranks an arriving clip — see recentLocalCopy()
   settings: {
-    // off | manual | live — one ladder, see config.js SYNC_MODES. Reading and
-    // writing the OS clipboard are both derived from this and neither has a
-    // switch of its own: two controls over one behaviour eventually disagree,
-    // and then the app looks like it is ignoring its own setting.
+    // Reading and writing the OS clipboard are both derived from this rung and
+    // neither gets a switch of its own — see config.js SYNC_MODES.
     syncMode: DEFAULT_SYNC_MODE,
     autoaccept: false,
     thumbs: true,
@@ -66,15 +53,11 @@ const state = {
 export const get = () => state;
 
 /**
- * Seed settings from storage.
+ * Seed settings from storage. Runs first in boot(): resolveKey() asks how long
+ * the next key should be, and used to be answered from the defaults.
  *
- * Runs first in boot(), and the ordering is the point: resolveKey() asks how
- * long the next key should be, and used to be answered from the defaults
- * because the panel that restored preferences had not initialised yet.
- *
- * A key absent from the saved object keeps its default above. That is what
- * lets a setting be ADDED without silently turning it off for everyone who
- * saved their preferences under an earlier build.
+ * A key absent from the saved object keeps its default above, which is what lets
+ * a setting be ADDED without turning it off for everyone who already saved.
  */
 export function restore() {
   const saved = storage.loadSettings();
@@ -83,14 +66,10 @@ export function restore() {
   migrateReceiving(saved);
 
   /**
-   * One-time move to the long key on installed builds.
-   *
    * Anyone who toggled any switch before this shipped has an explicit
-   * `longKeys: false` they never chose — persist() writes the whole settings
-   * object, so the old default was recorded as a decision. Gated on a marker so
-   * it happens once and a later deliberate "off" stands.
-   *
-   * Nothing existing is invalidated: this only changes the NEXT key generated.
+   * `longKeys: false` they never chose — persist() writes the whole object, so
+   * the old default was recorded as a decision. Gated on a marker so a later
+   * deliberate "off" stands. Only affects the NEXT key generated.
    */
   if (KEY.DEFAULT_LONG && !storage.read("longKeyDefault")) {
     state.settings.longKeys = true;
@@ -100,15 +79,11 @@ export function restore() {
 }
 
 /**
- * Receiving used to be its own switch, defaulting on and independent of the
- * mode, so Manual stopped this machine SENDING while incoming clips still
- * landed on its system clipboard. Both directions are the mode's now.
- *
- * Anyone who turned that switch off asked for exactly one thing: nothing
- * arriving should touch their clipboard. On the new ladder only Manual honours
- * that, so they are moved there rather than silently promoted to a Live rung
- * that does the thing they opted out of. The dead keys go with them, which is
- * also what makes this run once — after the next save they are not on disk.
+ * Receiving used to be its own switch, defaulting on independently of the mode,
+ * so Manual stopped this machine SENDING while arriving clips still landed on
+ * its clipboard. Anyone who turned it off asked for one thing: nothing arriving
+ * touches their clipboard. Only Manual honours that, so they move there rather
+ * than being promoted to a rung that does what they opted out of.
  */
 function migrateReceiving(saved) {
   if (!saved) return;
@@ -135,12 +110,9 @@ export function setKey({ key, roomHash, aesKey, locked = false, authToken = null
   state.aesKey = aesKey ?? state.aesKey;
   state.locked = locked;
   state.authToken = authToken;
-  // A new key is a new room: whatever we had proved about the old one does not
-  // carry over, and claiming otherwise would leave a stale padlock on screen.
+  // A new key is a new room, so both of these are re-asked. Left standing, the
+  // founder of one session would carry the right to lock into the next.
   state.verified = false;
-  // Likewise "we were first" — asked and answered per room. Left standing, the
-  // founder of one session would carry the right to lock into the next one it
-  // walked into, which is precisely the device that must not have it.
   state.founder = null;
   emit(EV.KEY_CHANGED, { key, locked });
   emit(EV.LOCK_STATE, { locked, verified: false });
@@ -148,12 +120,9 @@ export function setKey({ key, roomHash, aesKey, locked = false, authToken = null
 }
 
 /**
- * Record whether this device was the first one into the room.
- *
- * Fed from `welcome.existing` in main.js. Re-answered on every welcome, so a
- * relay restart — which empties every room (OI-13) — hands the title to
- * whoever reconnects into the empty room first, rather than to whoever held it
- * before the room stopped existing.
+ * Fed from `welcome.existing`. Re-answered on every welcome, so a relay restart
+ * — which empties every room (OI-13) — hands the title to whoever reconnects
+ * first rather than to whoever held it before the room stopped existing.
  */
 export function setFounder(first) {
   const next = first === null ? null : !!first;
@@ -165,17 +134,14 @@ export function setFounder(first) {
 /**
  * May THIS device lock the session?
  *
- * Alone, anyone may: there is nobody to be thrown out. With company, only the
- * device that opened the room, because locking is not a setting — it moves the
- * session to a different room and removes everybody else from it (see
- * LOCK.EVICT). A control that lets any arrival do that to the rest is a control
- * for taking a session over, and the person who started it is the one who
- * chose to share the key in the first place.
+ * Alone, anyone may. With company, only the device that opened the room, because
+ * locking moves the session to a different room and evicts everybody else
+ * (LOCK.EVICT) — a control that lets any arrival do that is a control for taking
+ * a session over.
  *
  * A rule the UI keeps, not one the relay enforces: every device in the room
- * already holds the key, so a modified client could send the goodbye itself.
- * That is not a new power — it could equally read every clip — and the honest
- * description of this is "the app will not help you do it", not "you cannot".
+ * holds the key, so a modified client could send the goodbye itself. The honest
+ * description is "the app will not help you", not "you cannot".
  */
 export function canLock() {
   if (state.locked) return false;
@@ -184,11 +150,9 @@ export function canLock() {
 }
 
 /**
- * Record that this device can actually read this room.
- *
  * Set from the first thing that decrypts — the beacon replayed in `welcome`, or
- * any real frame. Only ever moves false -> true within a session; setKey resets
- * it, because a different room is a different question.
+ * any real frame. Only moves false -> true; setKey resets it, because a
+ * different room is a different question.
  */
 export function setVerified() {
   if (!state.locked || state.verified) return;
@@ -202,15 +166,10 @@ export function setConnection(connection, detail = "") {
 }
 
 /**
- * Peer roster.
- *
- * Diffed rather than just counted, so arrivals can be announced. The key is a
- * bearer credential — a device appearing is the one observable moment that
- * tells you someone else has it, and a count quietly going 2 → 3 is not
- * something anyone notices.
- *
- * The first roster after connecting is not announced: those devices were
- * already there, and greeting them as arrivals would cry wolf on every reload.
+ * Diffed rather than counted, so arrivals can be announced: the key is a bearer
+ * credential, and a device appearing is the one observable moment telling you
+ * someone else has it. The first roster after connecting is not announced —
+ * those devices were already there, and greeting them would cry wolf on reload.
  */
 let roster = null;
 
@@ -237,9 +196,9 @@ export function setPeers(count, list = []) {
 export function resetRoster() { roster = null; }
 
 /**
- * The relay keeps rooms in process memory, so a changed instance id means we
- * may have landed on a different replica where our peers do not exist. Loud,
- * not silent — a quiet failure here looks exactly like "the network is slow".
+ * A changed instance id means we may have landed on a different replica where
+ * our peers do not exist. Loud, not silent — a quiet failure here looks exactly
+ * like "the network is slow".
  */
 export function setInstance(instance) {
   const previous = state.instance;
@@ -263,12 +222,9 @@ export function suppress(ms) { state.suppressUntil = Date.now() + ms; }
 export function isSuppressed() { return Date.now() < state.suppressUntil; }
 
 /**
- * When this machine last put something on its own clipboard.
- *
- * Distinct from `suppressUntil`, which is about not echoing our own writes back
- * to the room. This is about precedence: for a few seconds after you copy
- * something here, what you copied is what you are about to paste, and a clip
- * arriving from another device does not get to take it away.
+ * Precedence, not loop-suppression: for a few seconds after you copy something
+ * here, that is what you are about to paste, and an arriving clip does not get
+ * to take it away.
  */
 export function markLocalCopy() { state.lastLocalCopyAt = Date.now(); }
 export function recentLocalCopy() {

@@ -12,7 +12,7 @@
   user-select:none;
 }
 
-.appbar .logo { width:17px; height:17px; flex:none; color:var(--blue); }
+.appbar .logo { width:20px; height:20px; flex:none; }
 
 .appbar .brand {
   font-size:13px;

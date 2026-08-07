@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html, which is the page that
+     actually needs them. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+
+<!--
+  Target: "snapdrop alternative", "sharedrop alternative". docs/SEO.md §2 ranks
+  this the highest-value single page available and notes the window is closing —
+  competitors published into it in March and July 2026.
+
+  The reader arrives already annoyed: they used Snapdrop, something about it
+  changed, and they want a replacement. So the page answers "what happened" in
+  the first paragraph and gives the replacement list second. Leading with our
+  own product to a reader in that state is the fastest way to be dismissed as
+  the thing that ruined it.
+
+  PairDrop is recommended honestly and above us for the file-transfer case,
+  because it is genuinely better at it and the reader can check that in thirty
+  seconds. What we win on is the clipboard, which is a different job Snapdrop
+  never did well — that is the whole angle.
+-->
+<title>Snapdrop Alternative — 5 That Still Work in 2026 | RealtimeClipboard</title>
+<meta name="description" content="Snapdrop is not what it was. The alternatives that still work: PairDrop, LocalSend and RealtimeClipboard compared on account, install, network and clipboard support — all free and open source.">
+<link rel="canonical" href="https://realtimeclipboard.com/snapdrop-alternative/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="RealtimeClipboard">
+<meta property="og:title" content="Snapdrop Alternative — 5 That Still Work in 2026">
+<meta property="og:description" content="What happened to Snapdrop, and the open-source alternatives that replace it — compared on account, install, cross-network support and the clipboard.">
+<meta property="og:url" content="https://realtimeclipboard.com/snapdrop-alternative/">
+<meta property="og:image" content="https://realtimeclipboard.com/assets/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://realtimeclipboard.com/snapdrop-alternative/#article",
+      "headline": "Snapdrop alternatives that still work in 2026",
+      "description": "What changed about Snapdrop, and the open-source replacements compared on account, install, cross-network support and clipboard handling.",
+      "inLanguage": "en",
+      "datePublished": "2026-08-07",
+      "dateModified": "2026-08-07",
+      "publisher": { "@id": "https://realtimeclipboard.com/#org" },
+      "mainEntityOfPage": "https://realtimeclipboard.com/snapdrop-alternative/"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "RealtimeClipboard",
+          "item": "https://realtimeclipboard.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Snapdrop alternative"
+        }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/src/landing/landing.css">
+<script type="module" src="/src/landing/faq.js"></script>
+</head>
+<body>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="/">
+        <b>RealtimeClipboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="https://github.com/akshaynikhare/RealtimeClipboard">GitHub</a>
+      <a class="tlink strong" href="/app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section class="sec">
+    <div class="in doc">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">RealtimeClipboard</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">Snapdrop alternative</span>
+      </nav>
+
+      <header class="pagehead">
+        <h1>Snapdrop alternatives that still work</h1>
+
+        <p class="lede">
+          <b>The direct replacement is <a href="https://pairdrop.net/">PairDrop</a></b> —
+          it is the community fork of Snapdrop's own source, it works the way
+          Snapdrop did, and unlike the original it also pairs devices that are
+          <b>not on the same network</b>. If what you actually want is copy and
+          paste rather than sending files, a browser clipboard like this one is
+          a better fit than either.
+        </p>
+      </header>
+
+      <div class="article">
+
+        <h2>What happened to Snapdrop</h2>
+
+        <p>
+          Snapdrop was a single-page site by Robin Linus: open it on two devices
+          on the same Wi-Fi, they see each other, you drag a file across. No
+          account, no app, no setup. It worked so well that it became the
+          default recommendation for years.
+        </p>
+
+        <p>
+          The original project is still on GitHub under an open licence, but the
+          <code>snapdrop.net</code> domain changed hands and the site that
+          answers there now is operated commercially rather than by the original
+          author. Long-time users noticed the change in behaviour before they
+          noticed the change in ownership, which is why most people arrive at
+          this page describing a symptom rather than a cause.
+        </p>
+
+        <p>
+          Nothing here depends on that history, though. Every option below is
+          free and open source, and you can check each claim against its own
+          repository — which is the part that matters when a tool you rely on
+          quietly becomes a different tool.
+        </p>
+
+        <h2>The alternatives, compared</h2>
+
+        <div class="tablewrap" tabindex="0" role="region"
+             aria-label="Snapdrop alternatives compared — scrolls sideways">
+          <table class="cmp">
+            <caption class="sr-only">
+              PairDrop, LocalSend, RealtimeClipboard, Wormhole and KDE Connect compared
+              by account, install, whether they work across different networks,
+              whether they handle the system clipboard, and file size limits.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Tool</th>
+                <th scope="col">Account</th>
+                <th scope="col">Install</th>
+                <th scope="col">Across networks</th>
+                <th scope="col">Clipboard</th>
+                <th scope="col">Files</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">PairDrop</th>
+                <td class="y">None</td>
+                <td class="y">None — browser</td>
+                <td class="y">Yes — 6-digit code</td>
+                <td class="n">Sends text as a message</td>
+                <td class="y">P2P, no fixed cap</td>
+              </tr>
+              <tr>
+                <th scope="row">LocalSend</th>
+                <td class="y">None</td>
+                <td class="n">App on every device</td>
+                <td class="n">Same network only</td>
+                <td class="n">No</td>
+                <td class="y">Direct, no cap</td>
+              </tr>
+              <tr class="me">
+                <th scope="row">RealtimeClipboard</th>
+                <td class="y">None</td>
+                <td class="y">None — browser</td>
+                <td class="y">Yes — short key</td>
+                <td class="y">Lands on the system clipboard</td>
+                <td>P2P, 5&nbsp;MB</td>
+              </tr>
+              <tr>
+                <th scope="row">Wormhole</th>
+                <td class="y">None</td>
+                <td class="y">None — browser</td>
+                <td class="y">Yes — link</td>
+                <td class="n">No</td>
+                <td>Up to 5&nbsp;GB</td>
+              </tr>
+              <tr>
+                <th scope="row">KDE Connect</th>
+                <td class="y">None</td>
+                <td class="n">App on every device</td>
+                <td class="n">Same network only</td>
+                <td class="y">Yes</td>
+                <td class="y">Direct, no cap</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2>Which one to pick</h2>
+
+        <p>
+          <b>Sending a big file to someone in the room</b> — LocalSend. It is a
+          native app rather than a web page, so it is not bound by browser
+          limits, and it is the most reliable of the set on a local network.
+        </p>
+
+        <p>
+          <b>Snapdrop's exact workflow, in a browser</b> — PairDrop. Same
+          interface lineage, still free, and the 6-digit pairing code means the
+          two devices no longer have to share a Wi-Fi network. This is the
+          straight swap.
+        </p>
+
+        <p>
+          <b>Moving text, links, codes and passwords between your own devices</b> —
+          this is where the file-transfer tools all get awkward. PairDrop can
+          send text, but it arrives as a message you then have to select and
+          copy by hand. What most people actually want is for the text to be
+          <em>on the clipboard</em> at the other end, ready to paste.
+        </p>
+
+        <div class="honest">
+          <h3>Where RealtimeClipboard fits, and where it does not</h3>
+          <dl class="caveats">
+            <div>
+              <dt>It is the clipboard, not a message</dt>
+              <dd>Copy on one device, switch to the other, paste. Nothing to select.</dd>
+            </div>
+            <div>
+              <dt>Different networks are fine</dt>
+              <dd>Home Wi-Fi to mobile data works. The devices need not be near each other.</dd>
+            </div>
+            <div>
+              <dt>Files are capped at 5&nbsp;MB</dt>
+              <dd>If you are moving a video, use LocalSend or PairDrop instead. This is not the tool for it.</dd>
+            </div>
+            <div>
+              <dt>Automatic capture needs Chromium</dt>
+              <dd>Firefox and Safari can send and receive pasted text, but cannot read the clipboard themselves.</dd>
+            </div>
+            <div>
+              <dt>The key is the password</dt>
+              <dd>Anyone who learns it can read that session. Lock it with a PIN for anything sensitive.</dd>
+            </div>
+          </dl>
+        </div>
+
+        <h2>How it works, in three steps</h2>
+
+        <ol class="steps">
+          <li>Open it on the first device. It generates a short key.</li>
+          <li>Type that key on the second device, or scan the QR code.</li>
+          <li>Copy anything. Switch to the other device and paste — it is already there.</li>
+        </ol>
+
+        <p>
+          Text is encrypted in your browser with AES-GCM before it is sent, and
+          the relay routes by a hash of the key rather than the key itself, so
+          the server never holds anything readable and stores nothing at all.
+          Files go straight between the two browsers over WebRTC without
+          touching it. The
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard">source is on GitHub</a>
+          under the MIT licence if you would rather read it than take the claim.
+        </p>
+
+        <p>
+          <a class="btn" href="/app.html">Open the clipboard</a>
+        </p>
+      </div>
+
+      <div class="faq" id="faq">
+        <div class="faqhead">
+          <h2>Common questions</h2>
+          <button type="button" class="faqall" id="faqAll"
+                  aria-expanded="false" aria-controls="faq" hidden>
+            <span class="faqall-i" aria-hidden="true"></span>
+            <span class="faqall-t">Expand all</span>
+          </button>
+        </div>
+
+        <details class="qa">
+          <summary><h3>Is Snapdrop still safe to use?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            The original open-source code is unchanged and can still be self-hosted.
+            The concern people raise is about the hosted site at the old domain,
+            which is now run commercially by a different operator than the one who
+            wrote it. If you want the original behaviour with a maintained
+            community project behind it, PairDrop is the fork to use.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Is PairDrop the same as Snapdrop?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            PairDrop began as a fork of Snapdrop and keeps the same core idea — open
+            a page on two devices and send between them with no account. It adds
+            pairing by 6-digit code and public rooms, which is what lets it work
+            between devices on different networks. Snapdrop itself only ever
+            discovered devices on the same local network.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>What is the best Snapdrop alternative for text rather than files?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            An online clipboard rather than a file-transfer tool. The difference is
+            where the text ends up: a transfer tool delivers it as a message you
+            have to copy manually, while an online clipboard puts it on the
+            receiving device's system clipboard so you can paste it straight into
+            whatever you were doing. That is what <a href="/">RealtimeClipboard</a> does.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Do any of these work between different Wi-Fi networks?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            PairDrop, Wormhole and RealtimeClipboard do. LocalSend, KDE Connect and
+            the original Snapdrop are all limited to devices on the same local
+            network by design — they discover each other by broadcasting on it.
+            There is more detail in
+            <a href="/clipboard-sync-different-networks/">clipboard sync across different networks</a>.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Are these free, and do they need an account?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Every tool in the table above is free and needs no account. PairDrop,
+            LocalSend, KDE Connect and RealtimeClipboard are all open source, so
+            you can host them yourself if you would rather not depend on anyone
+            else's server staying the same.
+            </p>
+          </div>
+        </details>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <p><a href="/">Home</a> · <a href="/help/">Help</a> · <a href="/blog/">Blog</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

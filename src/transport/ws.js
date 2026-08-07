@@ -1,20 +1,16 @@
 /**
  * WebSocket channel — the default way to reach the relay.
  *
- * A *channel* moves frames and nothing else. It knows how to open a pipe, push
- * a frame down it, hand incoming frames up, and say when it is finished. It
- * knows nothing about hello, heartbeats, backoff, reconnection or which
- * transport should be used next — all of that lives in relay.js, once, for both
- * channels. See transport/sse.js for the other implementation of this contract.
+ * A channel moves frames and nothing else — hello, heartbeats, backoff and
+ * transport choice all live in relay.js, once, for both channels.
  *
  *   create({ url, roomHash, onOpen, onFrame, onDown }) -> { send, close, isOpen }
  *
  *   onOpen()          the channel is usable; frames may be sent
  *   onFrame(msg)      one parsed inbound frame
  *   onDown({code, reason})
- *                     the channel is finished and will not recover. Fired at
- *                     most once, and never after close() — a deliberate close
- *                     is not an event anyone needs to react to.
+ *                     finished and will not recover. Fired at most once, and
+ *                     never after close() — a deliberate close is not an event.
  */
 
 import * as proto from "./protocol.js";

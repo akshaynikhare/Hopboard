@@ -1,30 +1,19 @@
 /**
- * One modal, so there cannot be three slightly different ones.
+ * One modal, so there cannot be three slightly different ones. The app had two
+ * hand-rolled focus traps and was about to gain a third — each correct in its
+ * own way, which is how the fourth ends up subtly wrong on Shift+Tab.
  *
- * This exists for the same reason ui/statusMenu.js does: the app had two
- * hand-rolled focus traps (the QR code and the PIN prompt) and was about to
- * gain a third. Each was correct, and each was correct in its own way — which
- * is how the fourth one ends up subtly wrong on Shift+Tab and nobody notices
- * for a year.
+ * A modal here means: the shell behind it is `inert`, so a screen reader's
+ * virtual cursor cannot wander out (aria-modal alone is advisory); Tab cycles
+ * inside; Escape and a backdrop click close it; focus returns to whatever opened
+ * it; and a second one closes the first rather than stacking.
  *
- * What a modal here means:
- *   - the app shell behind it is `inert`, so a screen reader's virtual cursor
- *     cannot wander out of the dialog. aria-modal alone is advisory and support
- *     for it is uneven
- *   - Tab cycles inside it and cannot leave
- *   - Escape closes it, and so does a click on the backdrop
- *   - focus goes back to whatever opened it
- *   - opening a second one closes the first rather than stacking
+ * It mounts to `document.body`, NOT `#mount-modals` — filesPanel.js rewrites
+ * that node on a 500 ms tick and would delete a dialog out from under its own
+ * focus trap, stranding a document-level keydown listener on a detached node.
  *
- * It mounts to `document.body`, NOT `#mount-modals`, and that is not an
- * oversight. ui/filesPanel.js owns that node and rewrites its `innerHTML` on a
- * 500 ms countdown tick, so a file request arriving while a dialog is open would
- * delete it out from under the focus trap — leaving a document-level keydown
- * listener attached to a detached node and focus stranded on nothing.
- *
- * ui/qr.js predates this and still carries its own copy. It should move here;
- * it has not yet because its dialog has bespoke sizing and a test suite that
- * exercises the encoder through it.
+ * ui/qr.js predates this and still carries its own copy; it has bespoke sizing
+ * and a test suite that exercises the encoder through it.
  */
 
 import { esc, setHTML } from "./dom.js";
@@ -35,8 +24,6 @@ const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabi
 let open = null;
 
 /**
- * Show one.
- *
  *   className   goes on the outer element; the backdrop is `${className}-back`
  *   html        the dialog's inner markup — the ONLY field the caller is
  *               trusted with, and the only one it must escape itself
@@ -44,14 +31,11 @@ let open = null;
  *   labelledBy  id of the heading inside `html`, preferred over `label`
  *   onClose     called with the result when it closes, however it closes
  *
- * Everything except `html` lands in an attribute and is escaped here. All three
- * are module constants at every call site today, which is exactly the argument
- * for escaping them anyway: the rule "everything interpolated goes through
- * esc()" survives a careless call site, and an exception you have to remember
- * is not a rule.
+ * Everything except `html` is escaped here even though every call site passes a
+ * module constant: an exception you have to remember is not a rule.
  *
- * Returns a handle: `{ el, close }`. `el` is the outer node, so a caller can
- * query its own fields out of it without this module knowing what they are.
+ * Returns `{ el, close }`, so a caller can query its own fields out of `el`
+ * without this module knowing what they are.
  */
 export function show({ className = "modal", html = "", label = "", labelledBy = "", onClose }) {
   close();                        // never stack

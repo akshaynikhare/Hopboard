@@ -1,21 +1,19 @@
 /**
  * "How this works" — the installed app's own guide.
  *
- * Self-contained on purpose. tools/build/build.mjs excludes all of src/pages/
- * from the desktop build, so the ten help pages on the website are not merely
- * unlinked from here, they are not present; a link to /help/install/ would 404
- * inside the app. Everything this needs to say, it says itself.
+ * Self-contained on purpose: the build excludes src/pages/ from the desktop
+ * bundle, so the help pages are not merely unlinked but absent, and a link to
+ * /help/install/ would 404 inside the app.
  *
  * A panel rather than a feature because it shows a QR code, and features are
  * peers that may not import each other. Rank 22 may reach down to qr.js and
  * render the symbol INLINE, which also sidesteps modal.js never stacking —
- * emitting "ui:qr" would open qr.js's own dialog on top of this one, leaving
- * two capture-phase keydown handlers and an Escape that closes both.
+ * emitting "ui:qr" would open its dialog on top of this one, leaving two
+ * capture-phase keydown handlers and an Escape that closes both.
  *
- * It opens itself once, on the first launch after installing. whatsNew.js is
- * right that a changelog must never interrupt a newcomer — but an app that has
- * just started reading everything you copy is the one case where saying so
- * first is the courtesy, not the intrusion.
+ * It opens itself once, on the first launch after installing. A changelog must
+ * never interrupt a newcomer, but an app that has just started reading
+ * everything you copy is the one case where saying so first is the courtesy.
  */
 
 import { emit, on, EV } from "../../core/bus.js";
@@ -25,7 +23,7 @@ import * as storage from "../../core/storage.js";
 import * as device from "../../core/device.js";
 import { IS_DESKTOP } from "../../core/native.js";
 import { SYNC_MODES, LINKS } from "../../core/config.js";
-import { esc, lazyStyle } from "../primitives/dom.js";
+import { esc, setHTML, lazyStyle } from "../primitives/dom.js";
 import * as modal from "../primitives/modal.js";
 import * as os from "../../clipboard/os.js";
 import { encode, toSvg } from "../features/qr.js";
@@ -46,17 +44,17 @@ export function init() {
 export function open() {
   lazyStyle("desktop.css");
 
-  const { key, locked } = state.get();
-  const link = keys.shareLink(key, locked);
+  let stop = () => {};
 
   const { el } = modal.show({
     className: "guide",
     labelledBy: "guideTitle",
+    onClose: () => stop(),
     html: `
       <h2 class="guideh" id="guideTitle">How RealtimeClipboard works</h2>
       <div class="guidebody">
         ${sectionWatching()}
-        ${sectionLink(key, locked, link)}
+        <section class="guides" data-guide-link></section>
         ${sectionJoined()}
         ${sectionTray()}
         ${sectionClosing()}
@@ -69,9 +67,25 @@ export function open() {
       </div>`,
   });
 
-  el.querySelector("[data-guide-copy]")?.addEventListener("click", async () => {
+  const host = el.querySelector("[data-guide-link]");
+  let link = "";
+
+  const render = () => {
+    const { key, locked } = state.get();
+    link = key ? keys.shareLink(key, locked) : "";
+    setHTML(host, sectionLink(key, link));
+  };
+
+  render();
+  stop = on(EV.KEY_CHANGED, render);
+
+  // Delegated, because render() replaces the button — and the toast reads the
+  // lock state at click time for the same reason the link is re-read: both
+  // change under an open guide when the session is rotated or locked.
+  el.addEventListener("click", async e => {
+    if (!e.target.closest("[data-guide-copy]") || !link) return;
     if (await os.write(link)) {
-      emit(EV.TOAST, locked
+      emit(EV.TOAST, state.get().locked
         ? "Link copied — the PIN is not in it. Send that separately"
         : "Link copied — it contains the key");
     }
@@ -104,10 +118,22 @@ function sectionWatching() {
  * The section this whole file exists for, ordered easiest-first: the QR needs
  * no typing at all, the link needs none on the device that matters, and typing
  * the key is the fallback that always works.
+ *
+ * Re-rendered on every EV.KEY_CHANGED, because on a first launch there is no
+ * key to render: boot() deliberately does not await openSession(), and opens
+ * this guide while the key derivation is still running. All three ways to link
+ * a device were wrong for as long as that took — the key box empty, and the QR
+ * encoding a link with no key in it, which scans as "open a new session".
  */
-function sectionLink(key, locked, link) {
+function sectionLink(key, link) {
+  if (!key) {
+    return `
+      <h3>Link another device</h3>
+      <p>Opening the session — the QR code, the link and the key appear here in
+         a moment.</p>`;
+  }
+
   return `
-    <section class="guides">
       <h3>Link another device</h3>
 
       <div class="guidesteps">
@@ -136,8 +162,7 @@ function sectionLink(key, locked, link) {
       <p class="guidewarn" role="note">Anyone holding this link or key can read
          what you copy while the session is open. It is not a password, and
          there is no "remove a device" — to cut everyone off, press
-         <b>New key</b> in the header.</p>
-    </section>`;
+         <b>New key</b> in the header.</p>`;
 }
 
 function sectionJoined() {

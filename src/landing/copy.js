@@ -1,20 +1,14 @@
 /**
  * A copy button on every command block.
  *
- * This is what makes wrapping the commands safe. Both sheets used to scroll
- * their `pre` horizontally, on the argument that a wrapped command is a
- * mis-pasted command — true while the only way to take one was to select it by
- * hand. A button removes that path, so the blocks wrap and nothing is hidden
- * off the right edge of a phone any more. **If this module ever goes, the
- * `overflow-x:auto` has to come back with it.**
+ * This is what makes wrapping the commands safe: the blocks used to scroll
+ * horizontally on the argument that a wrapped command is a mis-pasted command,
+ * true while the only way to take one was to select it by hand. **If this module
+ * ever goes, the `overflow-x:auto` has to come back with it.**
  *
- * Added by script rather than sitting in the markup: a button that cannot work
- * is worse than no button, so nothing is inserted until we know the clipboard
- * is reachable. It is not on `http://192.168.x.x` — the Clipboard API needs a
- * secure context, and a LAN address is not one.
- *
- * Everything is built with createElement and textContent. The CSP enforces
- * Trusted Types, so a plain innerHTML assignment would throw.
+ * Added by script rather than markup because a button that cannot work is worse
+ * than no button, and the Clipboard API needs a secure context — which
+ * `http://192.168.x.x` is not.
  */
 
 const RESET_MS = 1600;

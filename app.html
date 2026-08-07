@@ -44,6 +44,8 @@
 
 <title>RealtimeClipboard</title>
 <meta name="theme-color" content="#007acc">
+<link rel="icon" href="./assets/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
 
 <!-- The app itself must never be indexed.
      A session key lives in the URL fragment, and a fragment is not sent to
@@ -85,11 +87,7 @@
        another, so it belongs on the first row, not three panes down.
        The editor's own actions moved to the editor — see .edtools below. -->
   <header class="appbar">
-    <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-      <rect x="8" y="3" width="8" height="4" rx="1"/>
-      <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
-      <path d="M9 13l2 2 4-4"/>
-    </svg>
+    <img class="logo" src="./assets/icons/icon.svg" width="20" height="20" alt="" decoding="async">
     <span class="brand">RealtimeClipboard</span>
 
     <!-- Key, QR, share link, rotate. -->
@@ -184,7 +182,7 @@
       </div>
 
       <!-- The single ad slot. Below the editor, never beside the file or
-           session controls — see src/ui/ads.js for why. -->
+           session controls — see src/ui/features/ads.js for why. -->
       <div id="mount-ad"></div>
     </main>
 

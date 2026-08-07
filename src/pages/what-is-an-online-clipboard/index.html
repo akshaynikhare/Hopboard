@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html, which is the page that
+     actually needs them. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+
+<!--
+  Target: "what is an online clipboard" — snippet bait, and the best AEO page on
+  the site. docs/SEO.md §4: citation is passage-level, not page-level (Claude's
+  web-search API attaches cited_text of up to 150 characters), so every section
+  here opens with a sentence that survives being lifted out alone.
+
+  Definitional pages are what answer engines reach for when a query fans out
+  into "what is X" — and that sub-query is one this site can own outright, where
+  the head term "online clipboard" is defended by ten entrenched exact-match
+  domains.
+
+  The category table is the load-bearing part: online clipboard vs clipboard
+  manager vs pastebin vs file transfer is the distinction readers and models
+  both get wrong, and being the page that draws it correctly is the whole bid.
+-->
+<title>What Is an Online Clipboard? How It Works and When to Use One</title>
+<meta name="description" content="An online clipboard is a service that carries what you copy on one device to another over the internet. How it works, how it differs from a clipboard manager and a pastebin, and whether it is safe.">
+<link rel="canonical" href="https://realtimeclipboard.com/what-is-an-online-clipboard/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="RealtimeClipboard">
+<meta property="og:title" content="What Is an Online Clipboard? How It Works and When to Use One">
+<meta property="og:description" content="The definition, how it differs from a clipboard manager and a pastebin, and what to check before trusting one.">
+<meta property="og:url" content="https://realtimeclipboard.com/what-is-an-online-clipboard/">
+<meta property="og:image" content="https://realtimeclipboard.com/assets/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://realtimeclipboard.com/what-is-an-online-clipboard/#article",
+      "headline": "What is an online clipboard?",
+      "description": "An online clipboard carries what you copy on one device to another over the internet. How it works, how it differs from a clipboard manager and a pastebin, and when to use one.",
+      "inLanguage": "en",
+      "datePublished": "2026-08-07",
+      "dateModified": "2026-08-07",
+      "publisher": { "@id": "https://realtimeclipboard.com/#org" },
+      "mainEntityOfPage": "https://realtimeclipboard.com/what-is-an-online-clipboard/"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "RealtimeClipboard",
+          "item": "https://realtimeclipboard.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "What is an online clipboard"
+        }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/src/landing/landing.css">
+<script type="module" src="/src/landing/faq.js"></script>
+</head>
+<body>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="/">
+        <b>RealtimeClipboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="https://github.com/akshaynikhare/RealtimeClipboard">GitHub</a>
+      <a class="tlink strong" href="/app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section class="sec">
+    <div class="in doc">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">RealtimeClipboard</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">What is an online clipboard</span>
+      </nav>
+
+      <header class="pagehead">
+        <h1>What is an online clipboard?</h1>
+
+        <p class="lede">
+          <b>An online clipboard is a service that carries what you copy on one
+          device to the clipboard of another, over the internet.</b> You copy a
+          link on your laptop and paste it on your phone. It replaces the
+          workaround most people use instead — emailing or messaging things to
+          themselves — and it needs no cable and no shared Wi-Fi network.
+        </p>
+      </header>
+
+      <div class="article">
+
+        <h2>How an online clipboard works</h2>
+
+        <p>
+          Your operating system already has a clipboard: a small piece of memory
+          holding the last thing you copied, which any app on that machine can
+          read when you paste. It is local by design and stops at the edge of the
+          device.
+        </p>
+
+        <p>
+          An online clipboard adds a second step. Something watches that local
+          clipboard, and when it changes, sends the contents to the other
+          devices in your session, where it is placed on <em>their</em> local
+          clipboard. From then on it behaves like anything else you copied —
+          <kbd>Ctrl</kbd>+<kbd>V</kbd> works normally.
+        </p>
+
+        <p>
+          The devices have to be told they belong together. There are two ways
+          services do this, and it is the main thing that distinguishes them:
+        </p>
+
+        <ul>
+          <li><b>By account</b> — you sign in on both devices, and the service pairs them because both are you. Windows clipboard sync and Apple Universal Clipboard work this way.</li>
+          <li><b>By shared key</b> — you type the same short code on both devices, and the service pairs them because both know it. No identity is involved, so no sign-up is needed.</li>
+        </ul>
+
+        <h2>What it is not</h2>
+
+        <p>
+          Three different tools get called the same thing, and picking the wrong
+          one is the usual reason people conclude that online clipboards do not
+          work.
+        </p>
+
+        <div class="tablewrap" tabindex="0" role="region"
+             aria-label="Online clipboard compared with related tools — scrolls sideways">
+          <table class="cmp">
+            <caption class="sr-only">
+              Online clipboard compared with a clipboard manager, a pastebin and a
+              file-transfer tool, by what each is for, how many devices are
+              involved, and whether content persists.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Tool</th>
+                <th scope="col">What it is for</th>
+                <th scope="col">Devices</th>
+                <th scope="col">Persists?</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="me">
+                <th scope="row">Online clipboard</th>
+                <td>Moving what you copy between devices</td>
+                <td>Two or more</td>
+                <td class="y">No — it is a live session</td>
+              </tr>
+              <tr>
+                <th scope="row">Clipboard manager</th>
+                <td>Searchable history of everything you copied</td>
+                <td class="n">One</td>
+                <td>Yes, locally</td>
+              </tr>
+              <tr>
+                <th scope="row">Pastebin</th>
+                <td>Publishing text at a URL you can share</td>
+                <td>Anyone with the link</td>
+                <td class="n">Yes, on a server</td>
+              </tr>
+              <tr>
+                <th scope="row">File transfer</th>
+                <td>Sending files, usually to someone else</td>
+                <td>Two</td>
+                <td>Varies</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          <b>A clipboard manager</b> — Ditto, CopyQ, Maccy, or Windows'
+          <kbd>Win</kbd>+<kbd>V</kbd> history — keeps a searchable list of
+          everything you have copied on <em>one</em> machine. It is about time,
+          not distance. Some managers add sync as a feature, which is where the
+          confusion starts.
+        </p>
+
+        <p>
+          <b>A pastebin</b> — Pastebin, GitHub Gist, privatebin — puts text at a
+          URL so you can send that URL to somebody. It is a publishing tool:
+          the content is stored, it has an address, and pasting it on the other
+          end means opening a page and selecting the text by hand.
+        </p>
+
+        <p>
+          <b>A file-transfer tool</b> — AirDrop, LocalSend, Snapdrop, PairDrop —
+          moves files between devices. Most can send a text snippet too, but it
+          arrives as a message rather than on the clipboard, which is a small
+          difference that matters a lot when you do it forty times a day.
+        </p>
+
+        <h2>When an online clipboard is the right tool</h2>
+
+        <ul>
+          <li>Moving a link, address, verification code or command between your own laptop and phone.</li>
+          <li>Copying between devices from <b>different makers</b> — a Windows PC and an Android phone, or a Mac and a Windows machine — where the built-in options do not talk to each other.</li>
+          <li>Working on a machine where you <b>cannot install software</b>: a work laptop, a shared computer, a Chromebook.</li>
+          <li>Devices that are <a href="/clipboard-sync-different-networks/">on different networks</a> — one on Wi-Fi, one on mobile data.</li>
+          <li>Getting text off a virtual machine or remote desktop session where clipboard passthrough is disabled.</li>
+        </ul>
+
+        <p>
+          It is the wrong tool for large files, for anything you need to keep,
+          and for content you want a permanent link to. Those are jobs for a
+          transfer tool, a notes app and a pastebin respectively.
+        </p>
+
+        <h2>Is an online clipboard safe?</h2>
+
+        <p>
+          <b>It depends entirely on whether the service can read what you
+          copy</b>, and that is the one question worth asking of any of them.
+          The clipboard is where passwords, one-time codes and private links
+          pass through, so a service that receives them in plain text is holding
+          the most sensitive stream on your machine.
+        </p>
+
+        <p>Three things to check:</p>
+
+        <ol class="steps">
+          <li><b>Is it end-to-end encrypted?</b> The text should be encrypted on your device before it is sent, so the server routes something it cannot read.</li>
+          <li><b>What is stored, and for how long?</b> "Nothing is written to disk" is a stronger claim than "we delete it later", and easier to verify.</li>
+          <li><b>Can you check?</b> Open-source code and a self-hosting option mean the answer is not just a promise on a marketing page.</li>
+        </ol>
+
+        <h2>A worked example</h2>
+
+        <p>
+          <a href="/">RealtimeClipboard</a> is an online clipboard of the
+          shared-key kind, and it is a reasonable illustration of the whole
+          category because it makes each of those choices explicitly.
+        </p>
+
+        <p>
+          Both devices open the same page and type the same short key. The key
+          never leaves the browser: what reaches the relay is
+          <code>SHA-256(key)</code>, used only as a room address, plus text
+          already encrypted with AES-GCM. The relay forwards ciphertext between
+          two connections and stores nothing on disk. Files bypass it and go
+          directly between the browsers over WebRTC. It is
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard">MIT-licensed</a>,
+          and <a href="/help/install/relay/">you can run the relay yourself</a>.
+        </p>
+
+        <p>
+          The limits are as much a part of the illustration:
+          the short key is a bearer credential, files are capped at 5&nbsp;MB, and
+          automatic capture of the OS clipboard needs a Chromium-based browser —
+          Firefox and Safari can send and receive pasted text but cannot read the
+          clipboard themselves. No browser can read the clipboard while its tab
+          is in the background; that is a browser security rule that applies to
+          every web-based tool in this category.
+        </p>
+
+        <p>
+          <a class="btn" href="/app.html">Try an online clipboard</a>
+        </p>
+      </div>
+
+      <div class="faq" id="faq">
+        <div class="faqhead">
+          <h2>Common questions</h2>
+          <button type="button" class="faqall" id="faqAll"
+                  aria-expanded="false" aria-controls="faq" hidden>
+            <span class="faqall-i" aria-hidden="true"></span>
+            <span class="faqall-t">Expand all</span>
+          </button>
+        </div>
+
+        <details class="qa">
+          <summary><h3>What is an online clipboard in simple terms?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            It is a service that makes copy and paste work between two devices
+            instead of within one. You copy something on your laptop and it becomes
+            available to paste on your phone, over the internet, without a cable or
+            a shared Wi-Fi network.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>What is the difference between an online clipboard and a clipboard manager?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            A clipboard manager keeps a searchable history of everything you have
+            copied on a single machine — it solves "what did I copy ten minutes
+            ago". An online clipboard moves what you copy to a different device —
+            it solves "I copied this here and need it there". One is about time,
+            the other about distance.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Is an online clipboard the same as a pastebin?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            No. A pastebin stores your text at a public URL so you can share that
+            link with someone else, and the text stays there until it expires. An
+            online clipboard has no URL holding your content and nothing to share —
+            it puts the text on another device's clipboard and keeps nothing
+            afterwards.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Are online clipboards safe to use for passwords?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Only if the service is end-to-end encrypted, and even then a password
+            manager with its own sync is the better tool. If a clipboard service
+            does not encrypt on your device before sending, assume its operator can
+            read anything you copy — including passwords and one-time codes that
+            passed through your clipboard while it was running.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Do online clipboards work between Android and Windows?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes, and that is one of the main reasons to use one. The built-in
+            options do not cross ecosystems: Windows clipboard sync only works
+            between Windows PCs on the same Microsoft account, and Apple's Universal
+            Clipboard only between Apple devices. A browser-based clipboard treats
+            every platform the same because it only needs a browser.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Do online clipboards need an account?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Not necessarily. Services that pair devices with a shared key need no
+            account at all, because the key is what identifies the session rather
+            than a signed-in identity. Services built around an account — such as
+            the clipboard sync built into Windows and macOS — do require one, and
+            only work within their own ecosystem. See
+            <a href="/online-clipboard-no-login/">online clipboard with no login</a>.
+            </p>
+          </div>
+        </details>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <p><a href="/">Home</a> · <a href="/help/">Help</a> · <a href="/blog/">Blog</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

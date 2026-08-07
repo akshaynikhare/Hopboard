@@ -2,7 +2,7 @@
 name = "realtimeclipboard"
 version = "0.4.0"
 description = "An end-to-end encrypted clipboard shared between your devices"
-authors = ["akshaynikhare"]
+authors = ["CadNative"]
 license = "MIT"
 repository = "https://github.com/akshaynikhare/RealtimeClipboard"
 edition = "2021"

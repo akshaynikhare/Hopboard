@@ -1,18 +1,14 @@
 /**
  * PWA installability and service-worker lifecycle (PRD §3.4, FR-4.1 – FR-4.6).
  *
- * Self-contained by design. It creates its own DOM — the app offer in
- * #mount-notice, the update banner in #mount-banners — links its own stylesheet
- * and manifest, and reaches the rest of the app only through the bus. Nothing
- * else in the repo has to change to switch it on, which is the boundary test in
- * docs/ARCHITECTURE.md §4.
+ * Self-contained by design: it creates its own DOM, links its own stylesheet and
+ * manifest, and reaches the rest of the app only through the bus. Nothing else
+ * has to change to switch it on — the boundary test in docs/ARCHITECTURE.md §4.
  *
- * Every path here goes through core/paths.js rather than being written out.
- * The site is served from an origin root now and subpath hosting is no longer
- * supported (see that file), but the indirection stays: it is what made the
- * change one edit instead of six, and it is what stopped this module resolving
- * the app root a level too high and silently breaking the service-worker scope
- * and the install criteria — PRD OI-9.
+ * Every path goes through core/paths.js. Computing them from `import.meta.url`
+ * encoded how deep this file sits in the tree, so bundling moved the app root up
+ * a level and pointed the service-worker scope at the wrong place — PRD OI-9,
+ * silently, with no error.
  */
 
 import { emit, EV } from "../../core/bus.js";
@@ -22,11 +18,7 @@ import { loadLastKey, read, write } from "../../core/storage.js";
 import { APP_ROOT, atRoot, lazyStyleHref } from "../../core/paths.js";
 import { IS_DESKTOP } from "../../core/native.js";
 
-/* Resolved through core/paths.js rather than from this module's own location.
-   These three URLs are the reason that file exists: computing them from
-   `import.meta.url` encoded how deep THIS file sits in the tree, so bundling
-   src/ui/*.js into src/main.js moved the app root up a level and pointed the
-   service-worker scope at the Pages root — PRD OI-9, silently, with no error. */
+// These three URLs are the reason core/paths.js exists — see above.
 const SW_URL = atRoot("sw.js");
 const MANIFEST_URL = atRoot("manifest.webmanifest");
 const CSS_URL = lazyStyleHref("install.css");
@@ -42,16 +34,12 @@ let started = false;          // init() is idempotent — listeners must not sta
 /* ---------------- OI-10: the fragment the install drops ---------------- */
 
 /**
- * `start_url` cannot carry "#D75LV" — a manifest has no way to express a
- * fragment, so an installed app always launches at the bare scope with no room.
- * FR-4.5: fall back to the last key we stored.
+ * A manifest `start_url` cannot carry "#D75LV", so an installed app always
+ * launches at the bare scope with no room. FR-4.5: fall back to the last key.
  *
- * Runs at module evaluation, not from init(), because main.js resolves the key
- * inside its own boot() and this has to be true before that runs. Calling it
- * twice is a no-op, so init() calls it again for anyone importing lazily.
- *
- * With no stored key we do nothing at all: main.js generates a fresh one, which
- * is the correct behaviour for a first launch.
+ * Runs at module evaluation rather than from init(), because main.js resolves
+ * the key inside boot() and this has to be true first. With no stored key it
+ * does nothing and main.js generates one, which is right for a first launch.
  */
 function restoreRoom() {
   if (isValid(fromUrl().key)) return null;        // the URL already names a room
@@ -146,17 +134,16 @@ const drop = id => $(id)?.remove();
 /* ---------------- the app offer, in the header (FR-4.4) ---------------- */
 
 /**
- * Two offers, one row, in the header's spare room.
+ * Two offers, one row. These were two stacked banners above the editor, spending
+ * two rows of the thing people came here to type in on saying "there is also an
+ * app" — twice, in a tinted box that reads like a warning.
  *
- * These were two stacked banners above the editor, which spent two rows of the
- * thing people came here to type in on saying "there is also an app" — twice,
- * in a tinted box that reads like a warning. They are one offer with two
- * destinations, so they share a line up here, in --dim.
+ * They are one offer with two destinations, so they share a line, in --dim.
  *
- * It stays until it is answered. A timer was tried and taken out again: the row
- * is quiet enough to sit in the header indefinitely, and one that clears itself
- * is one nobody is looking at when it goes — which makes it an offer that was
- * never made rather than one that was declined.
+ * It stays until it is answered. A timer was tried and taken out: the row is
+ * quiet enough to sit in the header indefinitely, and one that clears itself is
+ * one nobody is looking at when it goes — which makes it an offer never made
+ * rather than one declined.
  *
  * `message` is only used when an offer is alone; with both live the row has no
  * space for either sentence and the buttons carry the meaning.

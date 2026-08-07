@@ -1,73 +1,39 @@
 /**
  * File transfer — WebRTC first, relay chunks when WebRTC cannot connect.
  *
- * ============================================================================
- * CONTRACT WITH main.js  (read this before wiring anything)
- * ============================================================================
+ * The wire arrives by injection, not import — see files/CLAUDE.md for why.
+ * main.js makes two calls at boot:
  *
- * This module must never import transport/relay.js: the whole point of the
- * boundary in docs/ARCHITECTURE.md §3 is that the transport can be swapped for
- * SSE+POST without touching anything above it. So main.js injects the send
- * function and pumps inbound frames back in. Two calls, both from main.js:
+ *   setSignalSender(frame => boolean)
+ *       main.js seals every field except the routing ones (t, to, originId, id,
+ *       seq, total, crc), puts the frame on the relay, and returns false only if
+ *       it could not be sent. Any other return value is treated as sent.
  *
- *   1.  transfer.setSignalSender(frame => boolean)
- *
- *       Called once at boot. `frame` is a plain JSON-serialisable object whose
- *       `.t` is one of transfer.FRAMES and whose `.to` is the originId of the
- *       peer it is meant for. `.originId` (us) is filled in here.
- *
- *       main.js is responsible for:
- *         - encrypting the payload-bearing fields exactly as it encrypts clips
- *           (`sdp`, `candidate`, `b64`, `name` — everything except `t`, `to`,
- *           `originId`, `id`, `seq`, `total`, `crc`, which are routing);
- *         - putting the frame on the relay;
- *         - returning `false` if it could not be sent. Any other return value
- *           (including undefined) is treated as sent.
- *
- *   2.  transfer.onSignal(frame)
- *
- *       Called for every inbound frame whose `.t` appears in transfer.FRAMES,
- *       already decrypted, with `.originId` set to the sending peer. Frames
+ *   onSignal(frame)
+ *       Every inbound frame whose `.t` is in FRAMES, already decrypted. Frames
  *       addressed to somebody else are ignored here too, so a relay that
  *       broadcasts rather than unicasts is safe.
  *
  * Optional, both with safe defaults:
  *
- *   3.  transfer.setApprover(async ({id,name,size,type,from}) => boolean)
- *       Called when a peer asks for one of our files and
- *       state.settings.autoaccept is false. ui/filesPanel.js installs this.
- *       With no approver installed the request is DENIED, not silently allowed.
+ *   setApprover(async ({id,name,size,type,from}) => boolean)
+ *       With no approver installed a request is DENIED, not silently allowed.
  *
- *   4.  transfer.setPeerFactory(config => RTCPeerConnection)
- *       Seam for tests: inject a fake that never opens its data channel and the
- *       ICE-timeout fallback fires deterministically, with no browser and no
- *       five-second wait. Pass nothing to restore the real one.
+ *   setPeerFactory(config => RTCPeerConnection)
+ *       Test seam: a fake that never opens its data channel makes the ICE
+ *       timeout fire deterministically, with no browser and no five-second wait.
  *
- * Frame types this module emits and consumes are in FRAMES below, and
- * `transfer.FRAMES` is the exact list main.js should route:
+ * Route ALL of FRAMES. Without file-accept the receiver never learns the chunk
+ * plan; without file-done a zero-byte file hangs. The six types absent from
+ * transport/protocol.js are declared here because transport/ is not ours to
+ * edit — they belong in protocol.js.
  *
- *     if (transfer.FRAMES.includes(msg.t)) transfer.onSignal(msg);
- *
- * Routing a subset silently breaks transfers — without file-accept the receiver
- * never learns the chunk plan, and without file-done a zero-byte file hangs.
- *
- * rtc-offer, rtc-answer, rtc-ice, file-meta and file-req already exist in
- * transport/protocol.js. The six that do not (file-accept, file-deny,
- * file-chunk, file-done, file-cancel, file-error) are declared here because
- * transport/ is not ours to edit. They belong in protocol.js — see the report.
- *
- * ============================================================================
- * WHY THERE IS NO TURN SERVER
- * ============================================================================
- * TURN would fix corporate connectivity by relaying the bytes — which discards
- * the exact property that motivated P2P, and costs bandwidth. Instead we fall
- * back to the relay we already pay nothing for. That is viable only because the
- * cap is 5 MB (docs/P2P-FILES.md §4, PRD OI-14). The fallback is not an edge
- * case: on the target network it is the expected path.
- *
- * Whichever path is used is recorded on the file and shown in the UI. A relay
- * transfer is a different privacy story from a direct one, and the user is
- * entitled to know which one they got.
+ * WHY THERE IS NO TURN SERVER: it would fix corporate connectivity by relaying
+ * the bytes, discarding the property that motivated P2P and costing bandwidth.
+ * Falling back to the relay is viable only because the cap is 5 MB
+ * (docs/P2P-FILES.md §4, PRD OI-14), and on the target network the fallback is
+ * the expected path rather than an edge case. Which path was used is recorded on
+ * the file and shown in the UI — a relay transfer is a different privacy story.
  */
 
 import { FILES, NET } from "../core/config.js";
@@ -170,16 +136,12 @@ export const iceTimeoutMs = NET.ICE_TIMEOUT_MS;
 export const currentIceTimeoutMs = () => iceTimeout;
 
 /**
- * How long the requester will wait before giving up, and how long the holder's
- * prompt has to be answered. One number for both ends: a prompt that outlives
- * the request lets someone approve a transfer whose other end has already gone
- * home, and a request that outlives the prompt leaves a spinner running against
- * a decision that was made against it.
+ * One number for both ends: a prompt that outlives the request lets someone
+ * approve a transfer whose other end has gone home, and a request that outlives
+ * the prompt leaves a spinner running against a decision already made.
  *
- * It was `iceTimeout * RESPONSE_GRACE`, which tied how long a human gets to
- * read a dialog to a network constant — shortening the ICE race in a test also
- * shortened the dialog. `requestTimeout` is now its own value, settable for the
- * same reason the ICE one is.
+ * Its own value rather than a multiple of the ICE timeout, which tied how long a
+ * human gets to read a dialog to a network constant.
  */
 let requestTimeout = FILES.REQUEST_TIMEOUT_MS;
 
@@ -914,15 +876,10 @@ function finish(t) {
  * ------------------------------------------------------------------ */
 
 /**
- * Tell the room a file exists here.
- *
- * This is the outbound half of file-meta, and it was missing: the module
- * consumed announcements from peers but never made one, so a file added on
- * this machine was visible only on this machine. Dropped files and clipboard
- * images alike simply never reached anyone.
- *
- * Only metadata and the thumbnail travel. The bytes stay put until someone
- * asks (docs/P2P-FILES.md §1), which is the whole point of the design.
+ * The outbound half of file-meta, which was once missing entirely: the module
+ * consumed announcements but never made one, so a file added here was visible
+ * only here. Only metadata and the thumbnail travel — the bytes stay put until
+ * someone asks (docs/P2P-FILES.md §1).
  */
 export function announce(file) {
   if (!file || file.origin !== "local") return false;
@@ -952,14 +909,10 @@ export function announceAll() {
 }
 
 /**
- * Subscribed here rather than wired in main.js, deliberately.
- *
- * The outbound announcement was originally main.js's job and was simply never
- * written — the inbound half existed, so everything looked complete. A module
- * that knows how to announce should not depend on a distant composition root
- * remembering to ask it to. Subscribing at module scope makes "a local file
- * gets announced" a property of this file, and testable without booting the
- * whole app.
+ * Subscribed here rather than wired in main.js: the outbound announcement was
+ * originally the composition root's job and was simply never written, while the
+ * inbound half existed and made everything look complete. A module that knows
+ * how to announce should not depend on a distant file remembering to ask it.
  */
 on(EV.FILE_ADDED, ({ file }) => announce(file));
 
@@ -989,27 +942,17 @@ function signal(frame) {
   }
 }
 
-/* ------------------------------------------------------------------ *
- * Session allowances — "stop asking me about this device"
+/**
+ * Session allowances — "stop asking me about this device". A standing grant to
+ * send files off the machine without asking, so it is bounded three ways:
  *
- * Answering a prompt per file is right for a stranger and tiresome for your own
- * phone, which is the device most of these requests come from. So the prompt
- * offers a third answer that lasts as long as the session does.
- *
- * Three deliberate limits, because this is a standing grant to send files off
- * the machine without asking again:
- *
- *   - per device, not global. The `autoaccept` setting is the global version
- *     and lives in Settings, where a permanent choice belongs.
- *   - per room. Allowances are stored against the room hash and dropped the
- *     moment the key changes, so rotating the key — the way someone ejects a
- *     device — actually ejects it.
+ *   - per device, not global. `autoaccept` is the global version, in Settings.
+ *   - per room, dropped when the key changes, so rotating the key — the way
+ *     someone ejects a device — actually ejects it.
  *   - per tab. sessionStorage, so closing it forgets.
  *
  * And never silent: an allowed request still says out loud that it was sent.
- * A file leaving the machine with no trace anywhere is the thing this whole
- * dialog exists to prevent.
- * ------------------------------------------------------------------ */
+ */
 
 let allowances = new Set();
 let allowRoom = null;

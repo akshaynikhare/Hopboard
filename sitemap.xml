@@ -3,6 +3,12 @@
      deliberately absent: it is noindex, and listing a page you have asked
      crawlers to skip is a mixed signal.
 
+     /blog/ is absent for the same reason and only while it stays empty: it
+     carries `noindex, follow` until it has posts. Add it back in the same
+     commit that deletes that robots tag, not before — a sitemap entry is a
+     request to index, so shipping one for a noindex page asks Search Console
+     to log an error against the site on every crawl.
+
      lastmod is the one field here Google actually reads — changefreq and
      priority are ignored, and are kept only because they cost nothing. Set it
      honestly: a date that moves without the content moving gets learned and
@@ -85,10 +91,31 @@
     <priority>0.7</priority>
   </url>
 
+  <!-- The keyword pages. These target queries rather than describing the
+       product, so each one is a landing page in its own right and none of them
+       is reachable from the app. /help/ and the footer are what link them. -->
   <url>
-    <loc>https://realtimeclipboard.com/blog/</loc>
+    <loc>https://realtimeclipboard.com/snapdrop-alternative/</loc>
     <lastmod>2026-08-07</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.4</priority>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://realtimeclipboard.com/clipboard-sync-different-networks/</loc>
+    <lastmod>2026-08-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://realtimeclipboard.com/online-clipboard-no-login/</loc>
+    <lastmod>2026-08-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://realtimeclipboard.com/what-is-an-online-clipboard/</loc>
+    <lastmod>2026-08-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
 </urlset>

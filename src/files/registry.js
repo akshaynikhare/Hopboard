@@ -1,19 +1,12 @@
 /**
- * In-memory file list. No IndexedDB, no server, no persistence — closing the
- * tab is the cleanup routine.
+ * In-memory file list. No IndexedDB, no server, no persistence — closing the tab
+ * is the cleanup routine. A local entry holds the Blob; a remote entry holds
+ * metadata and a thumbnail until someone requests the bytes.
  *
- * A local entry holds the actual Blob. A remote entry holds only metadata and a
- * thumbnail until someone requests the bytes.
- *
- * Every entry also carries the two facts the UI is required to show and never
- * hide (docs/ARCHITECTURE.md §5):
- *
- *   state  — where this file is in its lifecycle, including why it failed.
- *            A transfer that dies must leave a visible reason behind, not an
- *            abandoned progress bar.
- *   path   — "p2p" or "relay", set the moment it is decided rather than at
- *            completion, so a relay transfer is labelled while it is still
- *            running. A relay transfer is a different privacy story.
+ * Every entry carries the two facts the UI must show and never hide
+ * (docs/ARCHITECTURE.md §5): `state`, so a dead transfer leaves a visible reason
+ * rather than an abandoned progress bar, and `path`, set when it is decided
+ * rather than at completion, so a relay transfer is labelled while still running.
  */
 
 import { FILES } from "../core/config.js";
@@ -45,30 +38,16 @@ export const count = () => items.length;
 /** Is a transfer under way for this file? The UI offers cancel when true. */
 export const isBusy = id => BUSY.has(get(id)?.state);
 
-/* ------------------------------------------------------------------ *
- * Injected collaborators
- *
- * Two seams, both copying the contract files/transfer.js already uses, because
- * this module sits UNDER both the transport and the transfer machinery and may
- * import neither:
- *
- *   setSignalSender(fn)  The same encrypt-and-send closure main.js hands
- *                        transfer.js. Removal needs it to tell the room that
- *                        one of OUR files is gone; without it removal is
- *                        local-only, which is safe but leaves a stale tile on
- *                        every peer until they click it. See the note on
- *                        FRAME_GONE for what still has to be wired.
- *
- *   setCanceller(fn)     transfer.cancel, injected by ui/filesPanel.js.
- *                        Importing files/transfer.js from here would be a cycle
- *                        pointing the wrong way — transfer.js imports this
- *                        module — and would make the list depend on the
- *                        machinery that moves it.
+/**
+ * Two seams, because this module sits UNDER both the transport and the transfer
+ * machinery and may import neither. `setSignalSender` takes the same
+ * encrypt-and-send closure main.js hands transfer.js; `setCanceller` takes
+ * transfer.cancel from ui/filesPanel.js, since importing transfer.js here would
+ * be a cycle pointing the wrong way.
  *
  * Both default to "not wired", and every call site treats that as "do the local
- * half and carry on". A missing collaborator must never block a removal: the
- * user asked for the bytes to go.
- * ------------------------------------------------------------------ */
+ * half and carry on" — a missing collaborator must never block a removal.
+ */
 
 let sendSignal = null;
 let canceller = null;
@@ -230,49 +209,32 @@ export function reset(id) {
   emit(EV.FILES_CHANGED, items);
 }
 
-/* ------------------------------------------------------------------ *
- * Removal
+/**
+ * Removal, in this order, none of it optional:
  *
- * Adding a file was always one-way: the list only grew, up to the 20-file cap.
- * Twenty 5 MB files is 100 MB of Blob pinned in a tab that has no other reason
- * to be large, and there was no way to get any of it back short of closing the
- * tab. remove() and clear() existed and were wired to nothing.
- *
- * Three things have to happen, in this order, and none of them is optional:
- *
- *   1. STOP ANY TRANSFER FIRST. Dropping the entry out from under a running
- *      send makes transfer.js discover mid-loop that "the file went away" and
- *      report a transfer error to a peer that did nothing wrong; on the receive
- *      side it leaves the holder streaming into a tab that has stopped
- *      listening. Cancelling first sends a file-cancel the peer understands and
- *      releases the half-built Blob in the reassembler.
- *   2. TELL THE ROOM, if it was ours. Otherwise every peer keeps a tile for a
- *      file that no longer exists, and only finds out by clicking it.
- *   3. RELEASE THE BYTES. Splicing the array is not enough on its own: an entry
- *      can still be referenced by a render pass or an object URL, and a Blob
- *      lives exactly as long as the last thing pointing at it.
- * ------------------------------------------------------------------ */
+ *   1. STOP ANY TRANSFER FIRST. Dropping the entry under a running send makes
+ *      transfer.js discover mid-loop that the file went away and report an error
+ *      to a peer that did nothing wrong; on the receive side it leaves the
+ *      holder streaming into a tab that stopped listening.
+ *   2. TELL THE ROOM, if it was ours, or every peer keeps a tile for a file that
+ *      no longer exists and only finds out by clicking it.
+ *   3. RELEASE THE BYTES. Splicing the array is not enough — an entry can still
+ *      be held by a render pass or an object URL, and a Blob lives exactly as
+ *      long as the last thing pointing at it.
+ */
 
 /**
- * The frame that says "the file I announced is gone".
+ * ⚠️ NOT YET DELIVERABLE END TO END. The outbound half is here and tested, but
+ * three things outside this module must land before a peer can act on it, and
+ * until then nothing reaches the wire at all:
  *
- * ⚠️ NOT YET DELIVERABLE END TO END. The outbound half is here and is exercised
- * by tests/unit/files.mjs, but three things outside this module have to land before a
- * peer can act on it, and until then nothing is put on the wire at all (no
- * signal sender is installed, so signal() is a no-op rather than a frame the
- * relay answers with UNKNOWN_TYPE):
+ *   - backend/main.py: "file-gone" must join ROOM_WIDE, or the relay rejects it.
+ *   - main.js: registry.setSignalSender(...) and a route into applyGone().
+ *   - files/transfer.js: FRAMES is frozen at load and main.js routes strictly
+ *     off it, so the type must be declared there to be routed.
  *
- *   - backend/main.py: "file-gone" must join ROOM_WIDE. It is a broadcast, like
- *     file-meta, whose retraction it is — the relay would otherwise reject it.
- *   - main.js: registry.setSignalSender(...) — the same closure already passed
- *     to transfer.setSignalSender — and a route for the inbound frame into
- *     applyGone().
- *   - files/transfer.js: FRAMES is frozen at module load and main.js routes
- *     strictly off it, so the type has to be declared there to be routed.
- *
- * Until then removal is local-only and degrades the way it always did: a peer
- * that requests a file we no longer hold gets file-error "that file is no
- * longer available" from onFileReq(), which is honest but late.
+ * Until then removal is local-only: a peer requesting a file we no longer hold
+ * gets file-error from onFileReq(), which is honest but late.
  */
 export const FRAME_GONE = "file-gone";
 

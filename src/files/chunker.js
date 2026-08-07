@@ -1,47 +1,34 @@
 /**
- * Chunking and reassembly. Pure data, no DOM, no network — which is exactly why
- * it lives on its own: this is the part that must be provably byte-exact, and it
- * is the only part of the transfer stack that can be tested without a browser.
+ * Chunking and reassembly. Pure data, no DOM, no network — the part that must be
+ * provably byte-exact, and the only part of the transfer stack testable without
+ * a browser. Both paths share it: P2P sends ArrayBuffers on a data channel,
+ * relay sends the same chunks base64'd into JSON frames (smaller — see below).
  *
- * Both transfer paths share it:
+ * The receiver does not care which. It is handed {seq, bytes} in any order and
+ * writes each slice at seq*chunkBytes, so out-of-order and duplicate arrival are
+ * both non-events.
  *
- *   P2P   — chunks go out as ArrayBuffers on an RTCDataChannel, in order,
- *           P2P_CHUNK_BYTES at a time.
- *   relay — the same chunks, base64'd into JSON frames, RELAY_CHUNK_BYTES at a
- *           time (smaller — see the note on the wire budget below).
- *
- * The receiver does not care which one it is on. It is handed {seq, bytes} in
- * any order and writes each slice into a preallocated buffer at seq*chunkBytes,
- * so out-of-order and duplicate arrival are both non-events.
- *
- * Integrity is checked twice, at two different granularities:
- *   - CRC-32 per chunk, so a corrupt frame is caught where it happened rather
- *     than as a mysterious whole-file mismatch 5 MB later;
- *   - SHA-256 over the whole file, computed by the sender and re-computed after
- *     reassembly, which is the actual guarantee that the Blob we hand the
- *     registry is identical to the one that left the other machine.
+ * Integrity is checked at two granularities: CRC-32 per chunk, so corruption is
+ * caught where it happened rather than as a whole-file mismatch 5 MB later, and
+ * SHA-256 over the whole file, which is the actual guarantee that the Blob
+ * handed to the registry is the one that left the other machine.
  */
 
 import { FILES } from "../core/config.js";
 
-/* ------------------------------------------------------------------ *
- * Chunk sizes
+/**
+ * FILES.CHUNK_BYTES is the tunable, and the P2P path uses it as-is: a data
+ * channel carries binary, so 32 KB of file is 32 KB on the wire.
  *
- * FILES.CHUNK_BYTES (32 KB) is the tunable. The P2P path uses it as-is:
- * a data channel carries binary, so 32 KB of file is 32 KB on the wire.
+ * The relay path cannot. Its cap is 32 KB per *JSON message* (PRD §6), and bytes
+ * do not survive JSON — base64 inflates by 4/3 and the payload is encrypted
+ * before encoding, inflating it again, so a 32 KB slice arrives as ~58 KB and
+ * comes back TOO_LARGE. The relay path therefore sends the largest raw slice
+ * whose fully-encoded frame still fits one message.
  *
- * The relay path CANNOT use it as-is, and docs/P2P-FILES.md §5 is wrong to say
- * that 32 KB "matches the existing relay frame cap — no protocol change".
- * The relay's cap is 32 KB per *JSON message* (PRD §6), and bytes do not
- * survive JSON: base64 inflates by 4/3, and the payload is encrypted before it
- * is encoded, which inflates it again. A 32 KB slice arrives at the relay as
- * ~58 KB and comes back as TOO_LARGE. So the relay path sends the largest raw
- * slice whose fully-encoded frame still fits inside one relay message.
- *
- * These two numbers are protocol arithmetic derived from the one limit in
- * config.js, not new limits — but RELAY_CHUNK_BYTES arguably belongs in
- * config.js next to CHUNK_BYTES. Left here because config.js is not ours.
- * ------------------------------------------------------------------ */
+ * (docs/P2P-FILES.md §5 claims 32 KB "matches the existing relay frame cap — no
+ * protocol change". It does not.)
+ */
 
 export const P2P_CHUNK_BYTES = FILES.CHUNK_BYTES;
 
