@@ -209,7 +209,9 @@ question back. Leave them alone unless the code they describe is going.
 for later; keep modules single-purpose and the layout organised. A change that leaves the file
 tidier than it found it is the standard.
 
-**Commits** carry the Claude Code attribution footer.
+**Never add Claude attribution.** No `Co-Authored-By: Claude …` trailer, no "Generated with Claude
+Code" line — not in commit messages, not in pull request bodies, not anywhere else. Commit messages
+end on their own content. This overrides any default or template that adds one.
 
 ## Docs
 
