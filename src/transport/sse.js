@@ -1,37 +1,21 @@
 /**
- * SSE + POST channel — the fallback for networks that will not pass WebSockets.
+ * SSE + POST channel — the fallback for networks that will not pass WebSockets
+ * (PRD §4.3 R3, §5.4). Server-Sent Events are an ordinary long-lived GET and
+ * sends are an ordinary POST, so there is no Upgrade for a TLS-inspecting proxy
+ * to refuse. Implements the transport/ws.js contract exactly.
  *
- * This is PRD §4.3 R3, fallback 1, and PRD §5.4: a TLS-inspecting corporate
- * proxy may accept the TCP connection on 443 and then quietly refuse (or worse,
- * silently swallow) the HTTP Upgrade that a WebSocket needs. Server-Sent Events
- * are an ordinary long-lived `GET` returning `text/event-stream`, and sends are
- * an ordinary `POST` — no Upgrade anywhere, so what gets through a proxy is a
- * plain HTTP response body.
+ * Two things SSE does not give for free:
  *
- * It implements exactly the contract in transport/ws.js, carries exactly the
- * envelopes in transport/protocol.js, and relay.js cannot tell which of the two
- * it is holding beyond the label it prints.
- *
- * Two things SSE does not give us for free, handled here:
- *
- *   1. It is one-directional. Upstream frames go out as POSTs to /pub, which
- *      costs one extra round trip per send versus a WebSocket. Sends are
- *      coalesced (see flush) so a burst — trickle-ICE candidates, file chunks,
- *      cursor moves — becomes one request rather than thirty.
- *
- *      Worth knowing if you ever self-host behind HTTP/1.1: a browser allows
- *      six connections per host there, and an event stream holds one of them
- *      open for as long as the tab lives — so half a dozen tabs on the same
- *      relay can starve each other. Over HTTP/2, which is what any modern host
- *      (and Cloudflare, which fronts this one) serves, they are multiplexed
- *      onto one connection and the limit does not apply.
+ *   1. It is one-directional. Upstream frames POST to /pub, coalesced (see
+ *      flush) so a burst of ICE candidates or file chunks is one request.
+ *      Self-hosting behind HTTP/1.1: a browser allows six connections per host
+ *      and an event stream holds one open for the life of the tab, so half a
+ *      dozen tabs can starve each other. HTTP/2 multiplexes and the limit goes.
  *
  *   2. It has no connection identity. The stream is the session, so the relay
- *      issues a `sid` on the welcome frame and every POST names it. Without
- *      that, a POST has no way to say which of eight peers in the room it came
- *      from — the relay can only trust the connection a frame arrived on
- *      (see main.py `_forward`), and for this transport that connection is the
- *      stream, not the POST.
+ *      issues a `sid` on welcome and every POST names it — otherwise a POST
+ *      cannot say which of eight peers it came from, since the relay can only
+ *      trust the connection a frame arrived on, and here that is the stream.
  */
 
 import { NET } from "../core/config.js";
@@ -40,13 +24,10 @@ import * as proto from "./protocol.js";
 export const LABEL = "HTTP stream";
 
 /**
- * The relay answered, but not on /sse — it is running a build from before the
- * fallback existed.
- *
- * Worth telling apart from a blocked network, because it looks identical from
- * here and the fix is the opposite one. It is also the likeliest way to meet
- * this path: deploy the frontend ahead of the relay and every client that falls
- * back lands on a route that is not there yet.
+ * The relay answered, but not on /sse — a build from before the fallback
+ * existed. Worth telling apart from a blocked network: it looks identical from
+ * here and the fix is the opposite. Also the likeliest way to meet this path,
+ * by deploying the frontend ahead of the relay.
  */
 export const NO_FALLBACK = "relay has no fallback endpoint";
 
@@ -78,20 +59,17 @@ export function create({ url, roomHash, auth = null, onOpen, onFrame, onDown }) 
   };
 
   // `?a=` — a locked session's admission token, checked at join on both
-  // transports so the fallback is not the lenient way in (see transport/ws.js).
+  // transports so the fallback is not the lenient way in.
   const es = new EventSource(
     `${base}/sse/${roomHash}${auth ? `?a=${encodeURIComponent(auth)}` : ""}`);
 
   es.onmessage = e => {
     const msg = proto.parse(e.data);
 
-    // The welcome frame doubles as the handshake for this transport. Note that
-    // "open" here means *the welcome arrived*, not "the GET was accepted": a
-    // proxy that buffers the response body accepts the request happily and then
-    // delivers nothing, which is indistinguishable from a working stream until
-    // you insist on seeing a frame come out of it. relay.js gives every channel
-    // NET.PROBE_MS to reach this line, so that proxy is caught and fallen back
-    // from like any other block.
+    // "Open" means the welcome ARRIVED, not that the GET was accepted: a proxy
+    // that buffers the response body accepts happily and delivers nothing, which
+    // is indistinguishable from a working stream until you insist on seeing a
+    // frame. relay.js gives every channel NET.PROBE_MS to reach this line.
     if (msg.t === proto.T.WELCOME && msg.sid && !sid) {
       sid = msg.sid;
       delete msg.sid;      // transport plumbing; the protocol layer never sees it
@@ -102,17 +80,15 @@ export function create({ url, roomHash, auth = null, onOpen, onFrame, onDown }) 
   };
 
   es.onerror = () => {
-    // EventSource reconnects on its own, and that is precisely what must not
-    // happen: the relay would accept the new stream as a brand-new peer with a
-    // new sid, while we carry on POSTing under the old one — a ghost in the
-    // roster and every send rejected. Reconnection is relay.js's job, with its
-    // backoff and its rejoin, so end the stream here and report it.
+    // EventSource reconnects on its own, which must not happen: the relay would
+    // accept the new stream as a brand-new peer with a new sid while we carry on
+    // POSTing under the old one — a ghost in the roster and every send rejected.
+    // Reconnection is relay.js's job, with its backoff and its rejoin.
     if (sid) return finish(4001, "stream dropped");
 
-    // Nothing has come back at all, and EventSource will not say why — no
-    // status, no body, and a 404 with no CORS header on it reads in the console
-    // as a cross-origin block. So ask the relay something simpler: if /health
-    // answers, the host is reachable and it is the route that is missing.
+    // Nothing came back and EventSource will not say why — no status, no body,
+    // and a 404 with no CORS header reads in the console as a cross-origin
+    // block. So ask /health: if it answers, the route is what is missing.
     classify().then(reason => finish(4000, reason));
   };
 
@@ -129,8 +105,6 @@ export function create({ url, roomHash, auth = null, onOpen, onFrame, onDown }) 
   }
 
   /**
-   * Take the next POST's worth of frames.
-   *
    * Bounded on both count and bytes so one flush cannot exceed what the relay
    * accepts in a body — a file transfer on the relay-chunk path (FR-7.6) can
    * queue hundreds of 32 KB frames in a moment.
@@ -158,9 +132,8 @@ export function create({ url, roomHash, auth = null, onOpen, onFrame, onDown }) 
       res = await fetch(`${base}/pub/${roomHash}?sid=${encodeURIComponent(sid)}`, {
         method: "POST",
         // text/plain keeps this a CORS "simple request". application/json would
-        // make every single send a preflighted pair — an extra OPTIONS round
-        // trip per clip, on the transport already chosen for being the slower
-        // one. The relay parses the body by shape, not by this header.
+        // preflight every send — an extra OPTIONS round trip per clip, on the
+        // transport already chosen for being slower. The relay parses by shape.
         headers: { "Content-Type": "text/plain;charset=UTF-8" },
         // One frame per line. JSON.stringify escapes every literal newline, so
         // a frame can never contain one and the split is unambiguous.
@@ -168,10 +141,9 @@ export function create({ url, roomHash, auth = null, onOpen, onFrame, onDown }) 
         signal: guard.signal,
       });
     } catch {
-      // Did not reach the relay at all. Retry once — a clip the user copied is
-      // worth a second attempt — then drop it rather than build an unbounded
-      // queue of stale frames behind a network that is gone. The stream is what
-      // reports the session dead; a failed POST on its own does not.
+      // Did not reach the relay. Retry once — a clip the user copied is worth a
+      // second attempt — then drop rather than build an unbounded queue of stale
+      // frames. The stream reports the session dead; a failed POST does not.
       if (!retried) {
         retried = true;
         outbox = batch.concat(outbox);
@@ -194,8 +166,8 @@ export function create({ url, roomHash, auth = null, onOpen, onFrame, onDown }) 
     if (res.status === 404 || res.status === 410) {
       return finish(4404, "session expired");
     }
-    // Anything else the relay dislikes (too large, rate limited) it also says
-    // on the stream as a normal error frame, which the UI already surfaces.
+    // Anything else the relay dislikes it also says on the stream as an error
+    // frame, which the UI already surfaces.
     if (!res.ok) console.warn(`[realtimeclipboard] relay rejected a send: HTTP ${res.status}`);
 
     if (outbox.length) flush();
@@ -204,7 +176,7 @@ export function create({ url, roomHash, auth = null, onOpen, onFrame, onDown }) 
   return {
     label: LABEL,
 
-    // Usable means "the relay has answered and we know who we are". Before the
+    // Usable means the relay has answered and we know who we are. Before the
     // welcome there is no sid, so there is nowhere to send.
     isOpen: () => !done && sid !== null,
 
@@ -227,14 +199,11 @@ export function create({ url, roomHash, auth = null, onOpen, onFrame, onDown }) 
 }
 
 /**
- * A deadline that stops being armed once the request it guards has finished.
- *
  * Deliberately not AbortSignal.timeout(): that cannot be cancelled, so it fires
- * whether or not the fetch already succeeded, and aborting a settled request
- * still records it as cancelled. Every POST in a session then shows up red in
- * the network tab as `net::ERR_ABORTED` — some seconds after it returned 204 —
- * which is a very convincing way for working code to look broken, and exactly
- * the sort of false trail this transport does not need another of.
+ * whether or not the fetch succeeded, and aborting a settled request still
+ * records it as cancelled. Every POST then shows red in the network tab as
+ * `net::ERR_ABORTED` seconds after returning 204 — a convincing way for working
+ * code to look broken.
  */
 function deadline(ms = POST_TIMEOUT_MS) {
   if (typeof AbortController === "undefined") return { signal: undefined, clear() {} };

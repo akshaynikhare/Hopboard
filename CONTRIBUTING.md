@@ -71,10 +71,14 @@ the commit rather than the review:
 - Colours come from tokens, not stray hex.
 - Every page carries a CSP, and no page has an executable inline `<script>`.
 
-Beyond that: comments here explain **why**, not what. The existing ones are long
-on purpose — they record the decision and the thing that will go wrong if it is
-undone. A patch that deletes one of those without replacing the reasoning will
-get a question back.
+Beyond that: comments explain **why**, not what, and they earn their length.
+Keep the decision and the thing that goes wrong if it is undone; drop the
+retelling of what the code plainly does. A rule that governs a whole directory
+belongs in that directory's `CLAUDE.md` — a module header restating it is a
+second copy to keep true.
+
+Compressing a long comment to the reason it records is welcome. Deleting the
+*reason* without replacing it still gets a question back.
 
 ## Things that need care
 

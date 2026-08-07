@@ -1,23 +1,19 @@
 /**
  * "Lock session", in the app header.
  *
- * Locking already existed — three panes down, inside the gear menu's Security
- * group (ui/sessionPanel.js). That is the right home for "change the PIN" and
- * "remove the lock", which are things you go looking for. It is the wrong home
- * for the first one: adding a PIN is what someone reaches for at the moment
- * they paste something they would rather not leave lying in a room whose key
- * has been in a chat window, and at that moment they are looking at the header,
- * not opening menus.
+ * The gear menu is the right home for "change the PIN" and "remove the lock",
+ * which are things you go looking for. It is the wrong home for the first one:
+ * adding a PIN is what someone reaches for the moment they paste something they
+ * would rather not leave in a room whose key has been in a chat window, and at
+ * that moment they are looking at the header.
  *
- * NOTHING OPENS BY ITSELF. The button is a button; the PIN dialog appears when
- * it is pressed and at no other time. An app that popped a security prompt on
- * arrival would train exactly one behaviour — dismissing it — and this is the
- * prompt that must not be trained away.
+ * NOTHING OPENS BY ITSELF. An app that popped a security prompt on arrival would
+ * train exactly one behaviour — dismissing it — and this is the prompt that must
+ * not be trained away.
  *
- * The decision about who may press it is not made here. state.canLock() owns
- * it, because main.js has to make the same call when the event arrives and two
- * copies of a rule are one copy and a future disagreement. This file renders
- * that answer and explains it.
+ * Who may press it is state.canLock()'s decision, because main.js makes the same
+ * call when the event arrives, and two copies of a rule are a future
+ * disagreement. This file renders that answer and explains it.
  */
 
 import { emit, on, EV } from "../../core/bus.js";

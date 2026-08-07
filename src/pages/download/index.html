@@ -41,6 +41,7 @@
 <link rel="canonical" href="https://realtimeclipboard.com/download/">
 <meta name="theme-color" content="#007acc">
 <link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="RealtimeClipboard">
@@ -115,11 +116,7 @@
   <div class="in">
     <div class="row">
       <a class="brand" href="/">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <rect x="8" y="3" width="8" height="4" rx="1"/>
-          <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
-          <path d="M9 13l2 2 4-4"/>
-        </svg>
+        <img class="mark" src="/assets/icons/icon.svg" width="22" height="22" alt="" decoding="async">
         <b>RealtimeClipboard</b>
       </a>
       <span class="spacer"></span>
@@ -150,20 +147,6 @@
         </p>
       </header>
 
-      <!-- Said once here rather than tagged onto a dozen commands. The release
-           workflow is written and the artefacts below are exactly what it
-           produces; it has not run against a tag yet, so nothing on the releases
-           page and nothing in any registry resolves today. -->
-      <p class="honest">
-        <b>The first release has not been published yet.</b> Everything below is
-        what
-        <a href="https://github.com/akshaynikhare/RealtimeClipboard/blob/main/.github/workflows/release.yml">the release pipeline</a>
-        builds, and the buttons start resolving the moment it runs against a tag —
-        but today they land on an empty releases page.
-        <a href="/app.html">The browser app</a> is the part that works now, and it
-        is the part that matters.
-      </p>
-
       <!-- Filled in by src/landing/download.js when it recognises the platform.
            Empty and hidden otherwise, so a wrong guess costs nothing and a
            browser with JS off sees the full list below and nothing missing. -->
@@ -188,8 +171,7 @@
           <b>It reads every copy you make while it is running.</b> That is what you
           are installing. It never writes any of it to disk, and it is encrypted
           before it leaves the machine — but if you would rather it only sent what
-          you choose, switch it to <b>Manual</b> in the settings, which is the
-          default on desktop for exactly this reason.
+          you choose, switch it to <b>App</b> in the settings.
         </p>
 
         <div class="dlgrid">
@@ -380,12 +362,11 @@ ssh build-01 'cat /var/log/deploy.log' | npx realtimeclipboard send D75LV</code>
 
         <div class="cmdgrid">
           <div class="cmdcard wide">
-            <h4><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-docker"/></svg> Or from source, which works today</h4>
+            <h4><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-docker"/></svg> Or from source</h4>
             <pre><code>pip install -r backend/requirements.txt
 python -m uvicorn main:app --app-dir backend --port 8000</code></pre>
             <p class="hint">
-              The published image is waiting on the first tag; the source path is
-              not. For TLS and a real hostname use
+              For TLS and a real hostname use
               <a href="https://github.com/akshaynikhare/RealtimeClipboard/tree/main/deploy">deploy/docker-compose.yml</a>,
               and there is a Helm chart beside it. Then point the app at your
               relay under <b>Settings → Relay</b>.

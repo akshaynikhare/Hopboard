@@ -247,8 +247,12 @@ h3 {
   color:var(--text);
   text-decoration:none;
 }
-.brand svg { width:19px; height:19px; color:var(--blue); transition:transform .35s var(--ease); }
-.brand:hover svg { transform:translateY(-1px) rotate(-4deg); }
+/* The app icon itself, not a redrawing of it — one file behind the favicon, the
+   installed app and this row, so the header cannot show a mark the launcher
+   does not. Width and height are on the element too: it is above the fold and a
+   late-arriving intrinsic size would shift the whole row. */
+.brand .mark { width:22px; height:22px; transition:transform .35s var(--ease); }
+.brand:hover .mark { transform:translateY(-1px) rotate(-4deg); }
 .brand b { font-size:15.5px; font-weight:650; letter-spacing:-.01em; }
 
 /*
@@ -1386,7 +1390,7 @@ footer a:hover { color:var(--link); }
   }
   /* Hover states may still change colour — that is feedback, not motion — but
      nothing is allowed to move. */
-  .btn:hover, .brand:hover svg { transform:none; }
+  .btn:hover, .brand:hover .mark { transform:none; }
 }
 
 /* Windows high-contrast / forced colours: the rules and squares are decoration

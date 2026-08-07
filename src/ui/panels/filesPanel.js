@@ -1,33 +1,21 @@
 /**
  * Panel 2 — files and images. Thumbnails here, bytes over P2P.
  *
- * Two things this panel is not allowed to get wrong (docs/ARCHITECTURE.md §5):
+ * Two things this panel may not get wrong (docs/ARCHITECTURE.md §5): the
+ * transport path is always visible, from the moment the fallback is chosen
+ * rather than at the end, because a relay transfer is a different privacy story
+ * and the choice cannot be made after the fact; and a failed transfer says why
+ * on the tile, since a bar that quietly disappears looks like a slow network.
  *
- *   1. The transport path is always visible. A file that arrived over the relay
- *      says RELAY, from the moment the fallback is chosen rather than at the
- *      end, because that is a different privacy story from a direct transfer
- *      and the user cannot make an informed choice after the fact.
- *   2. A failed transfer says why, on the tile. A stalled bar that quietly
- *      disappears is indistinguishable from a slow network.
+ * A remote file we have not fetched reads GET, not P2P — the old code claimed
+ * P2P before any transfer happened, a promise the corporate network breaks.
  *
- * Note the badge for a remote file we have NOT fetched yet: it reads GET, not
- * P2P. The old code claimed P2P before any transfer had happened, which is a
- * promise the corporate network is very likely to break — see P2P-FILES.md §4.
- *
- * ── CANCEL vs REMOVE ───────────────────────────────────────────────────────
- * Two destructive controls that must never be confused for each other:
- *
- *   cancel (×, top-left, only while a transfer runs)
- *       Stops the transfer. The file stays in the session — a cancelled send
- *       damages nothing, and a cancelled download can be retried.
- *   remove (bin, bottom-right of the thumbnail, always)
- *       Drops the file from the session and frees its bytes. If it was ours,
- *       peers are told so their tile goes too; someone else's file is only
- *       hidden here, because deleting it off their machine is not ours to do.
- *
- * They are diagonally opposite, differently shaped and differently worded for
- * that reason, and remove confirms first whenever it would also kill a transfer
- * — that is somebody else's 5 MB as much as ours.
+ * CANCEL vs REMOVE, which must never be confused. Cancel (×, top-left, only
+ * while a transfer runs) stops the transfer and keeps the file. Remove (bin,
+ * bottom-right, always) drops it and frees the bytes, telling peers if it was
+ * ours — someone else's file is only hidden here, because deleting it off their
+ * machine is not ours to do. Hence diagonally opposite, differently shaped, and
+ * remove confirms whenever it would also kill a transfer.
  */
 
 import { FILES } from "../../core/config.js";
@@ -211,24 +199,14 @@ function mountClearAll() {
  * ------------------------------------------------------------------ */
 
 /**
- * Everything about a tile EXCEPT its progress number.
+ * Everything about a tile EXCEPT its progress number, and the omission is the
+ * point: a 5 MB file moves in 32 KB chunks, so rebuilding on progress rebuilt
+ * the grid up to 101 times per transfer. Destroying the tile being watched drops
+ * keyboard focus mid-transfer, resets the :hover that reveals the remove button,
+ * and means `transition:width .2s` on .bar has never once run.
  *
- * The omission is the whole point. registry.setProgress() emits FILES_CHANGED
- * next to FILE_PROGRESS, and a 5 MB file moves in 32 KB chunks, so one transfer
- * rebuilt the whole grid up to 101 times — once per whole percent. That is the
- * same fault tickCountdowns() below was split out to fix, and it costs the same
- * three things, because the tile being destroyed is the one being watched:
- *
- *   - keyboard focus is dropped mid-transfer. A tile is role="button"
- *     tabindex="0", so it genuinely holds focus.
- *   - :hover resets, and :hover is what reveals the remove button
- *     (styles/files.css), so it disappears from under the pointer.
- *   - `transition:width .2s` on .bar never fires. A replacement element has no
- *     previous width to animate from, so the bar has always jumped. That
- *     transition has not run once since it was written.
- *
- * Anything listed here changing means the markup really differs, and the grid
- * is rebuilt. A change in progress alone routes to tickProgress() instead.
+ * A change here means the markup really differs and the grid is rebuilt; a
+ * change in progress alone routes to tickProgress().
  */
 function shape(f) {
   // Unit separator rather than "": "a" of size 12 and "a1" of size 2 must not

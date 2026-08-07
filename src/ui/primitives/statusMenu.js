@@ -1,20 +1,13 @@
 /**
- * Slide-up menus for the status bar.
+ * Slide-up menus for the status bar, where every item that reports something is
+ * also the control for it.
  *
- * The status bar became the app's settings surface: every item that reports
- * something is also the control for it. Connection picks the transport, the
- * device count opens the roster, the sync rung opens the sync settings, P2P opens
- * the file settings, and the gear holds what belongs to none of them. That
- * replaced a sidebar pane whose six groups of switches were, on a phone, one
- * tab out of four behind the editor.
+ * This module owns their *behaviour*, so five menus cannot drift into five
+ * slightly different ones: one open at a time, anchored to the item that opened
+ * it, closed by Escape or an outside click, and rendered from a callback so the
+ * contents are current rather than a snapshot from boot.
  *
- * This module owns the *behaviour* of those menus so that five of them cannot
- * drift into five slightly different menus: one open at a time, anchored to the
- * item that opened it, closed by Escape or a click anywhere else, and rendered
- * from a callback so the contents are always current rather than a snapshot
- * from boot.
- *
- * It owns none of the *content*. statusbar.js and sessionPanel.js supply that.
+ * It owns none of the *content* — statusbar.js and sessionPanel.js supply that.
  */
 
 import { $, esc, setHTML, clear } from "./dom.js";

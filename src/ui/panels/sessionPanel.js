@@ -1,24 +1,21 @@
 /**
  * Session and settings, in the status bar.
  *
- * This was Panel 3: a sidebar pane holding the device roster and six groups of
- * switches. It is now four slide-up menus hanging off the status-bar items that
- * already reported the same things:
+ * Four slide-up menus hanging off the status-bar items that already reported the
+ * same things:
  *
  *   #sbPeers  "2 devices"  roster, split-brain warning, leave
  *   #sbMode   "App only"   the sync ladder, clipboard polling, images
  *   #sbP2P    "P2P idle"   the file settings
  *   #sbGear   (gear)       key strength and pointer sharing
  *
- * Why move at all: on a phone the pane was one tab out of four, so every
- * setting — and the roster, and the split-brain warning that means sync has
- * silently stopped — sat behind the editor until someone went looking. The
- * status bar is on screen in every view on every layout.
+ * This was a sidebar pane, which on a phone was one tab out of four — so every
+ * setting, and the split-brain warning that means sync has silently stopped, sat
+ * behind the editor until someone went looking. The status bar is on screen in
+ * every view on every layout.
  *
- * The menus render from state on every open (see ui/statusMenu.js), which is
- * what lets this file drop the DOM-seeding that used to run at boot: there are
- * no switch elements to initialise, because they do not exist until the moment
- * they are shown.
+ * The menus render from state on every open, so there are no switch elements to
+ * initialise at boot: they do not exist until the moment they are shown.
  */
 
 import {

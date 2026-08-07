@@ -17,26 +17,19 @@ export const esc = s => String(s ?? "")
 /**
  * The one place in the app that writes HTML.
  *
- * `esc()` above is a convention, and docs/ARCHITECTURE.md §5 lists "peer content
- * is escaped before entering innerHTML" as a security INVARIANT — which means
- * the whole guarantee rests on nobody ever forgetting one call. There were 25
- * assignment sites across 16 modules. That is 25 chances.
+ * Escaping is a security INVARIANT (docs/ARCHITECTURE.md §5), which meant the
+ * guarantee rested on nobody forgetting one of 25 assignment sites across 16
+ * modules. Trusted Types turns that convention into a rule the browser enforces:
+ * with `require-trusted-types-for 'script'`, assigning a plain string to
+ * innerHTML THROWS, so a sink added elsewhere fails loudly on first render.
  *
- * Trusted Types turns the convention into a rule the browser enforces. With
- * `require-trusted-types-for 'script'` in the CSP, assigning a plain string to
- * innerHTML THROWS; only a TrustedHTML from a registered policy is accepted. So
- * a new sink added anywhere else fails loudly on the first render instead of
- * quietly working until someone pastes a <script> tag.
+ * !! `createHTML` is a pass-through and sanitises nothing. `esc()` is still what
+ * makes a string safe; the policy's job is to make the sink singular and
+ * countable, not to clean it. !!
  *
- * !! Be clear about what this does not do: `createHTML` is a pass-through. It
- * sanitises nothing. `esc()` is still what makes the string safe, and the
- * static check still verifies that every module writing HTML calls it. The
- * policy's job is to make the sink singular and countable, not to clean it. !!
- *
- * Chromium-only — Firefox and Safari ignore both the directive and this API,
- * so they fall back to a plain assignment and are exactly as safe as before.
- * That matches the support matrix in PRD §5.3 and is the honest position: this
- * is defence in depth on the primary target, not a substitute for escaping.
+ * Chromium-only — Firefox and Safari ignore both the directive and this API and
+ * fall back to a plain assignment, exactly as safe as before. Defence in depth
+ * on the primary target, not a substitute for escaping.
  */
 const policy = (() => {
   try {

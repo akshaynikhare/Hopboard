@@ -1,29 +1,17 @@
 /**
  * Collapsible sidebar panes.
  *
- * Delegated from the sidebar rather than bound per-header, because panes are
- * mounted at unpredictable points during boot: feature modules load
- * dynamically and append their own. A `querySelectorAll("[data-toggle]")`
- * snapshot at init time binds whatever happens to exist at that instant — a
- * pane mounted a moment later gets no handler at all, and re-running init
- * binds the early ones twice (a click that toggles and untoggles).
+ * Delegated from the sidebar rather than bound per-header, because feature
+ * modules load dynamically and append their own panes: a querySelectorAll
+ * snapshot at init binds only what exists at that instant, and re-running init
+ * binds the early ones twice. One listener on a stable ancestor is immune.
  *
- * One listener on a stable ancestor is immune to both.
- *
- * ── WHY A REAL BUTTON ──────────────────────────────────────────────────────
- * A `.paneh` is a clickable <div> in app.html, which is unreachable by keyboard
- * and announces as nothing (WCAG 2.1.1, 4.1.2). The obvious repair — role
- *="button" + tabindex on the header itself — is wrong here, because a header
- * also carries its own action buttons (add file, clear history) and a button
- * containing a button is invalid and unpredictable in assistive tech.
- *
- * So the disclosure control is a genuine <button> wrapping only the chevron and
- * the label, inserted at runtime by upgrade(). The action buttons stay siblings
- * of it. Enter and Space then come free from the platform — there is no key
- * handling in this file, which is the point.
- *
- * The whole header row remains clickable for the mouse via the delegated
- * handler, so nothing changes for a pointer user.
+ * The disclosure control is a genuine <button> wrapping only the chevron and the
+ * label, inserted by upgrade(). A `.paneh` is a clickable <div> — unreachable by
+ * keyboard, announces as nothing (WCAG 2.1.1, 4.1.2) — and role="button" on the
+ * header is wrong because it also carries action buttons, and a button inside a
+ * button is invalid. Enter and Space then come free: there is no key handling in
+ * this file, which is the point. The row stays clickable for the mouse.
  */
 
 import { $ } from "../primitives/dom.js";

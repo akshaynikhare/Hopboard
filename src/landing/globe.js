@@ -1,34 +1,22 @@
 /**
  * RealtimeClipboard — live globe.
  *
- * A rotating wireframe globe with a marker on every country that currently has
- * a session, and a counter that says exactly what the relay says. Canvas 2D,
- * written here, no library and no CDN: the app has no build step and no
- * dependencies, and a marketing page is not the place to acquire the first one.
+ * A rotating wireframe globe with a marker on every country that currently has a
+ * session. Canvas 2D, no library and no CDN — a marketing page is not the place
+ * to acquire this repo's first dependency.
  *
- * WHAT IT SHOWS IS WHAT IS THERE.
+ * WHAT IT SHOWS IS WHAT IS THERE. No floor, no demo mode, no seeded traffic: a
+ * new product with three users looks like a new product with three users. Motion
+ * may come from three places and no others — the globe turning, your pointer,
+ * and a marker easing in or out because the relay's answer changed. Markers do
+ * not pulse or travel between each other, and arcs are absent on purpose: the
+ * relay reports per-country totals and nothing about who is paired with whom, so
+ * an arc would draw something we do not know. Animation may show what changed,
+ * never invent what is happening. When the endpoint is unreachable the numbers
+ * go back to "—" rather than showing a stale one as current.
  *
- *   - If the relay says two devices, it draws two devices. There is no floor,
- *     no "demo mode", no seeded traffic. A new product with three users looks
- *     like a new product with three users.
- *   - Motion is allowed to come from three places and no others: the globe
- *     turning, which is a property of the globe; your pointer, which is you;
- *     and a marker easing in or out, which happens when the relay's answer
- *     actually changed. Markers do not pulse, blink or travel between each
- *     other. Arcs in particular are absent on purpose — the relay reports
- *     per-country totals and nothing about who is paired with whom, so an arc
- *     from one country to another would be a drawing of something we do not
- *     know. That is the line: animation may show what changed, never invent
- *     what is happening.
- *   - When the endpoint is unreachable the numbers go back to "—" and the
- *     caption reads "sessions worldwide". No error state, no last-known number
- *     presented as current for longer than STALE_MS.
- *
- * PRIVACY. This is a GET and nothing else. No credentials, no referrer, no
- * body, no query string, no beacon on unload — there is nothing this page could
- * usefully tell the relay, and the relay's own response carries counts only:
- * no keys, no addresses, no content. See docs/PRD.md §7 for why the relay never
- * learns more than that in the first place.
+ * PRIVACY. A GET and nothing else — no credentials, no referrer, no body, no
+ * query string, no beacon on unload — and the response carries counts only.
  */
 
 import { RELAY_HTTP_URL } from "../core/config.js";
@@ -390,23 +378,18 @@ function isLand(lat, lon) {
 }
 
 /**
- * The dots, built once: the continents, and nothing else.
+ * The dots, built once: the continents, and nothing else. An earlier version
+ * drew a graticule over the whole sphere and read as a mesh ball, which is not
+ * what anyone recognises. Land only, ocean left to the wash underneath, and the
+ * shape becomes Earth in the first frame.
  *
- * An earlier version drew a graticule over the whole sphere. It read as a mesh
- * ball — a thing with a grid on it — and a grid is not what anyone recognises.
- * Dots on land only, ocean left to the body wash underneath, and the shape
- * becomes Earth in the first frame, which is the whole reason the section has a
- * globe rather than a number.
+ * A dot with any ocean in the four cells around it is COAST and is drawn
+ * brighter. That single flag turns a scatter of dots into an outline: the eye
+ * gets a continuous edge to follow, so the fill inside can sit back.
  *
- * A dot with any ocean in the four cells around it is COAST, and coast is drawn
- * brighter. That single flag is what turns a scatter of dots into an outline:
- * the eye gets a continuous edge to follow round each landmass, and the fill
- * inside can then sit back without the shape falling apart.
- *
- * What is stored is unit-sphere trigonometry, not angles — rotating a point by
- * `spin` is then four multiplies and two adds instead of two sines and two
- * cosines. Across ~3,000 points at 60 frames a second that is the difference
- * between a rounding error and a measurable slice of the frame.
+ * Stored as unit-sphere trigonometry, not angles, so rotating by `spin` is four
+ * multiplies and two adds rather than two sines and two cosines — across ~3,000
+ * points at 60fps, a measurable slice of the frame.
  */
 /**
  * Dot spacing is chosen from the RADIUS, not fixed.

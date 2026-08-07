@@ -1,27 +1,19 @@
 /**
  * The PIN prompt for locked sessions.
  *
- * `ask()` resolves to the PIN the user typed or to null if they backed out, and
- * `notice()` states a fact about the lock and offers one way forward — the
- * dialog a device sees when the session it was in has been locked without it.
- * Everything the caller does with either answer — deriving, connecting, giving
- * up, starting again — happens in main.js; this module knows nothing about
- * rooms, keys or the relay, and imports nothing that does.
+ * `ask()` resolves to the PIN or to null if the user backed out; `notice()`
+ * states a fact about the lock and offers one way forward. Everything done with
+ * either answer happens in main.js — this module knows nothing about rooms, keys
+ * or the relay, and imports nothing that does.
  *
- * WHY THIS IS A MODAL, when the file-request prompt next door deliberately is
- * not (ui/filesPanel.js). That one is docked because an unanswered request from
- * another device must never stop this one being used. This one is different in
- * kind: nothing is connected yet and there is nothing behind it to use. Until it
- * is answered the app has no session at all, so a focus trap is describing the
- * truth rather than imposing it.
+ * A modal, where the file-request prompt next door deliberately is not: that one
+ * is docked because an unanswered request from another device must not stop this
+ * one being used, whereas here nothing is connected and there is nothing behind
+ * it to use. The trap itself is ui/modal.js; this file is only the form.
  *
- * The trap itself lives in ui/modal.js — shell inert, tab ring, Escape, focus
- * restore — so this file is only the form.
- *
- * THE PIN NEVER TOUCHES MARKUP. It is read from `input.value` at submit and the
- * field is cleared on close. It is never interpolated into innerHTML, never put
- * in an attribute, never emitted on the bus, and never logged — a dialog that
- * leaked the secret it collects would be a strange thing to have built.
+ * THE PIN NEVER TOUCHES MARKUP. Read from `input.value` at submit, cleared on
+ * close, never interpolated, never in an attribute, never on the bus, never
+ * logged.
  */
 
 import { LOCK } from "../../core/config.js";

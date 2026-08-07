@@ -21,13 +21,9 @@ const byId = id => document.getElementById(id);
 const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 /**
- * Each feature is started separately and its failure is contained.
- *
- * The app learned this the expensive way (see tests/live/boot.mjs): one unguarded
- * throw during start-up took out everything after it, and the only symptom was
- * a feature quietly not working. Here it would mean an SVG API missing on some
- * browser stopping the key generator from ever running — the one thing on this
- * page that has to work.
+ * One unguarded throw during start-up takes out everything after it, and the
+ * only symptom is a feature quietly not working. Here that would be a missing
+ * SVG API stopping the key generator — the one thing on this page that must run.
  */
 function start(name, fn) {
   try { fn(); } catch (err) { console.warn(`[landing] ${name} not started:`, err); }

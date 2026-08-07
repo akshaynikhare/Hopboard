@@ -1,31 +1,19 @@
 /**
  * End-to-end encryption. All of it. No libraries.
  *
- * OPEN SESSION — the key the user types serves two purposes without the server
- * learning it:
+ *   OPEN    roomHash = SHA-256("realtimeclipboard:" + KEY)[0..16]  -> sent
+ *           aesKey   = PBKDF2(KEY, salt, 250k)                     -> never sent
  *
- *   roomHash = SHA-256("realtimeclipboard:" + KEY)[0..16]   -> sent, routes the room
- *   aesKey   = PBKDF2(KEY, salt, 250k)             -> never leaves this browser
+ *   LOCKED  prk       = PBKDF2(PIN, "realtimeclipboard-lock-v1:" + KEY, 600k)
+ *           aesKey    = HKDF(prk, "…/aes")
+ *           roomHash  = HKDF(prk, "…/room")   -> sent
+ *           authToken = HKDF(prk, "…/auth")   -> sent, proves PIN knowledge
  *
- * LOCKED SESSION — a PIN that is never in the link, never on disk and never
- * sent anywhere. It is folded into ONE PBKDF2 run whose output is expanded by
- * HKDF into three independent values:
- *
- *   prk       = PBKDF2(PIN, salt = "realtimeclipboard-lock-v1:" + KEY, 600k)
- *   aesKey    = HKDF(prk, "…/aes")    -> AES-GCM-256
- *   roomHash  = HKDF(prk, "…/room")   -> sent, routes the room
- *   authToken = HKDF(prk, "…/auth")   -> sent, proves PIN knowledge to the relay
- *
- * The room hash requiring the PIN is the load-bearing part: it is what turns
- * "you cannot read it" into "you cannot find it". Someone holding the link but
- * not the PIN computes a different room hash, lands in a different room, and
- * never appears in the real one at all — no peer slot, no roster entry, no
- * traffic metadata. Locked and unlocked rooms with the same key are likewise
- * disjoint, so the two kinds of client can never meet and fail to decrypt each
- * other.
- *
- * The relay cannot derive the key from the hash, so it cannot decrypt. It sees
- * a room name and ciphertext, and nothing else. See PRD §7.3.
+ * The room hash requiring the PIN is the load-bearing part: it turns "you cannot
+ * read it" into "you cannot find it". Someone holding the link but not the PIN
+ * computes a different room hash and never appears in the real room at all — no
+ * peer slot, no roster entry, no traffic metadata. Locked and unlocked rooms of
+ * the same key are disjoint for the same reason. See PRD §7.3.
  */
 
 import { CRYPTO } from "./config.js";
@@ -42,8 +30,8 @@ export async function roomHash(key) {
 }
 
 /**
- * Derive the AES key. Several hundred ms on a low-end Android, so call once
- * per session and show an "unlocking" state — never per message.
+ * Several hundred ms on a low-end Android, so call once per session and show an
+ * "unlocking" state — never per message.
  */
 export async function deriveKey(key) {
   if (cached.id === `open:${key}` && cached.aesKey) return cached.aesKey;
@@ -63,51 +51,35 @@ export async function deriveKey(key) {
   return aesKey;
 }
 
-/* ------------------------------------------------------------------
-   Locked sessions
-------------------------------------------------------------------- */
+/* ---- locked sessions ---- */
 
 /**
- * Normalise a PIN — the exact OPPOSITE of what normalise() does to a key, and
- * the reasoning is worth keeping because getting it backwards is silent.
+ * The exact opposite of what normalise() does to a key, and getting it backwards
+ * is silent.
  *
- * A key is uppercased and stripped to [A-Z0-9] so that two people typing "the
- * same key" land in the same room. A PIN is user-chosen prose, so:
- *
- *   - NFC, mandatory. "é" can be typed as one code point or as "e" plus a
- *     combining accent. They are different byte strings, they derive different
- *     rooms, and NOTHING would report it — the second device would simply be
- *     alone in a room of its own, looking like a wrong PIN.
- *   - Trim the ends. A trailing space from a paste is invisible on screen and
- *     the user has no way to see why their correct PIN is rejected.
- *   - Keep case and everything in the middle. Uppercasing would throw away
- *     about a bit per letter to buy nothing: unlike a key, a PIN is never read
- *     aloud off a screen and retyped from memory.
+ *   - NFC is mandatory. "é" as one code point and as "e" + combining accent are
+ *     different byte strings deriving different rooms, and nothing reports it —
+ *     the second device is simply alone, looking like a wrong PIN.
+ *   - Trim the ends: a pasted trailing space is invisible on screen.
+ *   - Keep case and the middle. A PIN is never read aloud and retyped, so
+ *     uppercasing would throw away a bit per letter to buy nothing.
  */
 export function normalisePin(raw) {
   return String(raw ?? "").normalize("NFC").trim();
 }
 
 /**
- * The whole locked-session derivation: one PBKDF2, three outputs.
+ * One PBKDF2, three outputs. PBKDF2 reruns its full iteration count per 32-byte
+ * block, so asking it for 64 bytes would cost double; stretch once and expand
+ * with HKDF, which is a couple of HMACs.
  *
- * PBKDF2 reruns its full iteration count for every 32-byte block of output, so
- * asking it for the 64 bytes we need would cost twice what it should — and OI-8
- * already flags this as hundreds of milliseconds on a low-end Android. Instead
- * we stretch once and expand with HKDF, which is a couple of HMACs.
+ * The share key as salt stops ONE table covering every session — the open path,
+ * with its single global salt, has exactly that weakness. It buys nothing
+ * against the attacker this feature is for: someone holding the link can compute
+ * the salt. Only PIN length and iteration count defend there, which is why the
+ * dialog reports entropy in bits rather than calling a short PIN "secure".
  *
- * The share key is the salt, and it is worth being precise about what that does
- * and does not buy. It stops ONE table from covering every session — the
- * open-session path, with its single global CRYPTO.SALT, has exactly that
- * weakness today. It buys nothing at all against the attacker this feature is
- * actually for: someone holding the link holds the key, so they can compute the
- * salt themselves. Against them the only defence is the length of the PIN and
- * the iteration count, which is why the dialog reports entropy in bits instead
- * of calling a short PIN "secure".
- *
- * Returns `prk` as hex alongside the derived values so a page refresh can skip
- * the 600k iterations. See storage.saveLock for why the PIN itself is never
- * what gets stored.
+ * Returns `prk` as hex so a refresh can skip the 600k iterations.
  */
 export async function deriveLocked(key, pin) {
   const prk = await stretch(key, normalisePin(pin));
@@ -151,17 +123,9 @@ async function expand(prk) {
   };
 }
 
-/**
- * No cache entry for locked sessions, deliberately.
- *
- * The open-session cache exists because deriveKey() is called with the same key
- * repeatedly. The locked path is not: it runs once per session, a reconnect
- * reuses the room hash without re-deriving, and the only things that DO call it
- * again — a corrected PIN, a rotated key — are the cases where the previous
- * answer is exactly the one you must not reuse. The refresh path is covered by
- * the stored prk instead, which is cheaper than a cache and survives the tab
- * being reloaded.
- */
+// No locked-session cache on purpose: the path runs once per session, and the
+// things that DO call it again — a corrected PIN, a rotated key — are exactly
+// where the previous answer must not be reused. The stored prk covers refresh.
 
 /** -> {payload, iv} both base64. A fresh IV per message is mandatory for GCM. */
 export async function encrypt(aesKey, plaintext) {
@@ -179,13 +143,9 @@ export async function decrypt(aesKey, payloadB64, ivB64) {
   return dec.decode(buf);
 }
 
-/**
- * Forget the derived key.
- *
- * Called on leaving a session and on rotating the key. For years this had no
- * callers at all, which meant the AES key of a room you had deliberately walked
- * out of stayed live in this module until you happened to open another one.
- */
+// Called on leaving a session and on rotating the key. This had no callers for
+// years, so the AES key of a room you walked out of stayed live until you opened
+// another one.
 export function clearCache() { cached = { id: null, aesKey: null }; }
 
 /* ---- hex helpers ---- */

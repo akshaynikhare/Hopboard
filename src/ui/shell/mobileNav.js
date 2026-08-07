@@ -1,30 +1,20 @@
 /**
  * Bottom tab bar — the phone layout's view switcher.
  *
- * ── WHY A TAB BAR ──────────────────────────────────────────────────────────
- * The desktop layout is two columns: the editor, and a sidebar holding three
- * stacked panes. Narrow enough and that becomes one column, which is where the
- * old narrow layout stopped — and one column of five scrolling regions on a
- * 640px-tall screen is not a layout, it is a list of things you have to scroll
- * past to reach the thing you wanted. The editor never got more than half the
- * screen; the status bar was below the fold.
+ * One column of five scrolling regions on a 640px-tall screen is not a layout,
+ * it is a list of things to scroll past: the editor never got half the screen
+ * and the status bar was below the fold. So a phone shows exactly one view at a
+ * time and gives it the whole shell. This file owns which.
  *
- * So on a phone the app shows exactly one of them at a time and gives it the
- * whole shell. This file owns which one.
+ * A view is a tab plus the elements composing it, and three of the four include
+ * the sidebar because their pane lives inside it — so "show a view" is "hide
+ * everything in the union this view does not claim". Hiding is a class
+ * (.mv-hide), not inline `display`, so the media query in mobile.css decides
+ * whether it means anything and a stale class cannot blank out the desktop.
  *
- * ── HOW ────────────────────────────────────────────────────────────────────
- * A view is a tab plus the elements that make it up. Three of the four include
- * the sidebar itself, because their pane lives inside it — so "show a view" is
- * "hide everything in the union that this view does not claim", not "toggle one
- * element". Hiding is a class (.mv-hide) rather than inline `display`, so the
- * media query in styles/mobile.css is what decides whether it means anything:
- * a stale class left on a widened window cannot blank out the desktop layout.
- *
- * ── WHAT THIS IS NOT ───────────────────────────────────────────────────────
- * Not `role="tablist"`. That pattern requires each view to be a `tabpanel`, and
- * the Text view is the document's `<main>` — trading a landmark screen-reader
- * users navigate by for an ARIA relationship they get anyway from `aria-current`
- * is a bad trade. This is a nav with a current item, which is what it is.
+ * Not `role="tablist"`: that requires each view to be a `tabpanel`, and the Text
+ * view is the document's `<main>`. Trading a landmark for an ARIA relationship
+ * `aria-current` already gives is a bad trade.
  */
 
 import { $, esc, setHTML } from "../primitives/dom.js";

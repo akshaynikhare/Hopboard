@@ -20,6 +20,10 @@ to every installed client.
 
 ## Rules
 
+- **Everything in `icons/` is generated**, by `tools/build/build-icons.py`, and so is every file in
+  `desktop/src-tauri/icons/`. Do not hand-edit one, `icon.svg` included — it is a string template
+  in that script, and the next run overwrites it. Change the geometry table at the top of the
+  script instead, run `npm run build:icons`, and commit what it wrote.
 - **`social/og-card.png` is generated**, by `tools/build/build-og-card.py`. Do not hand-edit it.
   `npm run check:og` exits non-zero when it is stale.
 - **`og:image` is an absolute URL** in every page's `<meta>`, and social platforms cache it against

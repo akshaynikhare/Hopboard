@@ -114,6 +114,25 @@ check("it does not introduce itself again on the next launch",
 emit("ui:guide");
 check("...but the gear menu can still open it", !!document.querySelector(".guide"));
 
+/* ---- opened before the session exists ----------------------------------
+   boot() does not await openSession(), so on a first launch this dialog is
+   built while the key derivation is still running. It must say so and then
+   fill itself in — never render a QR for a link with no key in it, which
+   scans as "open a new session". */
+modal.close();
+state.setKey({ key: null, roomHash: null, aesKey: null });
+emit("ui:guide");
+const pending = document.querySelector(".guide-dlg");
+check("with no key yet it offers no QR to scan", !pending?.querySelector("svg.qrsvg"));
+check("...and says the session is still opening", /Opening the session/.test(pending?.innerHTML));
+
+state.setKey({ key: KEY, roomHash: "deadbeef", aesKey: null });
+const filled = document.querySelector(".guide-dlg");
+check("it fills itself in when the key arrives",
+      filled?.innerHTML.includes("D75LV X9QRS"),
+      filled?.querySelector(".guidekey")?.textContent?.trim());
+check("...QR and all", !!filled?.querySelector("svg.qrsvg"));
+
 /* ---- the web must get nothing ------------------------------------------ */
 let webClean = false;
 try {

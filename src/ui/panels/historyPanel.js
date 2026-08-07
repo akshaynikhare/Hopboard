@@ -1,25 +1,16 @@
 /**
  * Sidebar pane — in-session clip history (PRD FR-2.9).
  *
- * ── BUS CONTRACT ───────────────────────────────────────────────────────────
- * Emits  "history:restore"  {text}   — user clicked a row; load it into the editor.
- * Listens "history:changed" {clips}  — the list changed; re-render.
- * (Both names are exported as history.EVENTS.RESTORE / .CHANGED — use those.)
+ * Emits history.EVENTS.RESTORE {text}; listens for .CHANGED {clips}.
  *
- * Why a new event rather than re-emitting EV.TEXT_RECEIVED: TEXT_RECEIVED means
- * "a peer sent this". Restoring from history is neither remote nor new, and
- * main.js routes TEXT_RECEIVED into clipboard/capture.apply() — so borrowing it
- * would lie about provenance, and route a deliberate act through the path that
- * defers to a recent local copy. main.js wires RESTORE to the editor, a send,
- * and — on the Clipboard rung only — a deliberate clipboard write of its own
- * via capture.putOnClipboard(), which is what makes the restored clip survive
- * the next poll tick instead of being overwritten by it.
+ * A distinct event rather than re-emitting EV.TEXT_RECEIVED, which means "a peer
+ * sent this": restoring is neither remote nor new, and main.js routes
+ * TEXT_RECEIVED into capture.apply(), so borrowing it would lie about provenance
+ * and send a deliberate act down the path that defers to a recent local copy.
  *
- * ── ESCAPING ───────────────────────────────────────────────────────────────
- * Every clip value that reaches innerHTML goes through esc() first. Clip text is
+ * Every clip value reaching innerHTML goes through esc() first. Clip text is
  * attacker-controlled by definition — anyone holding the session key can put
- * `<img src=x onerror=…>` on your clipboard, and this pane is where it would
- * land. There is no path in this file from raw clip text to markup.
+ * `<img src=x onerror=…>` on your clipboard, and this pane is where it lands.
  */
 
 import { emit, on, EV } from "../../core/bus.js";

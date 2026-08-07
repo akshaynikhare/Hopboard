@@ -89,15 +89,9 @@ export function init() {
   // device to a list nobody re-reads is not enough — if a stranger guesses or
   // is handed the key, the moment they arrive is the only moment it is
   // noticeable.
-  /**
-   * A banner from anywhere, by event.
-   *
-   * Every banner above is one this module knows the meaning of, which is right
-   * for the ones tied to session state. "What's new" is not: it is a notice
-   * about the build, its content comes from a data file, and teaching this
-   * module to parse a changelog to render it would put the knowledge in the
-   * wrong place. So the shape stays here and the content comes in.
-   */
+  // "What's new" is a notice about the build whose content comes from a data
+  // file, so the shape stays here and the content comes in — teaching this
+  // module to parse a changelog would put the knowledge in the wrong place.
   on("ui:banner", ({ key, ...opts }) => { if (key) show(key, opts); });
 
   on(EV.PEER_JOINED, ({ name }) => {
@@ -125,20 +119,19 @@ export function init() {
   });
 
   /**
-   * A locked session that has not proved itself.
+   * A locked session that has not proved itself. An empty locked room is
+   * ambiguous by construction — you are either first here, or your PIN does not
+   * match the one that named the room everyone else is in. The app cannot tell,
+   * so it says so rather than picking the flattering interpretation, and offers
+   * the one action that resolves it either way.
    *
-   * Reaching an empty locked room is ambiguous by construction: you are either
-   * the first one here, or your PIN does not match the one that named the room
-   * everyone else is in. The app genuinely cannot tell, so it says so instead of
-   * picking the flattering interpretation — and offers the one action that
-   * resolves it either way.
+   * Only raised once peers have had a chance to appear; firing the instant a
+   * creator opens their own session would be pure noise.
    *
-   * Only raised once peers have had a chance to appear; a banner that fires the
-   * instant a creator opens their own new session would be pure noise.
+   * (A cancelled PIN prompt was a banner here. It is now the whole screen —
+   * ui/shell/lockGate.js — because a banner in a stack of three said it far too
+   * quietly.)
    */
-  /* A cancelled PIN prompt used to be a banner here. It is now the whole
-     screen — ui/shell/lockGate.js — because nothing behind it was connected to
-     anything, and a banner in a stack of three said that far too quietly. */
 
   on(EV.LOCK_STATE, ({ locked, verified }) => {
     if (!locked || verified) return dismiss("lock");

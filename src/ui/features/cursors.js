@@ -1,72 +1,34 @@
 /**
- * Live peer cursors — a small labelled pointer for every OTHER device in the
- * session, so a room with three laptops in it feels inhabited.
+ * Live peer cursors — a labelled pointer for every OTHER device in the session,
+ * so a room with three laptops in it feels inhabited.
  *
- * ============================================================================
- * PRIVACY — read this before changing anything below
- * ============================================================================
- * This broadcasts a continuous signal about what a person is physically doing,
- * which is a different class of data from "a clip arrived". Three properties
- * make it defensible, and all three are load-bearing:
+ * PRIVACY. This broadcasts a continuous signal about what a person is physically
+ * doing, which is a different class of data from "a clip arrived". Three
+ * properties make it defensible and all three are load-bearing:
  *
- *   1. It is ENCRYPTED like everything else. A cursor frame's only cleartext
- *      fields are `t` and `originId` — both in main.js's ROUTING_FIELDS, both
- *      needed to deliver the frame. `x`, `y`, `name` and `state` are sealed by
- *      main.js's encryptFrame() with the session key, exactly as a clip is. The
- *      relay forwards a blob; it does not learn where anyone's mouse is, only
- *      that some socket in some room is moving one.
+ *   1. ENCRYPTED. Only `t` and `originId` are cleartext, both needed to deliver
+ *      the frame; x, y, name and state are sealed by main.js encryptFrame().
+ *      The relay learns that some socket is moving a mouse, not where.
+ *   2. OFF-SWITCHABLE. `state.settings.cursors` gates both directions, and
+ *      switching off tells peers we are gone rather than freezing a pointer on
+ *      their screens.
+ *   3. IT STOPS WHEN YOU ARE NOT THERE. Tab hidden, window blurred or pointer
+ *      outside the viewport ends the stream. Sharing a pointer while you read
+ *      email in another tab is surveillance, not presence.
  *
- *   2. It is OFF-SWITCHABLE. `state.settings.cursors` gates both directions.
- *      Undefined means on (this ships enabled); an explicit `false` means we
- *      send nothing and render nothing, and we tell peers we are gone rather
- *      than leaving a frozen pointer on their screens.
+ * We never render our own pointer: the relay excludes the sender, and onSignal()
+ * drops anything carrying our originId anyway.
  *
- *   3. It STOPS when you are not there. Tab hidden, window blurred, or pointer
- *      outside the viewport and the stream ends immediately. Sharing a pointer
- *      while you are reading email in another tab is surveillance, not presence.
+ * The wire arrives by injection — setSignalSender/onSignal/init, the transfer.js
+ * idiom. `.from` is stamped by the relay and is the one field a peer cannot lie
+ * about, so it wins over `.originId` when present.
  *
- * We NEVER render our own pointer. A second cursor chasing the real one is
- * disorienting, and the guard is belt-and-braces: the relay excludes the sender
- * from a broadcast, and onSignal() drops anything carrying our originId anyway.
- *
- * ============================================================================
- * CONTRACT WITH main.js  (the transfer.js idiom — see files/transfer.js)
- * ============================================================================
- * A UI module must not import transport/relay.js (docs/ARCHITECTURE.md §3), so
- * main.js injects the send function and pumps inbound frames back in:
- *
- *   1.  cursors.setSignalSender(frame => boolean)
- *       `frame.t` is always FT.CURSOR; `frame.originId` (us) is filled in here.
- *       main.js seals the non-routing fields and puts it on the relay, and
- *       returns false if it could not be sent.
- *
- *   2.  cursors.onSignal(frame)
- *       Every inbound frame whose `.t` is in cursors.FRAMES, already decrypted,
- *       with `.originId` set to the sender (and `.from` stamped by the relay,
- *       which is the one field a peer cannot lie about — preferred when present).
- *
- *   3.  cursors.init()
- *
- * ============================================================================
- * RATE — why the numbers below
- * ============================================================================
- * A pointermove handler fires 60-120 times a second and clipboard sync is the
- * actual product; presence must never compete with it. Two things protect it:
- *
- *   - The relay puts "cursor" in its own rate-limit class (backend/main.py
- *     FRAME_CLASS) at 20/s, separate from the 10/s `interactive` bucket that
- *     clip, ping and hello share. So a moving mouse cannot rate-limit a clip
- *     even in the worst case.
- *   - We still throttle to one frame every SEND_INTERVAL_MS (100 ms = 10/s),
- *     half the cursor budget, leaving room for scheduler jitter without ever
- *     touching the 20/s ceiling. Movement smaller than MIN_MOVE does not send
- *     at all, so a resting hand costs nothing, and updates are coalesced with
- *     requestAnimationFrame so a burst of 8 moves between frames sends once.
- *
- * Smoothing happens on the RECEIVING side, in CSS: a 110 ms linear transform
- * transition turns the 10 fps feed into continuous motion on the compositor,
- * for no JavaScript per frame. `prefers-reduced-motion` drops it and the cursor
- * is simply placed. See styles/cursors.css.
+ * RATE. A pointermove handler fires 60-120 times a second and clipboard sync is
+ * the product, so presence must never compete with it. The relay gives "cursor"
+ * its own 20/s class, separate from the 10/s bucket clip and ping share; we
+ * still throttle to 10/s, skip movement under MIN_MOVE, and coalesce with
+ * requestAnimationFrame. Smoothing is the RECEIVER's job, in CSS — a 110 ms
+ * transform transition on the compositor, dropped under prefers-reduced-motion.
  */
 
 import { on, EV } from "../../core/bus.js";
@@ -330,29 +292,16 @@ export function onSignal(frame) {
 /** id -> { el, name, x, y, seenAt }. Every entry owns exactly one element. */
 const peers = new Map();
 
-/* ------------------------------------------------------------------ *
- * Motion
- *
- * styles/cursors.css already drops the 110 ms transform transition inside a
- * `@media (prefers-reduced-motion: reduce)` block, and that remains the primary
- * mechanism. This is the JavaScript half of the same decision, and it does two
- * things the stylesheet cannot:
- *
- *   1. It skips the one-frame deferral of `.live`. That deferral exists only to
- *      stop a new cursor sliding in from the corner of the window on its first
- *      update — with no transform transition there is nothing to slide, so the
- *      cursor is simply placed, which is what the setting asks for.
- *
- *   2. It sets transition-property on the element itself. The sheet is injected
- *      as a <link> at init(), so there is a window in which it has not applied
- *      yet — and if it fails to load at all, the CSS guard never runs. Only the
- *      PROPERTY is set here: duration and easing stay in CSS, so the opacity
- *      fade that cursors.css deliberately keeps (a state change, not motion —
- *      without it a peer's departure is a jump cut) survives untouched.
- *
- * The query is live, so someone turning the OS setting on mid-session gets it
- * applied to the cursors already on screen.
- * ------------------------------------------------------------------ */
+/**
+ * cursors.css drops the transform transition under prefers-reduced-motion and
+ * remains the primary mechanism. This is the JavaScript half, doing two things
+ * the stylesheet cannot: skipping the one-frame `.live` deferral, which only
+ * exists to stop a new cursor sliding in from the corner and has nothing to stop
+ * when there is no transition; and setting transition-property on the element,
+ * because the sheet is injected at init() and may not have applied yet — or at
+ * all. Only the PROPERTY, so the opacity fade cursors.css deliberately keeps
+ * survives. The query is live, so toggling the OS setting mid-session applies.
+ */
 
 const motionQuery = typeof matchMedia === "function"
   ? matchMedia("(prefers-reduced-motion: reduce)")

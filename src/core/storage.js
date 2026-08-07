@@ -28,15 +28,12 @@ export const saveSettings = s => write("settings", s);
 
 /**
  * The relay this device talks to, when it is not the one the build ships with.
+ * config.js reads this key directly at module evaluation, because the URL has to
+ * resolve before anything imports it; this pair is for changing it afterwards.
  *
- * A preference, not session content, so it belongs here — nothing about a clip
- * or a key is being written. core/config.js READS this key directly at module
- * evaluation, because the URL has to be resolved before anything imports it;
- * this pair is for changing it afterwards.
- *
- * Normalised on the way in as well as on the way out. A value that got into
- * storage malformed would otherwise be re-read as malformed on every launch,
- * and the symptom — every connection refused — looks nothing like its cause.
+ * Normalised on the way in as well as out — a malformed stored value would
+ * otherwise be re-read as malformed on every launch, and the symptom (every
+ * connection refused) looks nothing like its cause.
  */
 export const loadRelayUrl = () => normaliseRelay(read("relayUrl", null));
 
@@ -48,14 +45,11 @@ export function saveRelayUrl(url) {
 }
 
 /**
- * The last room, so a relaunch can offer it back (FR-1.7, OI-10).
+ * The last room, so a relaunch can offer it back (FR-1.7, OI-10). Stores
+ * `{key, locked}` and still reads the bare string it used to be, because an
+ * upgrade must not strand somebody in "no room at all".
  *
- * Stores `{key, locked}` since locked sessions exist; it used to be a bare
- * string and still reads one, because an upgrade must not strand somebody in
- * "no room at all" on their first load of the new build.
- *
- * The lock FLAG is remembered here, in localStorage. The PIN is not, and never
- * will be — see saveLock below.
+ * The lock FLAG is remembered here. The PIN is not — see saveLock.
  */
 export function loadLastKey() {
   const saved = read("lastKey", null);
@@ -68,13 +62,10 @@ export function loadLastKey() {
 export const saveLastKey = (key, locked = false) => write("lastKey", { key, locked });
 
 /**
- * Which transport last worked (see transport/relay.js).
- *
- * Remembered because probing costs the user real seconds of "Connecting…" on
- * every load behind a proxy that blocks WebSockets, and the answer there is the
- * same every time. Expired rather than permanent because it is a fact about the
- * *network*, not the device: a laptop that leaves the office should go back to
- * the faster transport on its own, without anyone knowing there was a setting.
+ * Which transport last worked (transport/relay.js). Remembered because probing
+ * costs real seconds of "Connecting…" behind a proxy that blocks WebSockets.
+ * Expired rather than permanent because it is a fact about the *network*: a
+ * laptop leaving the office should return to the faster transport on its own.
  */
 export function loadTransport() {
   const saved = read("transport", null);
@@ -88,12 +79,11 @@ export function saveTransport(mode) {
 }
 
 /**
- * A transport the user picked by hand, which outranks anything measured.
- *
- * Kept apart from the remembered-working one above because they answer
- * different questions — "what worked last time" is an observation and expires;
- * "use HTTP" is an instruction and does not. Merging them would let a
- * successful automatic connection quietly overwrite a deliberate choice.
+ * A transport the user picked by hand, which outranks anything measured. Kept
+ * apart from the remembered-working one because they answer different questions:
+ * "what worked last time" is an observation and expires, "use HTTP" is an
+ * instruction and does not. Merged, a successful auto-connect would quietly
+ * overwrite a deliberate choice.
  */
 export const loadTransportChoice = () => read("transportChoice", null);
 
@@ -102,20 +92,15 @@ export function saveTransportChoice(mode) {
   write("transportChoice", mode);
 }
 
-/* ------------------------------------------------------------------
-   Session-scoped file allowances
-
-   sessionStorage, not localStorage, and this is the whole point of them: "allow
-   everything from this device" is a decision about the session you are in, and
-   it has to die with the tab. A permanent version of this setting is a standing
-   grant to whoever holds the share key, made once and then forgotten about.
-
-   Scoped to a room as well as a tab. The key is a bearer credential and rooms
-   are named after it, so an allowance granted in one session must not survive
-   into another — rotating the key is how someone throws a device out, and it
-   would be worth nothing if the allowance came along.
-------------------------------------------------------------------- */
-
+/**
+ * Session-scoped file allowances.
+ *
+ * sessionStorage is the whole point: "allow everything from this device" is a
+ * decision about the session you are in and has to die with the tab, or it is a
+ * standing grant to whoever holds the share key. Scoped to a room as well —
+ * rotating the key is how someone throws a device out, and it would be worth
+ * nothing if the allowance came along.
+ */
 export function loadAllowances(room) {
   if (!room) return [];
   try {
@@ -132,36 +117,22 @@ export function saveAllowances(room, peers) {
   } catch { return false; }
 }
 
-/* ------------------------------------------------------------------
-   The locked-session unlock, scoped to this tab
-
-   Two decisions here, both deliberate.
-
-   WHAT is stored is the PBKDF2 output, never the PIN. It unlocks exactly the
-   same room, so this is not a security improvement in itself — the point is
-   that a PIN is a human-chosen secret and humans reuse them. The string the
-   user typed should not be sitting in a browser store waiting to be read by
-   the next thing that gets to run in this origin. The derived value is useless
-   anywhere else, and reading it back skips 600k PBKDF2 iterations, so a refresh
-   is instant instead of a second of "Unlocking…".
-
-   WHERE is sessionStorage, for the same reason the file allowances above use
-   it: a refresh is the same session and must not re-prompt, but the tab closing
-   is the end of it. localStorage would put the unlock on disk next to the
-   plaintext key — at which point the link and the PIN are stored together and
-   the second secret has bought nothing.
-
-   Scoped to the share key, so rotating the key invalidates it automatically.
-------------------------------------------------------------------- */
-
 /**
- * The remembered unlock for a share key, or null.
+ * The locked-session unlock, scoped to this tab.
  *
- * Matched on the KEY rather than on the room, and that is not interchangeable.
- * The room hash of a locked session is derived from the stretched PIN alone, so
- * a record left behind by a previous key would still look perfectly
- * self-consistent and would silently reconnect this tab to a room the current
- * link does not name. The key is the thing that has to agree.
+ * WHAT is the PBKDF2 output, never the PIN. It unlocks the same room, so this is
+ * not a security win in itself — the point is that PINs are human-chosen and
+ * reused, and the typed string should not sit in a browser store. Reading it
+ * back skips 600k iterations, so a refresh is instant.
+ *
+ * WHERE is sessionStorage: a refresh is the same session and must not re-prompt,
+ * but the tab closing ends it. localStorage would put the unlock on disk beside
+ * the plaintext key, at which point the second secret has bought nothing.
+ *
+ * Matched on the KEY, not the room, and those are not interchangeable: a locked
+ * room hash derives from the stretched PIN alone, so a record left by a previous
+ * key would look self-consistent and silently reconnect this tab to a room the
+ * current link does not name.
  */
 export function loadLock(key) {
   if (!key) return null;

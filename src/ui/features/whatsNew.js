@@ -1,27 +1,18 @@
 /**
  * "What's new" — the changelog, in the app.
  *
- * The app updates itself. A service worker swaps the shell under you and, apart
- * from a reload prompt, nothing ever says what changed — so from the user's side
- * features appear and behaviour shifts for no visible reason. This is the answer
- * to that: the release notes, generated from the commit history by
- * tools/release/changelog.mjs, shipped as ./changelog.json and shown once per release.
+ * A service worker swaps the shell under you and nothing says what changed, so
+ * features appear and behaviour shifts for no visible reason. These are the
+ * release notes, generated from commit history by tools/release/changelog.mjs.
  *
- * Two rules about when it appears, both learned from products that get this
- * wrong:
+ * Two rules about when it appears. It never interrupts — a release is not
+ * urgent, and a modal stealing focus while someone pastes a password is a worse
+ * bug than the one it announces, so arrival is a dismissible banner. And it never
+ * shows on a first visit: the version is recorded silently and the banner starts
+ * from the release after.
  *
- *   - It never interrupts. A release is not urgent and a modal that steals focus
- *     while someone is pasting a password is a worse bug than the one it is
- *     announcing. Arrival is a dismissible banner; the dialog only opens if the
- *     user asks for it.
- *   - It never shows on a first visit. Someone who has not used the app before
- *     has nothing to be caught up on, and a changelog is a strange first
- *     impression. The version is recorded silently the first time and the banner
- *     starts from the release after that.
- *
- * Failure here is silence, never an error. A missing or malformed changelog.json
- * means no banner and no menu entry — the release notes are not worth a console
- * full of red on an app whose job is moving text between machines.
+ * Failure here is silence, never an error: a missing or malformed changelog.json
+ * means no banner and no menu entry.
  */
 
 import { emit } from "../../core/bus.js";

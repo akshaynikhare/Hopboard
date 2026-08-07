@@ -1,32 +1,20 @@
 /**
  * The relay connection: protocol, liveness, and which transport carries it.
  *
- * Everything above this file (main.js, and through it the whole app) sees one
- * interface — connect / send / close / isOpen / setFrameHandler — and never
- * learns how the bytes actually leave the machine. That boundary was designed
- * in from the start (PRD §4.3, docs/ARCHITECTURE.md §3) against the risk that
- * the deployed relay would not pass WebSocket upgrades. It turned out to be
- * needed for a different reason: the *client's* network.
- *
- * On a managed corporate network — the primary deployment context (PRD §5.4) —
- * a TLS-inspecting proxy may refuse the HTTP Upgrade that a WebSocket needs, or
- * accept the connection and then swallow it, leaving a socket that never opens
- * and never closes. So the transport is not a build-time decision:
+ * Everything above sees one interface — connect / send / close / isOpen /
+ * setFrameHandler — and never learns how the bytes leave the machine. Designed
+ * against the risk that the deployed relay would not pass WebSocket upgrades; it
+ * turned out to be needed for the *client's* network instead, where a
+ * TLS-inspecting proxy may refuse the Upgrade or accept and then swallow it.
  *
  *   1. Try WebSocket. Give it NET.PROBE_MS to become usable.
  *   2. Two consecutive attempts that never become usable is a policy, not a
- *      flaky moment — switch to SSE+POST, which is plain HTTP and needs no
- *      Upgrade, and say so out loud.
- *   3. If that is blocked too, keep alternating rather than giving up on one:
- *      a network that refuses both is a different problem, and the user is told
- *      exactly that instead of watching "Reconnecting" forever.
+ *      flaky moment — switch to SSE+POST and say so out loud.
+ *   3. If that is blocked too, keep alternating: a network refusing both is a
+ *      different problem, and the user is told that rather than watching
+ *      "Reconnecting" forever.
  *
- * The choice is remembered (storage.js), so someone behind that proxy pays the
- * probe once rather than on every load, and re-probes when the memory expires
- * or they move to another network.
- *
- * The two channels live in ws.js and sse.js and implement one contract. All the
- * protocol handling, heartbeat and backoff is here, once, for both.
+ * The choice is remembered, so someone behind that proxy pays the probe once.
  */
 
 import { RELAY_URL, NET, TRANSPORT } from "../core/config.js";
@@ -72,14 +60,11 @@ let probe = null;
 let pingSentAt = 0;
 
 /**
- * Which attempt is the current one.
- *
- * Rejoining, rotating the key and recovering from a collision all close the
- * connection and open a new one — while a reconnect timer from the old one may
- * still be pending. Without a generation to compare against, that timer wakes
- * up, sees `wantOpen`, and opens a second connection alongside the live one:
- * the user is in the room twice, sees their own clips echoed back, and one of
- * the two sockets is unreachable by anything. Every callback and timer below
+ * Which attempt is the current one. Rejoin, rotate and collision recovery all
+ * close and reopen while a reconnect timer from the old attempt may still be
+ * pending — without a generation to compare, that timer wakes, sees `wantOpen`,
+ * and opens a second connection alongside the live one: the user is in the room
+ * twice and sees their own clips echoed back. Every callback and timer below
  * captures this and does nothing if it has moved on.
  */
 let epoch = 0;
@@ -88,10 +73,9 @@ let epoch = 0;
 export const transport = () => mode;
 
 /**
- * `auth` is a locked session's admission token (core/crypto.js `deriveLocked`).
- * It is HKDF output, not the PIN and not the key — the relay can check that two
- * peers agree without being able to reverse it into either. Absent for open
- * sessions, and a relay that predates it ignores the parameter.
+ * `auth` is a locked session's admission token — HKDF output, not the PIN and
+ * not the key, so the relay can check that two peers agree without being able to
+ * reverse it into either. A relay that predates it ignores the parameter.
  */
 export function connect({ roomHash, intent = "join", url = RELAY_URL, name = "", auth = null }) {
   channel?.close(1000);            // a second connect() replaces, never stacks
@@ -118,22 +102,13 @@ export function close() {
 
 export const isOpen = () => channel?.isOpen() === true;
 
-/* ------------------------------------------------------------------
-   transport selection
-------------------------------------------------------------------- */
+/* ---- transport selection ---- */
 
 /**
- * Where to start.
- *
- * A hand-picked transport wins outright, and never expires — it is an
- * instruction, not a measurement. Failing over would undo it, so a forced
- * transport keeps retrying itself and the status bar says it is locked.
- *
- * Failing that, a remembered choice: on a network that blocks WebSockets,
- * re-probing costs NET.PROBE_MS of "Connecting…" on every single load and the
- * answer is the same every time. storage.js expires that memory on its own, so
- * moving off that network re-probes rather than pinning the user to the slower
- * transport forever.
+ * A hand-picked transport wins outright and never expires — it is an
+ * instruction, not a measurement. Failing that, a remembered choice: re-probing
+ * costs NET.PROBE_MS of "Connecting…" on every load and the answer is the same
+ * every time. storage.js expires that memory, so moving network re-probes.
  */
 function preferred() {
   if (forced && CHANNELS[forced]?.available()) return forced;
@@ -143,12 +118,10 @@ function preferred() {
 }
 
 /**
- * Pin the transport, or hand it back to the app.
- *
- * Exists because "it works but it is on the slow one" and "it should be on the
- * slow one and is not" both need an answer a user can act on, and because
- * reproducing a blocked network to test the fallback otherwise means finding a
- * blocked network. `null` means auto.
+ * Pin the transport, or hand it back to the app. Exists because "it works but it
+ * is on the slow one" and "it should be on the slow one and is not" both need an
+ * answer a user can act on — and because reproducing a blocked network to test
+ * the fallback otherwise means finding a blocked network. `null` means auto.
  */
 export function setTransport(choice) {
   const next = choice === TRANSPORT.WS || choice === TRANSPORT.SSE ? choice : null;
@@ -160,8 +133,8 @@ export function setTransport(choice) {
 
   if (!wantOpen || !session) return announce();
 
-  // Reconnect now rather than at the next drop: the point of choosing is to
-  // see the choice take effect.
+  // Reconnect now rather than at the next drop: the point of choosing is to see
+  // the choice take effect.
   channel?.close(1000);
   channel = null;
   stopTimers();
@@ -177,9 +150,8 @@ export function setTransport(choice) {
 export const transportChoice = () => forced;
 
 function switchTransport() {
-  // A forced transport does not fail over. Someone asked for this one
-  // specifically, and silently moving them off it is exactly the behaviour the
-  // switch was added to be able to override.
+  // A forced transport does not fail over: silently moving someone off it is
+  // exactly what the switch was added to override.
   if (forced) return;
 
   const next = OTHER[mode];
@@ -189,9 +161,8 @@ function switchTransport() {
   failures[next] = 0;
   backoff = NET.BACKOFF_MIN_MS;    // the switch is a fresh start, not a retry
 
-  // Loud, never silent — the same rule the file layer follows when a P2P
-  // transfer falls back to the relay (FR-7.6). The fallback is slower and the
-  // user is entitled to know which pipe their clipboard is going down.
+  // Loud, never silent — the same rule the file layer follows on P2P fallback
+  // (FR-7.6). The user is entitled to know which pipe their clipboard goes down.
   emit(EV.TOAST, next === TRANSPORT.SSE
     ? "WebSocket blocked — switched to the HTTP fallback"
     : "Retrying the WebSocket connection");
@@ -211,20 +182,16 @@ function announce() {
     mode: stuck ? null : mode,
     label: CHANNELS[mode].LABEL,
     blocked: stuck,
-    // What the picker in the status bar shows as selected. `mode` is what is
-    // actually carrying frames right now; this is what the user asked for, and
-    // on auto they are not the same question.
+    // `mode` is what carries frames now; this is what the user asked for. On
+    // auto they are not the same question.
     forced,
     // "the relay is old" and "the network is blocking us" present identically
-    // and have opposite fixes, so the UI is given the difference rather than a
-    // single sentence that has to cover both.
+    // and have opposite fixes.
     unsupported,
   });
 }
 
-/* ------------------------------------------------------------------
-   one attempt
-------------------------------------------------------------------- */
+/* ---- one attempt ---- */
 
 function start() {
   stopTimers();
@@ -243,11 +210,9 @@ function start() {
     onDown: current(down),
   });
 
-  // A blocked transport does not always fail — it hangs. An intercepting proxy
-  // can accept the connection, drop the Upgrade (or buffer the event stream)
-  // and then do nothing at all, with no error to react to. Without this timer
-  // the app sits on "Connecting…" indefinitely and the fallback never runs,
-  // which is the whole failure this file exists to handle.
+  // A blocked transport hangs rather than fails, so there is no error to react
+  // to — only this timer notices. See transport/CLAUDE.md; do not replace it
+  // with an error handler.
   probe = setTimeout(() => {
     if (opened || gen !== epoch) return;
     channel?.close(4000);          // deliberate: the channel will not call down()
@@ -268,9 +233,8 @@ function up() {
   failures[mode] = 0;
 
   // Only an automatic success is evidence. A forced transport working proves
-  // nothing about what this network allows — it proves someone clicked it — and
-  // recording it would mean pinning HTTP once left "Automatic" choosing HTTP
-  // for the next twelve hours, which is the opposite of handing control back.
+  // someone clicked it, not what the network allows — recording it would mean
+  // pinning HTTP once left "Automatic" choosing HTTP for the next twelve hours.
   if (!forced) storage.saveTransport(mode);
 
   state.setConnection("connected", detail());
@@ -300,15 +264,12 @@ function down({ code, reason }) {
   }
 
   // 1012 = "service restart". Every push to main redeploys the relay and closes
-  // every live socket with this code (OI-13) — observed for real during the M0
-  // idle test. It is a planned, short outage rather than a fault, so reset the
-  // backoff and come back promptly instead of treating it like a flaky network
-  // and waiting out a doubled delay.
+  // every live socket with this code (OI-13) — a planned, short outage rather
+  // than a fault, so come back promptly instead of waiting out a doubled delay.
   if (code === 1012) backoff = NET.BACKOFF_MIN_MS;
 
   // Read before switching: switchTransport() zeroes the incoming transport's
-  // counter, so asking afterwards always says "not blocked" and the user would
-  // never be told that nothing at all is getting through.
+  // counter, so asking afterwards always says "not blocked".
   if (!opened && failures[mode] >= NET.SWITCH_AFTER) {
     if (blocked()) {
       stuck = true;
@@ -317,8 +278,7 @@ function down({ code, reason }) {
     switchTransport();
   }
 
-  // Jitter keeps a restart from producing a synchronised reconnect stampede
-  // from every client at the same instant.
+  // Jitter keeps a restart from producing a synchronised reconnect stampede.
   const wait = Math.round(backoff * (0.8 + Math.random() * 0.4));
   backoff = Math.min(backoff * 2, NET.BACKOFF_MAX_MS);
 
@@ -342,30 +302,24 @@ function stopTimers() {
 }
 
 /**
- * Status-bar text: whatever the state wants to say, plus the transport.
- *
- * "locked" is not decoration. A pinned transport does not fail over, so a user
- * who pinned WebSocket on a network that blocks it would otherwise watch an
- * endless reconnect with no hint that they are the reason.
+ * Status-bar text. "locked" is not decoration: a pinned transport does not fail
+ * over, so a user who pinned WebSocket on a network that blocks it would
+ * otherwise watch an endless reconnect with no hint that they are the reason.
  */
 const detail = (extra = "") =>
   [extra, NOTE[mode], forced ? "locked" : ""].filter(Boolean).join(" · ");
 
-/* ------------------------------------------------------------------
-   protocol
-------------------------------------------------------------------- */
+/* ---- protocol ---- */
 
 let idRetries = 0;
 
 /**
- * Our own id is still held — by the connection we just closed.
- *
- * A rejoin, a key rotation or a collision recovery reconnects within
- * milliseconds, and the relay only drops a peer once it *notices* the old
- * transport is gone. Reconnect faster than that and we meet our own ghost: the
- * relay keeps us under a provisional id, while the files layer goes on
- * addressing frames to our originId — so transfers to this device quietly stop
- * resolving. Ask again a moment later, by which time the ghost has been reaped.
+ * Our own id is still held — by the connection we just closed. A rejoin or
+ * rotation reconnects within milliseconds, and the relay only drops a peer once
+ * it notices the old transport is gone. Reconnect faster and we meet our own
+ * ghost: the relay keeps us under a provisional id while the files layer goes on
+ * addressing frames to our originId, so transfers to this device quietly stop
+ * resolving. Ask again once the ghost has been reaped.
  */
 function reclaimIdentity() {
   if (idRetries >= 3) return emit(EV.TOAST, proto.ERRORS.PEER_ID_TAKEN);
@@ -388,16 +342,13 @@ function handle(msg) {
         emit(EV.KEY_COLLISION, { existing: msg.existing });
         return;
       }
-      // A room's last clip is replayed to late joiners, so a device that
-      // arrives mid-session is immediately in sync (FR-3.3).
+      // A room's last clip is replayed to late joiners, so a device arriving
+      // mid-session is immediately in sync (FR-3.3).
       if (msg.last) onFrame(msg.last);
 
-      // What the room looked like at the moment we arrived. main.js needs both
-      // halves and can infer neither: a locked session plants its beacon only
-      // into a room that is empty AND has no retained clip, because the beacon
-      // is a clip and would otherwise overwrite the very thing the line above
-      // exists to deliver. Emitted after the replay so a listener that reacts
-      // to it cannot race the last clip.
+      // Both halves, because main.js can infer neither: a locked session plants
+      // its beacon only into a room that is empty AND has no retained clip.
+      // Emitted after the replay so a listener cannot race the last clip.
       emit(EV.ROOM_STATE, { existing: msg.existing ?? 0, hasLast: msg.last != null });
       break;
 

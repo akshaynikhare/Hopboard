@@ -228,13 +228,16 @@ adding a recurring bill; see docs/RELEASING.md.
 
 ## Working conventions
 
-**Comments: absolute minimum in new code.** Write code that does not need explaining — clear names,
+**Comments: absolute minimum, everywhere.** Write code that does not need explaining — clear names,
 small functions, obvious structure. Add a comment only where the *why* cannot be recovered from the
 code (a non-obvious constraint, a bug the line prevents), never to restate what the line does.
 
-Existing long comments are the exception, not the pattern to imitate. They record decisions and
-what breaks if undone; `CONTRIBUTING.md` says deleting one without replacing the reasoning gets a
-question back. Leave them alone unless the code they describe is going.
+This applies to existing comments as much as to new ones: compress a long one down to the reason it
+records, and delete it outright where that reason now lives in a directory's `CLAUDE.md` — the
+per-directory files are the canonical home for a rule, and a module header repeating one is a
+second copy that will drift. What may **not** go is the reason itself: a decision, or what breaks
+if it is undone. Deleting one of those without replacing it gets a question back
+(`CONTRIBUTING.md`).
 
 **Abstract and clean up as you go.** Factor out duplication when you meet it rather than filing it
 for later; keep modules single-purpose and the layout organised. A change that leaves the file

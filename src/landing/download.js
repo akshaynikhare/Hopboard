@@ -1,21 +1,17 @@
 /**
  * Promote the platform you are probably on, and hide nothing.
  *
- * The usual version of this feature guesses your OS and shows you one button.
- * That is wrong here for a specific reason: the guess is wrong often enough —
- * a Linux user on a Chromebook, someone on a work Mac reading on their phone,
- * anyone behind a UA-reducing browser — and when it is wrong, the page has no
- * other route. So this only ever ADDS a card at the top. Every platform stays
- * where it was, in the order it was, and a browser with no JavaScript sees the
- * complete page with nothing missing.
+ * The usual version guesses your OS and shows one button. The guess is wrong
+ * often enough — a Linux user on a Chromebook, a work Mac read on a phone,
+ * anyone behind a UA-reducing browser — and when it is wrong that page has no
+ * other route. So this only ever ADDS a card at the top: every platform stays
+ * where it was, and a browser with no JavaScript sees the complete page.
  *
- * There is also nothing to detect on the honest question. Whether background
- * clipboard capture works is a property of the operating system, not of the
- * browser reading this, and the cards state it per platform in the markup.
+ * Whether background clipboard capture works is a property of the operating
+ * system, not of the browser reading this, so the cards state it in the markup.
  *
- * The second half of the file swaps the generic /releases/latest links for the
- * real asset URLs. Same principle: it only ever sharpens what the markup
- * already says, and does nothing at all when it cannot.
+ * The second half swaps the generic /releases/latest links for real asset URLs —
+ * same principle: it sharpens what the markup says, or does nothing.
  */
 
 const byId = id => document.getElementById(id);
@@ -51,7 +47,7 @@ const COPY = {
              icon: "#i-windows", doc: "/help/install/windows/" },
   mac:     { name: "macOS",   lead: "One download for Intel and Apple Silicon.", to: "#desktop",
              icon: "#i-apple",   doc: "/help/install/mac/" },
-  linux:   { name: "Linux",   lead: ".deb, .rpm and AppImage, or the AUR.", to: "#desktop",
+  linux:   { name: "Linux",   lead: ".deb, .rpm and AppImage.", to: "#desktop",
              icon: "#i-linux",   doc: "/help/install/linux/" },
   android: { name: "Android", lead: "No app to install — add it to your home screen from Chrome.", to: "#mobile",
              icon: "#i-android", doc: "/help/install/android/" },
@@ -127,20 +123,14 @@ if (os && host && COPY[os]) {
 }
 
 /**
- * Point the download buttons at the actual files.
+ * The markup already points at /releases/latest, which is a correct page on its
+ * own, so this only replaces a correct answer with a more specific one and every
+ * failure path is `return`: offline, rate-limited (60 unauthenticated requests
+ * an hour per IP), no published release, or no matching asset. No spinner and no
+ * empty state, because the page is never waiting on this.
  *
- * The markup ships pointing at /releases/latest with the artefact described in
- * prose, which is a correct page on its own — this only ever replaces a correct
- * answer with a more specific one. So every failure path here is `return`:
- * offline, rate-limited (the unauthenticated API allows 60 requests an hour per
- * IP), no release published, or an asset that does not match. There is no
- * spinner and no empty state, because there is never a moment where the page is
- * waiting on this.
- *
- * Worth knowing when it appears to do nothing: release.yml creates releases as
- * DRAFTS, and the API returns the latest *published* one. Until somebody
- * publishes the draft this finds nothing — and neither does /releases/latest,
- * so the fallback is not the worse answer.
+ * When it appears to do nothing: the API returns the latest *published* release,
+ * so an unpublished draft finds nothing here — and neither does /releases/latest.
  */
 const REPO = "akshaynikhare/RealtimeClipboard";
 const ASSET = {

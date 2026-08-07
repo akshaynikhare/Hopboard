@@ -13,6 +13,7 @@
 <link rel="canonical" href="https://realtimeclipboard.com/help/install/linux/">
 <meta name="theme-color" content="#007acc">
 <link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
 
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="RealtimeClipboard">
@@ -70,11 +71,7 @@
   <div class="in">
     <div class="row">
       <a class="brand" href="/">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <rect x="8" y="3" width="8" height="4" rx="1"/>
-          <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
-          <path d="M9 13l2 2 4-4"/>
-        </svg>
+        <img class="mark" src="/assets/icons/icon.svg" width="22" height="22" alt="" decoding="async">
         <b>RealtimeClipboard</b>
       </a>
       <span class="spacer"></span>
@@ -108,26 +105,18 @@
 
       <div class="article">
 
-        <p class="honest">
-          <b>The first release has not been published yet.</b> The download links
-          below land on an empty releases page until
-          <a href="https://github.com/akshaynikhare/RealtimeClipboard/blob/main/.github/workflows/release.yml">the release pipeline</a>
-          runs against a tag.
-          <a href="/app.html">The browser version</a> needs no install and works now.
-        </p>
-
         <h2 id="install">Install it</h2>
         <p>Take the file that matches your distribution from
           <a href="https://github.com/akshaynikhare/RealtimeClipboard/releases/latest">the releases page</a>:</p>
         <pre><code># Debian, Ubuntu and derivatives
-sudo apt install ./realtimeclipboard_&lt;version&gt;_amd64.deb
+sudo apt install ./RealtimeClipboard_&lt;version&gt;_amd64.deb
 
 # Fedora, RHEL and derivatives
-sudo dnf install ./realtimeclipboard-&lt;version&gt;.x86_64.rpm
+sudo dnf install ./RealtimeClipboard-&lt;version&gt;-1.x86_64.rpm
 
 # anything else
-chmod +x realtimeclipboard_&lt;version&gt;_amd64.AppImage
-./realtimeclipboard_&lt;version&gt;_amd64.AppImage</code></pre>
+chmod +x RealtimeClipboard_&lt;version&gt;_amd64.AppImage
+./RealtimeClipboard_&lt;version&gt;_amd64.AppImage</code></pre>
         <p>
           <b>The AppImage needs the <code>chmod</code>.</b> Downloading through a
           browser clears the executable bit, and the resulting failure is a file
@@ -210,10 +199,10 @@ chmod +x realtimeclipboard_&lt;version&gt;_amd64.AppImage
             once and the clip is picked up as it focuses.</li>
         </ol>
         <p class="honest">
-          The switch at the top of the window is <b>Live</b> by default, so
+          The switch at the top of the window is <b>Clipboard</b> by default, so
           everything you copy is shared. It reads every copy you make while it
           is running, which is a thing worth knowing rather than inheriting —
-          the app says so on first launch, and <b>Manual</b> stops anything
+          the app says so on first launch, and <b>App</b> stops anything
           leaving the machine until you paste it in.
         </p>
 

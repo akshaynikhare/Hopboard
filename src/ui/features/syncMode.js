@@ -10,21 +10,16 @@
  *               read nor written.
  *   Clipboard — the OS clipboard is wired to the room, both ways.
  *
- * A ladder rather than two switches because that is what it actually is, and
- * one control with three positions is one thing to find instead of two.
+ * A ladder rather than two switches because that is what it is, and one control
+ * with three positions is one thing to find instead of two.
  *
- * The labels name the DESTINATION — how far the sync reaches — rather than a
- * manner of working. "Live vs Manual" named neither end of that axis, and
- * Manual was the worse half of the pair: it was not manual on the receiving
- * side, it was off. Receiving had a separate switch of its own, so a device set
- * to Manual stopped sending while arriving clips still landed on its system
- * clipboard, which is the half nobody expected.
+ * The labels name the DESTINATION rather than a manner of working. "Live vs
+ * Manual" named neither end of that axis, and Manual was not manual on the
+ * receiving side — receiving had a switch of its own, so a device set to Manual
+ * stopped sending while arriving clips still landed on its system clipboard.
  *
- * The distinction matters because the top rung means the passwords and tokens
- * you copy for unrelated reasons travel too, and that arriving clips overwrite
- * your real clipboard mid-task. Someone on a work machine, or sharing a key
- * with a colleague for five minutes, should be able to see and change that
- * without hunting for it.
+ * It matters because the top rung means the passwords you copy for unrelated
+ * reasons travel too, and arriving clips overwrite your real clipboard mid-task.
  */
 
 import { SYNC_MODES } from "../../core/config.js";

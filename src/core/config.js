@@ -5,41 +5,31 @@
 
 import { IS_DESKTOP } from "./native.js";
 
-/**
- * Relay endpoint.
- *
- * Must be wss:// in production: the site is served over HTTPS from GitHub
- * Pages, and a browser refuses a ws:// connection from an https:// page as
- * mixed content. Localhost is exempt from that rule, which is why the dev
- * branch can stay ws://.
- */
-// Guarded: this module is imported by node-based tests where `location` does
-// not exist, and a bare reference would throw at import time and take the whole
-// graph down.
+// Guarded: imported by node tests where `location` does not exist, and a bare
+// reference would throw at import time and take the whole graph down.
 const IS_LOCAL = typeof location !== "undefined" &&
   ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 
-/** The relay this build ships pointed at. Self-hosters change this one line. */
+/**
+ * Must be wss:// in production — a browser refuses ws:// from an https:// page
+ * as mixed content. Localhost is exempt, which is why dev can stay ws://.
+ * Self-hosters change this one line.
+ */
 export const DEFAULT_RELAY_URL = "wss://realtimeclipboard.fastapicloud.dev";
 const LOCAL_RELAY_URL = "ws://127.0.0.1:8000";
 
 /**
- * Key under which the chosen relay is remembered.
- *
- * The storage PREFIX lives here rather than in core/storage.js so that this
- * module can read a setting without importing storage.js — which imports this
- * one, and a cycle between "every constant" and "the thing that persists them"
- * is the sort that works until someone moves a line to module scope.
+ * The storage prefix lives here rather than in core/storage.js so this module
+ * can read a setting without importing storage.js — which imports this one, and
+ * a cycle between "every constant" and "the thing that persists them" works
+ * until someone moves a line to module scope.
  */
 export const STORAGE_PREFIX = "realtimeclipboard.";
 const RELAY_KEY = "relayUrl";
 
 /**
- * Accept only something that can actually be a relay, and normalise it.
- *
  * `http(s)://` is accepted and converted, because that is what a person copies
- * out of a browser bar when their IT department gives them an address, and
- * rejecting it would be pedantry with a support ticket attached.
+ * out of a browser bar when IT gives them an address.
  */
 export function normaliseRelay(raw) {
   if (!raw || typeof raw !== "string") return null;
@@ -59,20 +49,14 @@ const stored = () => {
 };
 
 /**
- * `?relay=` in the address, for builds that are deployed rather than visited:
- * a corporate MSI transform, a macOS config profile, or a desktop shell that
- * launches the webview at its own relay.
+ * `?relay=` for builds that are deployed rather than visited: an MSI transform,
+ * a config profile, a desktop shell launching the webview at its own relay. It
+ * wins over the stored setting because the deployment is more current, and
+ * main.js persists it so the switch survives the next launch.
  *
- * It wins over the stored setting on purpose — the deployment is more current
- * than whatever the machine remembers — and main.js persists it, so the switch
- * survives the next launch without the flag.
- *
- * !! This is NOT an attack surface on the hosted site, and the reason is worth
- * knowing: the CSP pins `connect-src` to this origin and the default relay, so
- * a link carrying `?relay=` to anywhere else cannot open a connection at all.
- * The override only does anything on a build whose operator also edited that
- * meta tag — which is precisely the self-hosting case it exists for. The CSP is
- * the enforcement; this is only the plumbing. !!
+ * NOT an attack surface on the hosted site: the CSP pins `connect-src` to this
+ * origin and the default relay, so a link carrying `?relay=` elsewhere cannot
+ * open a connection. The CSP is the enforcement; this is only the plumbing.
  */
 const fromQuery = () => {
   try { return new URLSearchParams(location.search).get("relay"); }
@@ -88,21 +72,17 @@ export const RELAY_URL =
 export const RELAY_IS_CUSTOM = RELAY_URL !== DEFAULT_RELAY_URL && RELAY_URL !== LOCAL_RELAY_URL;
 
 /**
- * The same relay over plain HTTP, for the SSE+POST fallback and /stats.
- *
- * One hostname, two ways in — which is what makes the fallback worth having:
- * IT allowlists a single domain (PRD §5.4) and both transports are covered by
- * it. Derived rather than written twice so the two can never drift.
+ * The same relay over plain HTTP, for the SSE+POST fallback and /stats. One
+ * hostname, two ways in, so IT allowlists a single domain (PRD §5.4) and both
+ * transports are covered. Derived so the two can never drift.
  */
 export const RELAY_HTTP_URL = RELAY_URL.replace(/^ws/i, "http");
 
 /**
- * How we talk to the relay.
- *
  *   ws   — WebSocket. Lower latency, one connection, the default.
- *   sse  — Server-Sent Events downstream + fetch POST upstream (PRD §4.3 R3).
- *          Plain HTTP with no Upgrade, so it survives the TLS-inspecting
- *          proxies that eat WebSockets on corporate networks (§5.4).
+ *   sse  — Server-Sent Events down + fetch POST up (PRD §4.3 R3). Plain HTTP
+ *          with no Upgrade, so it survives the TLS-inspecting proxies that eat
+ *          WebSockets on corporate networks (§5.4).
  *
  * Both carry the identical envelopes from §6 — see transport/protocol.js.
  */
@@ -111,29 +91,15 @@ export const TRANSPORT = { WS: "ws", SSE: "sse" };
 /**
  * Clip size, derived — not chosen.
  *
- * A clip does not go on the wire as text. It is UTF-8 encoded, sealed with
- * AES-GCM (which appends a 16-byte tag), base64'd, and dropped into a JSON
- * envelope — and the relay rejects any frame over MAX_FRAME_BYTES
- * (backend/main.py, 32 KB). Base64 alone inflates by a third, so the real
- * limit is a BYTE budget on the wire and a character count is only an
- * approximation of it.
+ * A clip is UTF-8 encoded, sealed with AES-GCM (16-byte tag), base64'd and put
+ * in a JSON envelope, and the relay rejects any frame over MAX_FRAME_BYTES. So
+ * the real limit is a BYTE budget and a character count only approximates it.
  *
- * This is the same arithmetic files/chunker.js does for RELAY_CHUNK_BYTES, and
- * it is here for the same reason: a hand-tuned second number drifts out of
- * sync with the relay's cap, and the failure mode is silent.
- *
- * It had. MAX_CHARS was 50,000 — 66 KB on the wire against a 32 KB frame — and
- * the constant cited FR-2.8 while contradicting it, because "max payload 32 KB"
- * had been transcribed into a character count once and never recomputed. Every
- * clip over ~24 KB was accepted by the editor, encrypted, sent, and dropped by
- * the relay, with the rejection arriving as an async `error` frame long after
- * the UI had said it went. Deriving the number is what stops that recurring;
- * tests/unit/clipsize.mjs is what proves the derivation.
- *
- * MAX_CHARS is what the counter shows and what the editor guards on, because
- * users think in characters and one ASCII character is one byte. MAX_BYTES is
- * the truth, and is what the send path enforces: 24,000 CJK characters are
- * 72,000 bytes and will not fit, whatever the counter says.
+ * MAX_CHARS was once 50,000 — 66 KB on the wire against a 32 KB frame — because
+ * "max payload 32 KB" had been transcribed into a character count and never
+ * recomputed. Every clip over ~24 KB was accepted, encrypted, sent, and dropped
+ * by the relay, the rejection arriving long after the UI said it went.
+ * tests/unit/clipsize.mjs proves the derivation.
  */
 const RELAY_FRAME_BYTES  = 32 * 1024;   // backend/main.py MAX_FRAME_BYTES
 const CLIP_ENVELOPE_BYTES = 512;        // {"t","originId","iv","payload"} + slack
@@ -145,27 +111,24 @@ const CLIP_MAX_BYTES = Math.floor(
 );
 
 /**
- * Wire size of a string. Exported beside the limit it is measured against so
- * the editor and the send path cannot disagree about what "too big" means —
- * `String.length` counts UTF-16 units, which is not what the relay counts.
+ * Wire size of a string, exported beside the limit it is measured against so the
+ * editor and the send path cannot disagree — `String.length` counts UTF-16
+ * units, which is not what the relay counts.
  */
 export const textBytes = (s) => new TextEncoder().encode(s).length;
 
 export const TEXT = {
+  // MAX_CHARS is what the counter shows, because users think in characters.
+  // MAX_BYTES is the truth: 24,000 CJK characters are 72,000 bytes.
   MAX_BYTES: CLIP_MAX_BYTES,                          // the wire limit — authoritative
   MAX_CHARS: Math.floor(CLIP_MAX_BYTES / 1000) * 1000, // the friendly one, for the counter
   SUPPRESS_MS: 1500,          // loop-suppression window after applying a remote clip (FR-2.6)
 
   /**
-   * Typing is streamed for the far editor to render; a CLIP is still a discrete
-   * thing, made when the text settles. The split is what keeps history, the OS
-   * clipboard write, the dedupe and the size cap resting on whole thoughts
-   * instead of on `h`, `he`, `hel`.
-   *
-   * COMMIT_IDLE_MS is generous because the commit is invisible: the text is
-   * already on the far screen via the stream, so this only decides when it
-   * becomes a clip. A mid-sentence thinking pause is 300-500 ms, and anything
-   * under that would fragment one sentence into six history entries.
+   * Generous because the commit is invisible — the text is already on the far
+   * screen via the stream, so this only decides when it becomes a clip. A
+   * mid-sentence pause is 300-500 ms, and less would fragment one sentence into
+   * six history entries.
    */
   COMMIT_IDLE_MS: 800,
 
@@ -173,25 +136,18 @@ export const TEXT = {
   STREAM_THROTTLE_MS: 100,
 
   /**
-   * Above this, typing is not streamed at all and the text syncs on commit only.
+   * Above this, typing is not streamed and the text syncs on commit only.
    *
    * A stream frame carries the WHOLE text, which is what lets this feature exist
-   * without diffs, positions or operational transform. That trade only holds
-   * while the text is small: re-sending 20 KB per keystroke would be 200 KB/s
-   * through the relay for one person editing a stack trace.
-   *
-   * The degradation is invisible because big text is pasted, never typed —
-   * nobody collaboratively types a stack trace — so the case streaming is for
-   * (a URL, a token, a sentence) is entirely inside this bound.
+   * without diffs or operational transform — a trade that only holds while the
+   * text is small. The degradation is invisible because big text is pasted,
+   * never typed.
    */
   STREAM_MAX_BYTES: 4096,
 
   /**
-   * How long a local copy outranks an arriving clip.
-   *
-   * Two devices in Clipboard mode both being used by a human means every copy on
-   * one overwrites the other's system clipboard, and the moment that actually
-   * hurts is "I copied something, went to paste it, and it was gone". Inside
+   * How long a local copy outranks an arriving clip. The moment that actually
+   * hurts is "I copied something, went to paste it, and it was gone", so inside
    * this window the arriving clip is queued and offered instead of written.
    */
   LOCAL_COPY_GRACE_MS: 10_000,
@@ -202,43 +158,34 @@ export const FILES = {
   MAX_COUNT: 20,              // per session, memory only (FR-7.7)
   THUMB_PX: 160,              // longest edge (FR-7.2)
   THUMB_QUALITY: 0.7,
+
   /**
-   * Chunk size for the P2P data channel, which carries raw binary.
-   *
-   * The relay fallback CANNOT use this value directly: a chunk there is
-   * base64'd inside a JSON frame, and base64 (plus the AES-GCM tag and the
-   * envelope fields) inflates it by roughly a third — a 32 KB chunk becomes a
-   * ~44 KB frame and is rejected by the relay's own 32 KB cap. The relay chunk
-   * size is therefore DERIVED from this, in files/chunker.js as
-   * RELAY_CHUNK_BYTES, rather than being a second hand-tuned number that could
-   * drift out of sync with it.
+   * For the P2P data channel, which carries raw binary. The relay fallback
+   * cannot use this directly — base64 plus the tag and envelope inflate a 32 KB
+   * chunk into a ~44 KB frame, past the relay's own 32 KB cap — so
+   * RELAY_CHUNK_BYTES is DERIVED from this in files/chunker.js rather than being
+   * a second hand-tuned number.
    */
   CHUNK_BYTES: 32 * 1024,
 
   /**
-   * How long a file request lives before both ends give up on it.
+   * How long a file request lives before BOTH ends give up, on the same number,
+   * so neither is left believing in a transfer the other abandoned. Approving
+   * into a peer that gave up thirty seconds ago sends 5 MB nowhere.
    *
-   * Both ends, deliberately: the holder's prompt counts down to a denial and
-   * the requester stops waiting, on the same number, so neither is left
-   * believing in a transfer the other has already abandoned. Approving into a
-   * peer that gave up thirty seconds ago sends 5 MB nowhere.
-   *
-   * Its own constant rather than a multiple of the ICE timeout, which is what
-   * it used to be. That coupling meant shortening the ICE race in a test also
-   * shortened how long a human had to answer a dialog, and tuning the network
-   * silently retuned the UI.
+   * Its own constant rather than a multiple of the ICE timeout: that coupling
+   * meant shortening the ICE race in a test also shortened how long a human had
+   * to answer a dialog.
    */
   REQUEST_TIMEOUT_MS: 15_000,
 
   /**
-   * How long the sender waits for a data channel it has closed to confirm the
-   * close, before dropping the peer connection out from under it.
+   * How long a closed data channel gets to confirm the close.
    *
    * bufferedAmount reaching zero only means SCTP accepted the bytes, not that
    * the peer has them. The stream reset dc.close() sends is ordered behind the
-   * data already queued on that stream, so the close event is the nearest thing
-   * the transport offers to a delivery signal — worth one round trip. Bounded,
-   * because a wedged association must not hold a finished transfer open.
+   * queued data, so the close event is the nearest thing to a delivery signal.
+   * Bounded, because a wedged association must not hold a transfer open.
    */
   CHANNEL_CLOSE_MS: 1_000,
 };
@@ -250,13 +197,10 @@ export const KEY = {
   LONG_LENGTH: 10,            // "high security" option, PRD §7.3
 
   /**
-   * Installed builds default to the long key; the web keeps six.
-   *
    * PRD §7.3's argument for six characters is convenience, and the convenience
-   * is a phone keyboard. An installed app links a device by QR or by a copied
-   * link, so it is the one surface that does not pay the typing cost the short
-   * key buys — and it is the surface running unattended all day reading every
-   * copy, which is the case §7.3 says should take the 10-character option.
+   * is a phone keyboard. An installed app links a device by QR or copied link,
+   * so it does not pay the typing cost — and it is the surface running all day
+   * reading every copy, which §7.3 says should take the 10-character option.
    */
   DEFAULT_LONG: IS_DESKTOP,
 };
@@ -267,29 +211,18 @@ export const CRYPTO = {
   ROOM_HASH_BYTES: 16,
 
   /**
-   * Locked sessions — see LOCK below and core/crypto.js `deriveLocked`.
+   * The lock salt is a PREFIX, completed with the share key — random per
+   * session, which is what a salt is for. The open-session salt above is one
+   * global constant, so a single precomputed table covers every user on earth.
    *
-   * The salt is a PREFIX, completed with the share key: the key is random per
-   * session, which is exactly what a salt is for. The open-session salt above
-   * is one global constant, so a single precomputed table covers every user on
-   * earth; here an attacker has to build one per key.
-   *
-   * 600k rather than 250k because the threat is different. An open session's
-   * secret is a 29-bit key an attacker has to guess; a locked session's secret
-   * is a PIN held by someone who may ALREADY have the link, so the PIN is the
-   * whole defence and every doubling of the iteration count is a doubling of
-   * their cost. It is paid once per session, behind the "unlocking" state.
+   * 600k rather than 250k because the threat differs: a locked session's secret
+   * is a PIN held by someone who may already have the link, so the PIN is the
+   * whole defence and every doubling doubles their cost. Paid once per session.
    */
   LOCK_SALT: "realtimeclipboard-lock-v1:",
   LOCK_ITERATIONS: 600_000,
 
-  /**
-   * HKDF info strings: one PBKDF2 run, three independent outputs.
-   *
-   * Asking PBKDF2 itself for 64 bytes would cost DOUBLE — it reruns the full
-   * iteration count per 32-byte output block, and OI-8 already flags PBKDF2
-   * cost on a low-end Android. HKDF expansion is a couple of HMACs.
-   */
+  /** One PBKDF2 run, three independent outputs — see crypto.js `deriveLocked`. */
   LOCK_INFO: {
     AES:  "realtimeclipboard-lock/aes",
     ROOM: "realtimeclipboard-lock/room",
@@ -300,66 +233,46 @@ export const CRYPTO = {
 /**
  * Locked sessions: the share key in the link, a PIN that never travels with it.
  *
- * The key is a bearer credential (PRD §7.1) and a link is a leaky thing — it
- * gets forwarded, screenshotted, pasted into a group chat. A locked session
- * adds a second secret that is never in the URL, never on disk, and never sent
- * to the relay, so holding the link is not sufficient to read the clipboard.
- *
- * MIN_PIN is 6 and the PIN is free-form rather than 4-6 digits, because against
- * someone who already has the link the key contributes nothing and the PIN is
- * the entire secret: a 4-digit PIN is ~13 bits, which is minutes of offline
- * guessing. The dialog states the number rather than an adjective.
+ * The key is a bearer credential (PRD §7.1) and links get forwarded,
+ * screenshotted and pasted into group chats. MIN_PIN is 6 and free-form rather
+ * than 4-6 digits because against someone who already has the link the key
+ * contributes nothing: a 4-digit PIN is ~13 bits, minutes of offline guessing.
  */
 export const LOCK = {
   MIN_PIN: 6,
 
   /**
-   * Fragment marker: `#!ABCDEF`. That a session is locked is not a secret — the
-   * PIN is — and the app has to know before it connects, so the flag rides in
-   * the link. Leading rather than trailing: chat clients that trim punctuation
-   * off a pasted URL trim the END of it.
+   * Fragment marker: `#!ABCDEF`. Leading rather than trailing — chat clients
+   * that trim punctuation off a pasted URL trim the END of it.
    */
   SIGIL: "!",
 
   /**
-   * Sent once on creating a locked room, retained by the relay as the room's
-   * last clip and replayed to every joiner — so a joiner can tell "wrong PIN"
-   * from "first one here" by whether it decrypts. Receivers drop it instead of
-   * rendering it. See core/crypto.js and the beacon note in main.js.
+   * Sent once on creating a locked room and replayed to every joiner, so a
+   * joiner can tell "wrong PIN" from "first one here" by whether it decrypts.
+   * Receivers drop it instead of rendering it.
    */
   BEACON: String.fromCharCode(0) + "realtimeclipboard-lock-v1",
 
   /**
-   * Sent into the room being ABANDONED when the session is locked.
+   * Sent into the room being ABANDONED when a session is locked.
    *
-   * Locking is a room change (see main.js): the lock flag is part of the room
-   * name, so the locking device leaves for a new, locked room and everyone
-   * else is simply left behind in the old one — connected, in sync with
-   * nobody, with no way to tell that from a quiet afternoon. This sentinel is
-   * the goodbye. A device that decrypts it closes its connection and says what
-   * happened, which is the difference between being removed and being
-   * mysteriously alone.
+   * Locking is a room change: the locking device leaves for a new room and
+   * everyone else is left behind, connected, in sync with nobody, unable to tell
+   * that from a quiet afternoon. This sentinel is the goodbye.
    *
-   * A clip rather than a new frame type, for the same reason BEACON is one: it
-   * needs no relay change, so it works against a deployed relay, and it is
-   * sealed with the room key — the relay forwards a sentinel it cannot read.
-   *
-   * It does overwrite the room's retained last clip (backend `room.last`), and
-   * that is deliberate: the retained copy is what a late joiner to the dead
-   * room receives, so they are told the session moved instead of being handed
-   * a clip from a session they are no longer part of.
+   * A clip rather than a new frame type, like BEACON — it needs no relay change
+   * and is sealed with the room key, so the relay forwards what it cannot read.
+   * It overwrites the room's retained last clip deliberately, so a late joiner
+   * to the dead room is told the session moved.
    */
   EVICT: String.fromCharCode(0) + "realtimeclipboard-lock-evict-v1",
 
   /**
-   * How long the goodbye gets to leave the machine before the socket is torn
-   * down under it.
-   *
-   * Not paranoia about WebSocket buffering — the SSE fallback batches upstream
-   * frames into a POST and its close() drops whatever is still queued
-   * (transport/sse.js), so closing in the same tick would send the sentinel to
-   * nobody on exactly the network where the fallback is in use. A quarter of a
-   * second, once, in a flow that is already opening a dialog.
+   * How long the goodbye gets to leave before the socket is torn down. Not
+   * paranoia about buffering: the SSE fallback batches upstream frames into a
+   * POST and its close() drops whatever is queued, so closing in the same tick
+   * would send the sentinel to nobody on exactly the network using the fallback.
    */
   EVICT_FLUSH_MS: 250,
 };
@@ -371,25 +284,18 @@ export const NET = {
   ICE_TIMEOUT_MS: 5_000,      // then fall back to relay chunks (FR-7.6)
 
   /**
-   * How long a transport gets to become usable before we give up on it.
-   *
    * A blocked WebSocket frequently does NOT fail: an intercepting proxy accepts
-   * the TCP connection, swallows the Upgrade, and leaves the socket hanging
-   * with no open, no close and no error — forever. Without this timer the app
-   * sits on "Connecting…" indefinitely and never tries the fallback, which is
-   * the exact failure this whole path exists for.
+   * the TCP connection, swallows the Upgrade, and leaves the socket hanging with
+   * no open, no close and no error. Without this timer the app sits on
+   * "Connecting…" forever and never tries the fallback.
    *
-   * Generous enough to survive a scale-to-zero cold start (PRD R2), which is
-   * seconds rather than milliseconds.
+   * Generous enough to survive a scale-to-zero cold start (PRD R2).
    */
   PROBE_MS: 8_000,
 
   /**
-   * Consecutive attempts that never became usable before switching transport.
-   *
-   * Two, not one: a single failure is far more often a cold start or a flaky
-   * moment than a policy, and switching on it would put users on the slower
-   * path for no reason. Two failures in a row is a proxy.
+   * Two, not one: a single failure is more often a cold start than a policy, and
+   * switching on it would put users on the slower path for no reason.
    */
   SWITCH_AFTER: 2,
 
@@ -405,23 +311,18 @@ export const POLL_OPTIONS = { "Off": 0, "500ms": 500, "1s": 1000, "2s": 2000 };
 
 /**
  * How far the sync reaches on THIS device. One ladder, three rungs, each adding
- * exactly one thing to the one below it:
+ * exactly one thing to the one below:
  *
  *   off    — nothing leaves and nothing arrives. The editor is private again.
- *   manual — the session syncs in the app window. The OS clipboard is neither
- *            read nor written; the app is a window onto the room.
- *   live   — the OS clipboard is wired to the room in both directions. What you
- *            copy anywhere goes out; what arrives is copied here.
+ *   manual — the session syncs in the app window; the OS clipboard is neither
+ *            read nor written.
+ *   live   — the OS clipboard is wired to the room in both directions.
  *
- * The room itself is unconditional: every connected device sees every clip in
- * the app view whatever rung it is on. The rung only decides how deep into the
- * machine the connection goes, which is why the labels name the destination
- * (Off / App / Clipboard) rather than a manner of working.
- *
- * The stored strings are a compatibility surface. "live" and "manual" are on
- * disk for every existing user under STORAGE_PREFIX, and relabelling the UI is
- * free while renaming these silently resets the one preference where being
- * wrong matters most. Change the labels in ui/features/syncMode.js instead.
+ * The stored strings are a compatibility surface: "live" and "manual" are on
+ * disk for every existing user, and relabelling the UI is free while renaming
+ * these silently resets the one preference where being wrong matters most.
+ * Change the labels in ui/features/syncMode.js instead — they read
+ * Off / App / Clipboard, naming the destination rather than a manner of working.
  */
 export const SYNC_MODES = {
   OFF: "off",
@@ -437,18 +338,12 @@ export const bindsClipboard = (mode) => mode === SYNC_MODES.LIVE;
 export const sharesSession = (mode) => mode !== SYNC_MODES.OFF;
 
 /**
- * The project's own addresses: where the code is, and where it asks for help.
+ * Derived from OWNER/NAME rather than written out four times, so a fork, rename
+ * or moved account is one edit and the links cannot drift apart.
  *
- * Derived from OWNER/NAME rather than written out four times, for the same
- * reason RELAY_HTTP_URL is derived from RELAY_URL — a fork, a rename, or a
- * moved account is then one edit, and the four links cannot drift into pointing
- * at three different projects.
- *
- * Every link below was checked against a live GitHub on 2026-08-07 and returned
- * 200: the repo, the issue chooser, and the sponsors page. Re-check the sponsors
- * page if the account ever moves — a donate link that 404s costs more goodwill
- * than no donate link. The .github/FUNDING.yml button is the same destination
- * and has to move with it.
+ * Re-check the sponsors page if the account ever moves — a donate link that 404s
+ * costs more goodwill than no donate link, and .github/FUNDING.yml is the same
+ * destination and has to move with it.
  */
 export const REPO = {
   OWNER: "akshaynikhare",
@@ -459,14 +354,9 @@ export const LINKS = {
   REPO:    `https://github.com/${REPO.OWNER}/${REPO.NAME}`,
   ISSUES:  `https://github.com/${REPO.OWNER}/${REPO.NAME}/issues`,
   /**
-   * The chooser, not a blank issue: "report" that lands on a list of other
-   * people's bugs asks the user to find the button themselves, and a blank box
-   * asks them to guess what we need.
-   *
-   * `/new/choose` picks between the bug and feature forms in
-   * .github/ISSUE_TEMPLATE/ — which is also where the "do not paste your share
-   * key" warning lives, and that warning is the single most valuable thing on
-   * the page for this product.
+   * The chooser, not a blank issue: `/new/choose` picks between the forms in
+   * .github/ISSUE_TEMPLATE/, which is where the "do not paste your share key"
+   * warning lives — the single most valuable thing on the page for this product.
    */
   NEW_ISSUE: `https://github.com/${REPO.OWNER}/${REPO.NAME}/issues/new/choose`,
   SPONSOR: `https://github.com/sponsors/${REPO.OWNER}`,

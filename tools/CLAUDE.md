@@ -4,7 +4,7 @@ Scripts, filed by what they are for. Nothing here runs in the browser or ships t
 
 | Folder | Role |
 |---|---|
-| `build/` | Produces artifacts — the deploy, the land mask, the OG card |
+| `build/` | Produces artifacts — the deploy, the land mask, the OG card, the icon set |
 | `check/` | Answers yes/no about an artifact and exits non-zero. Never writes to it |
 | `release/` | Version, changelog, tag, package-manager manifests, relay probe |
 | `seo/` | Research. Run by hand, output read by a human, wired into nothing |

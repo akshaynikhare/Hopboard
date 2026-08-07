@@ -61,22 +61,16 @@ export function init() {
   });
 }
 
-/* ------------------------------------------------------------------
-   Transport picker
-
-   The status bar already said which transport was carrying the session. This
-   makes that label the control for it, which is the obvious place to look and
-   costs no new screen furniture.
-
-   Two audiences, both real:
-     - someone on a network that only half-works, who needs to pin HTTP rather
-       than watch the client rediscover that every reconnect;
-     - anyone testing the fallback, which otherwise requires access to a
-       network that actually blocks WebSockets.
-
-   The UI never touches the transport itself (docs/ARCHITECTURE.md §3) — it
-   emits, and main.js is what calls relay.setTransport().
-------------------------------------------------------------------- */
+/**
+ * The status bar already said which transport carried the session; this makes
+ * that label the control for it. Two real audiences: someone on a network that
+ * only half-works, who needs to pin HTTP rather than watch the client
+ * rediscover it every reconnect, and anyone testing the fallback without access
+ * to a network that actually blocks WebSockets.
+ *
+ * The UI never touches the transport itself (docs/ARCHITECTURE.md §3) — it
+ * emits, and main.js calls relay.setTransport().
+ */
 
 const OPTIONS = [
   { value: "",              name: "Automatic",     hint: "WebSocket, with HTTP as the fallback" },
