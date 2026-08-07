@@ -26,14 +26,14 @@ on:
         default: false
   push:
     branches: [main]
-    paths:
+    # Only things that can change what the compiler sees. A README edit is not
+    # worth three runners, and neither is editing this file.
+    paths: &code
       - "desktop/**"
+      - "!desktop/**/*.md"
       - "tools/build/build.mjs"
-      - ".github/workflows/desktop.yml"
   pull_request:
-    paths:
-      - "desktop/**"
-      - "tools/build/build.mjs"
+    paths: *code
 
 # A second push supersedes the first: nobody needs the compile result for a
 # commit that has already been replaced.
