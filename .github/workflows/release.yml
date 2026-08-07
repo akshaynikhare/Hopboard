@@ -117,13 +117,17 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS. Notarization needs a paid Developer ID; without the secrets
-          # this falls back to "-", which is Tauri's ad-hoc signature. That does
-          # NOT satisfy Gatekeeper — the user still has to go to Privacy &
-          # Security and click Open Anyway, and /download/ says so — but an
-          # unsigned bundle with no signature at all is reported as "damaged",
-          # which reads as a corrupt download rather than an unsigned one.
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY || '-' }}
+          # macOS. Notarization needs a paid Developer ID; with no secrets these
+          # are all empty and Tauri skips signing, which is what ships today —
+          # /download/ says so and tells people what Gatekeeper will do.
+          #
+          # !! Do NOT default APPLE_SIGNING_IDENTITY to "-" for an ad-hoc
+          # signature. Setting it makes Tauri take the signing path, which
+          # begins by importing APPLE_CERTIFICATE into a keychain — and with no
+          # certificate that fails the whole macOS build with "failed to run
+          # command security import". Ad-hoc signing has to happen after the
+          # bundle is built, not through these variables. !!
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -158,9 +162,19 @@ jobs:
       # first tag cut before the token exists — still produces installers
       # instead of a red workflow. The `secrets` context is not available in a
       # job-level `if`, hence the env indirection.
+      # Skipped when the version is already up. A release that has to be re-run
+      # because one platform failed must not go red on the one job that
+      # succeeded the first time — npm refuses to republish a version, and
+      # rightly so.
       - name: Publish
         if: env.NODE_AUTH_TOKEN != ''
-        run: npm publish --provenance --access public
+        run: |
+          V=$(node -p "require('./package.json').version")
+          if npm view "realtimeclipboard@$V" version >/dev/null 2>&1; then
+            echo "realtimeclipboard@$V is already published — nothing to do."
+          else
+            npm publish --provenance --access public
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
