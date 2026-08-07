@@ -44,9 +44,15 @@ const state = {
     thumbs: true,
     images: true,
     cursors: true,
-    longKeys: KEY.DEFAULT_LONG,    // installed builds default to 10 chars
+    longKeys: KEY.DEFAULT_LONG,    // installed builds default to the longer key
     closeToTray: true,             // desktop only; the X button hides, Quit is in the tray
     poll: "1s",
+    // Whether the share key may be written to localStorage so a relaunch offers
+    // the room back (FR-1.7). Defaults on because that is the behaviour that
+    // shipped and losing it silently would be a regression — but it is the one
+    // setting that decides whether a secret touches disk, so it is a switch and
+    // it is named plainly in the UI. See storage.js saveLastKey.
+    rememberKey: true,
   },
 };
 

@@ -153,9 +153,40 @@ export const TEXT = {
   LOCAL_COPY_GRACE_MS: 10_000,
 };
 
+/**
+ * Pastejacking — see clipboard/guard.js for what is actually checked.
+ *
+ * The room is joinable by anyone holding the key, and an arriving clip is
+ * written to the OS clipboard with no gesture from the person receiving it. So
+ * a peer chooses what you paste into your next terminal.
+ *
+ * `ENABLED` governs only the heuristic that demands a click. Stripping the
+ * trailing newline and the invisible characters is unconditional and has no
+ * switch: it is not a policy, it is the difference between a clip that pastes
+ * and a clip that runs.
+ */
+export const PASTE_GUARD = {
+  ENABLED: true,
+
+  /**
+   * Past this, do not scan. The patterns are anchored per line, so a pasted
+   * logfile is a lot of backtracking for a case that is not what this defends
+   * against — nobody is tricked into pasting 200 KB into a shell.
+   */
+  MAX_SCAN_CHARS: 8_192,
+};
+
 export const FILES = {
   MAX_BYTES: 5 * 1024 * 1024, // 5 MB per file (FR-7.1)
   MAX_COUNT: 20,              // per session, memory only (FR-7.7)
+
+  /**
+   * A filename is chosen by whoever sent the file, so it is bounded like every
+   * other piece of peer-supplied metadata. Long enough that no real name is
+   * truncated; short enough that a hostile one is a tile, not a layout.
+   * files/registry.js `safeName` applies it, along with the character rules.
+   */
+  MAX_NAME_CHARS: 120,
   THUMB_PX: 160,              // longest edge (FR-7.2)
   THUMB_QUALITY: 0.7,
 
@@ -421,9 +452,9 @@ export const IMAGES = {
  */
 export const GOOGLE = {
   /** GA4 measurement ID, "G-XXXXXXXXXX". Admin → Data streams → your stream. */
-  GA4_ID: "",
+  GA4_ID: "G-259V6H3K5M",
   /** AdSense publisher ID, "ca-pub-################". Account → Settings. */
-  ADSENSE_CLIENT: "",
+  ADSENSE_CLIENT: "ca-pub-6053041142492498",
   /**
    * Per-unit slot IDs, the 10-digit number AdSense prints as `data-ad-slot`
    * when you create a unit. One per placement, and a unit renders nothing
@@ -431,11 +462,11 @@ export const GOOGLE = {
    */
   ADSENSE_SLOTS: {
     /** index.html, the 728×90 after "how it works". */
-    LEADERBOARD: "",
+    LEADERBOARD: "7038244690",
     /** index.html, the 300×600 rail beside the FAQ. */
-    RAIL: "",
+    RAIL: "8299355473",
     /** app.html, below the editor. */
-    APP: "",
+    APP: "6948680552",
   },
 };
 

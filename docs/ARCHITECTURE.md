@@ -264,6 +264,12 @@ These are load-bearing. Breaking one is a vulnerability, not a bug.
 | The transfer path (P2P vs relay) is always visible | `ui/panels/filesPanel.js` `badge()` |
 | The desktop shell is never told anything derived from the key | `desktop/src-tauri/src/main.rs` — the tray emits `ui://copy-link` and the webview builds the link; Rust owns windows and booleans only |
 | The native bridge has one owner and one feature test | `core/native.js` — the only module that may name `__TAURI__`, enforced by the static check |
+| An arriving clip is defused before it reaches the OS clipboard, and one that reads like a shell command is never written without a click | `clipboard/guard.js`, applied in `capture.js` `apply()`; `flushPending()` steps over a flagged clip and only `confirmPending()` writes one. `tests/unit/pasteguard.mjs` |
+| The share key leaves the address bar as soon as it has been read, and reaches disk only if the user says so | `main.js` `openSession()` calls `keys.clearUrl()`; `core/storage.js` `saveLastKey()` takes the `rememberKey` setting. A reload is served by `sessionStorage`, which dies with the tab |
+| Peer-supplied text cannot render as something other than itself | `core/text.js` — one character class, three consumers (`clipboard/guard.js`, `files/registry.js` `safeName()`, `cli/`). Bidi overrides and C0/C1 are stripped; a filename also loses path separators and leading dots |
+| Trusted Types names the policies it allows | The CSP says `trusted-types realtimeclipboard` — never `*`, never `'allow-duplicates'`, either of which lets injected script mint or re-mint a policy and reach `innerHTML`. Asserted by `tools/check/site-check.mjs` |
+| A stranger cannot make the relay allocate without bound | `backend/main.py` `MAX_ROOMS` (checked before a Room is created) and `MAX_CONNS_PER_IP` (before that). Every peer removal goes through `_drop_peer()`, so the address count cannot leak. `backend/test_policy.py` |
+| Clip text reaching a terminal cannot drive it | `cli/realtimeclipboard.mjs` `forTerminal()` strips CSI and OSC sequences when stdout is a TTY — OSC 52 sets the terminal's own clipboard. A pipe is passed through byte-for-byte |
 
 The suppression ordering is the subtle one. Write first and your own poller sees
 a "new" clipboard value and bounces it back to the sender, forever. See
@@ -288,6 +294,29 @@ The real repair is architectural — get the key out of the fragment — and it 
 worth doing on its own merits. Until then, `src/ui/features/ads.js` is where this
 is written down next to the code that does it, and `/privacy/` is where it is
 disclosed to the people it affects.
+
+#### Amended — the repair landed, and it was two holes not one
+
+The key is out of the fragment. `main.js` `openSession()` calls `keys.clearUrl()`
+the moment the key has been read, and a reload is served from `sessionStorage`
+instead of the address bar.
+
+Fixing it turned up the half that was not in the table above: **`storage.js`
+`saveLastKey()` had been writing the share key to `localStorage` in plain text
+all along**, which every one of these documents claimed never happened
+(`src/core/CLAUDE.md`: "never on disk"). A tag reads `localStorage` as easily as
+it reads `location.hash`, so removing the fragment alone would have moved the key
+without protecting it. That write is now gated on a `rememberKey` setting,
+default on — the behaviour FR-1.7 asks for — and switching it off forgets the key
+already stored rather than only declining the next one.
+
+What this does **not** change: a third-party tag in this document still reads the
+DOM, and the DOM still holds decrypted clipboard text. Contextual targeting is
+that, by design. So the switch stands — `GOOGLE.ADSENSE_CLIENT` and `GA4_ID` are
+both empty, nothing third-party loads today, and the CSP has been narrowed back
+to match (`trusted-types realtimeclipboard`, no wildcard). **Turning ads on means
+widening the CSP again and accepting the DOM-reading row above; it is a decision
+with a price, not a switch.**
 
 ---
 

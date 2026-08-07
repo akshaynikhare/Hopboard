@@ -27,5 +27,12 @@ runs these exact modules. Two consequences:
 - Event names are `EV.*` constants in `bus.js`. Adding an event means adding a constant.
 - A bus event that **reports** is never named the same as one that **commands** — `EV.LOCK_STATE`
   and `"session:lock"` once shared a name and every `setKey()` opened the PIN dialog by itself.
-- The share key and the session PIN are never logged, never stored, never transmitted. Only
-  `SHA-256(key)` and PBKDF2/HKDF output leave this directory.
+- The share key and the session PIN are never logged and never transmitted. Only `SHA-256(key)` and
+  PBKDF2/HKDF output leave this directory.
+- **The PIN is never stored. The share key is, and that is a decision with a switch on it.** This
+  file used to say neither was, and it was wrong about the key for as long as `saveLastKey()` has
+  existed — it writes the key to `localStorage` in plain text so a relaunch can offer the room back
+  (FR-1.7). `rememberKey` in `state.js` governs it, and turning it off removes what is already
+  there. The active session lives in `sessionStorage` and dies with the tab.
+- `text.js` is a security character class with three consumers that may not import each other. It
+  belongs here for that reason, and the ranges in it are not a style preference — see the comment.

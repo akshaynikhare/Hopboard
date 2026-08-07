@@ -78,9 +78,10 @@ function mountUnit(boxId, slot, format) {
 
   const ins = document.createElement("ins");
   ins.className = "adsbygoogle";
+  // display only. A responsive unit measures its container and writes its own
+  // inline height, so anything set here is overwritten a moment later anyway —
+  // the reserved space is expressed as a min-height on the box instead.
   ins.style.display = "block";
-  ins.style.width = "100%";
-  ins.style.height = "100%";
   ins.setAttribute("data-ad-client", GOOGLE.ADSENSE_CLIENT);
   ins.setAttribute("data-ad-slot", slot);
   ins.setAttribute("data-ad-format", format);

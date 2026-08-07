@@ -50,12 +50,23 @@ import * as mobileNav from "./ui/shell/mobileNav.js";
 
 /* ---- session key ---- */
 
+/**
+ * A key from the URL, this tab, or disk means JOINING. A key we generate means
+ * CREATING, which must be collision-checked (OI-2) or we could drop the user
+ * straight into a stranger's clipboard.
+ *
+ * The order is the precedence: a link someone just followed outranks whatever
+ * this tab was doing, which outranks what the browser remembers from last week.
+ * The tab's own copy sits in the middle because it is what a reload reads —
+ * openSession() clears the fragment as soon as it has been used, so by the
+ * second boot of the same session the URL no longer names a room.
+ */
 function resolveKey() {
-  // A key from the URL or storage means JOINING. A key we generate means
-  // CREATING, which must be collision-checked (OI-2) or we could drop the user
-  // straight into a stranger's clipboard.
   const url = keys.fromUrl();
   if (keys.isValid(url.key)) return { ...url, intent: "join" };
+
+  const tab = storage.loadSessionKey();
+  if (tab && keys.isValid(tab.key)) return { ...tab, intent: "join" };
 
   const remembered = storage.loadLastKey();
   if (remembered && keys.isValid(remembered.key)) return { ...remembered, intent: "join" };
@@ -78,8 +89,15 @@ let lockPrk = null;
  * the same tab can pass `prk` and skip the 600k iterations.
  */
 async function openSession(key, intent, { locked = false, pin = null, prk = null } = {}) {
-  keys.toUrl(key, locked);
-  storage.saveLastKey(key, locked);
+  // The key is remembered, then taken OUT of the address bar. It used to live in
+  // the fragment for the whole session, which put it in every screenshot and
+  // screen share of the app and in reach of every script in the document —
+  // app.html is where clip content is decrypted, so that is the document where
+  // it matters. shareLink() builds a link from state when one is asked for, so
+  // sharing and the QR code are unaffected; storage is what a reload reads.
+  storage.saveSessionKey(key, locked);
+  storage.saveLastKey(key, locked, state.get().settings.rememberKey);
+  keys.clearUrl();
 
   // A session is being opened, so the gate has nothing left to stand for.
   pendingLock = null;
@@ -235,9 +253,12 @@ async function onEvicted() {
   leaveRoom();
   lockPrk = null;
   storage.clearLock();
-  // Forget the room in both places, or a reload bounces straight back off the
-  // retained goodbye into a loop that keeps announcing the same removal.
-  storage.remove("lastKey");
+  // Forget the room everywhere resolveKey() looks, or a reload bounces straight
+  // back off the retained goodbye into a loop that keeps announcing the same
+  // removal. Three places now, and missing one is indistinguishable from missing
+  // all three.
+  storage.forgetLastKey();
+  storage.clearSessionKey();
   keys.clearUrl();
   state.setConnection("idle", "removed — the session was locked");
 

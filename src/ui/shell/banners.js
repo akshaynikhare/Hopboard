@@ -56,16 +56,36 @@ export function init() {
     }
   });
 
-  on(EV.PENDING_CLIP, ({ pending, text }) => {
+  on(EV.PENDING_CLIP, ({ pending, text, risk, altered }) => {
     if (!pending) return dismiss("pending");
+
+    const preview = text ? ` “${text.slice(0, 60)}${text.length > 60 ? "…" : ""}”` : "";
+
+    // A clip that reads like a shell command never lands on its own, however
+    // this window is focused — see clipboard/guard.js. Discard is the primary
+    // button: the safe answer should be the one under the cursor, and anyone who
+    // genuinely wanted the command is reading the banner either way.
+    if (risk) {
+      return show("pending", {
+        tone: "warn",
+        title: "A clip is asking to run something",
+        body: `Someone in this session sent text that looks like a command — ${risk}.`
+            + ` It has NOT been put on your clipboard.${preview}`,
+        action: [
+          { label: "Discard", onClick: () => capture.discardPending() },
+          { label: "Put it on my clipboard", onClick: () => capture.confirmPending() },
+        ],
+      });
+    }
+
     // writeText() needs focus, so a clip that arrives in the background is held
     // rather than dropped. Say so, and offer the manual route.
     show("pending", {
       tone: "warn",
       title: "1 clip waiting",
-      body: `Focus this window and it lands on your clipboard automatically.${
-        text ? ` (${text.slice(0, 60)}${text.length > 60 ? "…" : ""})` : ""}`,
-      action: { label: "Apply now", onClick: () => capture.flushPending() },
+      body: `Focus this window and it lands on your clipboard automatically.${preview}`
+          + (altered ? " Hidden control characters were removed from it." : ""),
+      action: { label: "Apply now", onClick: () => capture.confirmPending() },
     });
   });
 

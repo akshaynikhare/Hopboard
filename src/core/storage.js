@@ -59,7 +59,55 @@ export function loadLastKey() {
     : { key: saved.key ?? null, locked: !!saved.locked };
 }
 
-export const saveLastKey = (key, locked = false) => write("lastKey", { key, locked });
+/**
+ * !! This is the share key in plain text, on disk, and it is the one store in
+ * this file that holds a secret rather than a preference. Anything running in
+ * the document reads it — including a third-party tag, which is why enabling
+ * AdSense is gated on this being opt-in rather than automatic. See
+ * docs/ARCHITECTURE.md §5. !!
+ *
+ * `remember` is the user's setting. False removes the record rather than merely
+ * declining to write one: turning the switch off has to forget the key already
+ * saved, or the setting only governs sessions you have not had yet.
+ */
+export function saveLastKey(key, locked = false, remember = true) {
+  if (!remember) { remove("lastKey"); return false; }
+  return write("lastKey", { key, locked });
+}
+
+export const forgetLastKey = () => remove("lastKey");
+
+/**
+ * The key for THIS tab, so a reload survives the fragment being cleared.
+ *
+ * The fragment used to be the memory: the key sat in `location.hash` for the
+ * lifetime of the session and boot() read it back. That put it in the address
+ * bar, in screen shares, in screenshots, and — the reason it moved — in reach of
+ * every script in the document, which now includes tags this repository does not
+ * write. main.js clears the fragment the moment it has been read, and this is
+ * what makes a refresh still work.
+ *
+ * sessionStorage, not localStorage: a reload is the same session, a new tab is
+ * not, and closing the tab should end it. Surviving a browser restart is what
+ * `lastKey` above is for, and that one is the user's choice.
+ */
+export function loadSessionKey() {
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(PREFIX + "sessionKey") || "null");
+    return saved?.key ? { key: saved.key, locked: !!saved.locked } : null;
+  } catch { return null; }
+}
+
+export function saveSessionKey(key, locked = false) {
+  try {
+    sessionStorage.setItem(PREFIX + "sessionKey", JSON.stringify({ key, locked }));
+    return true;
+  } catch { return false; }
+}
+
+export function clearSessionKey() {
+  try { sessionStorage.removeItem(PREFIX + "sessionKey"); } catch { /* nothing to do */ }
+}
 
 /**
  * Which transport last worked (transport/relay.js). Remembered because probing

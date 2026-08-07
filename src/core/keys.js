@@ -90,25 +90,38 @@ export function fragment(key, locked = false) {
   return (locked ? LOCK.SIGIL : "") + normalise(key);
 }
 
-/** The fragment is never sent to a server. */
+/**
+ * The fragment is never sent to a server. Read once at boot and then cleared —
+ * see clearUrl(), which openSession() calls immediately afterwards.
+ *
+ * There is deliberately no inverse. A `toUrl()` existed and was what kept the
+ * key in the address bar for the whole session; it is gone rather than merely
+ * unused, so that "put the key back in the URL" is not one import away. A link
+ * to share is built by shareLink() from state, which never touches `location`.
+ */
 export function fromUrl() {
+  if (typeof location === "undefined") return { key: "", locked: false };
   return parseFragment(location.hash.slice(1));
 }
 
-export function toUrl(key, locked = false) {
-  location.hash = fragment(key, locked);
-}
-
 /**
- * Drop the key out of the address bar without navigating, for the one case where
- * the session is not merely over but closed to this device (main.js onEvicted).
- * The fragment is what boot() reads first, so leaving it in place makes every
- * reload rejoin a room we have been ejected from.
+ * Drop the key out of the address bar without navigating.
+ *
+ * Called on every `openSession()`, so the key is in the URL only for the instant
+ * between the page loading and boot reading it — not for the life of the
+ * session, in every screenshot and screen share, and in reach of every script in
+ * the document. It is also what `onEvicted()` uses to make a reload stop
+ * rejoining a room this device was thrown out of.
  *
  * replaceState, not `location.hash = ""` — that leaves a bare "#" and pushes a
  * history entry, so Back would restore the dead key.
+ *
+ * Guarded because this directory has no DOM (see CLAUDE.md): `cli/` imports this
+ * module, and a bare `history` here threw during boot the moment this stopped
+ * being an eviction-only path. Silent no-op — there is no address bar to clear.
  */
 export function clearUrl() {
+  if (typeof history === "undefined" || typeof location === "undefined") return;
   history.replaceState(null, "", location.pathname + location.search);
 }
 

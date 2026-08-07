@@ -456,6 +456,56 @@ first shell ever published. Nothing would have looked wrong from the outside.
 
 ---
 
+## Supply chain: what a user can actually verify
+
+Zero runtime dependencies does most of the work here — there is no transitive
+package that can be taken over, and `npx realtimeclipboard` installs `src/core`
+and `src/transport` unbundled, so what runs is what is in the repository. Three
+things back that up, and one gap remains open on purpose.
+
+**Actions are pinned to commit SHAs.** Every `uses:` in `.github/workflows/`
+names a 40-character SHA with the tag beside it as a comment. A tag is a movable
+pointer in somebody else's repository: `@v4` today and `@v4` next month can be
+different code, and a compromised popular action runs inside a job that holds
+`GITHUB_TOKEN` and `NPM_TOKEN`. Pinning is what makes "the workflow did not
+change" a true statement.
+
+To bump one deliberately:
+
+```bash
+gh api repos/actions/checkout/commits/v5 --jq .sha     # then paste it in, keeping the # v5 comment
+```
+
+**`SHA256SUMS` is attached before the release goes public.** The `publish-release`
+job downloads every asset, hashes it and uploads the file, then flips the draft.
+There is no window in which an installer is downloadable and unverifiable.
+
+**npm publishes with `--provenance`**, which mints a signed attestation through
+OIDC tying the tarball to this repository and this workflow run.
+
+### The gap: the desktop installers are unsigned
+
+`desktop/src-tauri/tauri.conf.json` has `certificateThumbprint: null` and
+`signingIdentity: null`. Two consequences, and neither is fixed by the checksum
+file:
+
+- Windows SmartScreen and macOS Gatekeeper warn on first run. Users are trained
+  through that warning, which is the worst possible outcome — it teaches the
+  gesture that a real attack needs.
+- Nothing in the binary says who built it. `SHA256SUMS` is served from the same
+  release as the assets, so anyone able to replace one could replace both. What
+  it gives is a fixed value that can be quoted elsewhere — release notes, a Scoop
+  manifest, a mirror's records — so a substitution *after the fact* is detectable
+  by anyone who wrote the number down. That is weaker than a signature and worth
+  having anyway.
+
+Closing this needs a purchased certificate (an EV certificate for Windows, an
+Apple Developer ID plus notarisation for macOS) and the secrets already wired up
+in `release.yml` — `APPLE_CERTIFICATE` and friends are read, and are simply
+absent. It is a spending decision, not an engineering one.
+
+---
+
 ## Hooks
 
 | Hook | Runs |

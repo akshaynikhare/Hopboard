@@ -102,6 +102,53 @@ ROOM_TTL_SECONDS = _int("ROOM_TTL", 600)          # PRD FR-3.4 — evict 10 min 
 MAX_ID_CHARS = 64             # peerId / `to` — long enough for a uuid, bounded
 MAX_NAME_CHARS = 64           # nickname, e.g. "Chrome · Windows" (FR-5.7)
 
+# ---- resource ceilings --------------------------------------------------
+#
+# MAX_PEERS bounds a room. Nothing bounded the number of ROOMS, and a room is
+# created by asking for one: connect to a random hash and this process allocates
+# a Room, a shared-backend subscription and — once the connection drops — a task
+# sleeping for the 10-minute TTL. All of it before MAX_PEERS is consulted,
+# because that check needs a room to count the peers of. A loop opening and
+# closing connections to random hashes therefore costs the attacker nothing and
+# costs this process memory for ten minutes a time.
+#
+# Neither number is a fairness scheduler. They are the point past which the
+# relay says so out loud instead of being killed by the platform's OOM reaper,
+# which is the failure mode they replace: an OOM takes every live session with
+# it, and reports nothing to anyone.
+#
+# 5,000 rooms is far above any plausible real load for a single pinned replica
+# (see the deflate note below for the connection ceiling this pairs with) and
+# well inside the memory of the smallest container we deploy.
+MAX_ROOMS = _int("MAX_ROOMS", 5_000)
+
+# Per source address, across all rooms. A rate limit is per CONNECTION, so
+# opening N sockets multiplies an attacker's frame budget by N; this is what
+# bounds N. Generous on purpose — one office behind one NAT is a single address,
+# and 64 is far more than the handful of devices a person syncs while still
+# being a ceiling.
+#
+# Its own parse rather than _int(), which treats 0 as junk and substitutes the
+# default. Here 0 is a meaningful answer: "do not count", for a deployment that
+# fronts this with something better at the job, or one where every client
+# genuinely arrives from one address.
+def _limit(name: str, default: int) -> int:
+    raw = os.getenv(f"REALTIMECLIPBOARD_{name}")
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        print(f"[relay] REALTIMECLIPBOARD_{name}={raw!r} is not a number; using {default}")
+        return default
+    if value < 0:
+        print(f"[relay] REALTIMECLIPBOARD_{name}={value} cannot be negative; using {default}")
+        return default
+    return value
+
+
+MAX_CONNS_PER_IP = _limit("MAX_CONNS_PER_IP", 64)
+
 # ---- deployment policy --------------------------------------------------
 #
 # Everything above is a protocol limit and has one correct value. These are
@@ -128,6 +175,13 @@ MAX_NAME_CHARS = 64           # nickname, e.g. "Chrome · Windows" (FR-5.7)
 #                           relay for anyone who finds the hostname.
 #   REALTIMECLIPBOARD_MAX_SESSION    hard cap in seconds on how long one room may live,
 #                           counted from its first peer. 0 disables.
+#   REALTIMECLIPBOARD_MAX_ROOMS      how many rooms may exist at once. The ceiling that
+#                           stops a sweep of the keyspace allocating one Room,
+#                           one subscription and one TTL task per guess.
+#   REALTIMECLIPBOARD_MAX_CONNS_PER_IP  live connections from one source address. Rate
+#                           limits are per connection, so this is what stops
+#                           them being multiplied by opening more. 0 disables,
+#                           for a deployment that caps this at the edge.
 CORS_ORIGINS = [o.strip() for o in os.getenv("REALTIMECLIPBOARD_CORS_ORIGINS", "*").split(",") if o.strip()]
 DISABLE_FILES = os.getenv("REALTIMECLIPBOARD_DISABLE_FILES", "").lower() in {"1", "true", "yes"}
 JOIN_TOKEN = os.getenv("REALTIMECLIPBOARD_JOIN_TOKEN", "") or None
@@ -405,6 +459,13 @@ class Peer:
     conn: Connection
     peer_id: str
     name: str = ""
+    # Source address, kept ONLY as the key of the per-address connection count
+    # and released the moment the peer leaves. Never sent to a peer, never
+    # logged, and not the same thing as `country` below, which survives as a
+    # counter input. Empty when the address could not be determined, which
+    # disables counting for that connection rather than lumping every unknown
+    # together under one key — that bucket would fill and lock out real clients.
+    ip: str = ""
     # Two-letter country, read once from Cloudflare's header at connect time
     # and kept only as a counter input for /stats. The address it was derived
     # from is never stored, and this is never sent to any peer — a country code
@@ -443,6 +504,32 @@ class Room:
 
 rooms: dict[str, Room] = {}
 
+# Live connections per source address. A key exists only while it is non-zero —
+# see _drop_peer — so this does not become a second unbounded dict and quietly
+# undo the reason the caps exist.
+ip_conns: dict[str, int] = {}
+
+
+def _drop_peer(room: Room, conn: Connection) -> Peer | None:
+    """Remove a peer from a room and release what it was holding.
+
+    Every removal goes through here. There are four sites that drop a peer — an
+    ordinary departure, a failed fan-out write, a failed targeted forward, and
+    the SSE generator closing — and a per-address counter decremented at three
+    of them is worse than no counter at all: it leaks, and the leak locks a real
+    user out of their own relay with a message about connection limits.
+    """
+    peer = room.peers.pop(conn, None)
+    if peer is None:
+        return None
+    if peer.ip:
+        remaining = ip_conns.get(peer.ip, 1) - 1
+        if remaining > 0:
+            ip_conns[peer.ip] = remaining
+        else:
+            ip_conns.pop(peer.ip, None)
+    return peer
+
 
 # ---------------------------------------------------------------- health
 
@@ -455,6 +542,12 @@ async def health():
         "uptime_s": round(time.time() - BOOTED_AT, 1),
         "rooms": len(rooms),
         "peers": sum(len(r.peers) for r in rooms.values()),
+        # Reported so "why is it refusing connections" is answerable from
+        # outside. A relay sitting on its ceiling looks identical to a broken
+        # one from a client, which is the whole difficulty of a cap.
+        "max_rooms": MAX_ROOMS,
+        "max_conns_per_ip": MAX_CONNS_PER_IP,
+        "addresses": len(ip_conns),
         # Reported because the thing it reports is a monkeypatch against another
         # project's internals, and its failure is silent and expensive: if a
         # uvicorn upgrade moves that attribute, the relay keeps working while
@@ -593,7 +686,7 @@ async def _broadcast(room: Room, frame: str, exclude: Connection | None = None,
         except Exception:
             dead.append(peer)
     for peer in dead:
-        room.peers.pop(peer, None)
+        _drop_peer(room, peer)
 
 
 async def _deliver_remote(room_hash: str, frame: str) -> None:
@@ -680,7 +773,7 @@ async def _forward(room: Room, me: Peer, msg: dict) -> None:
 
     msg["from"] = me.peer_id
     if not await _send(target.conn, msg):
-        room.peers.pop(target.conn, None)
+        _drop_peer(room, target.conn)
         await _announce_peers(room)
 
 
@@ -733,6 +826,30 @@ def _country_of(headers) -> str:
     return country if len(country) == 2 and country.isalpha() else ""
 
 
+def _client_ip(headers, client) -> str:
+    """Source address, for the per-address connection count and nothing else.
+
+    Cloudflare fronts this service and CF-Connecting-IP is the address it saw;
+    it cannot be spoofed by a client through Cloudflare, because Cloudflare
+    overwrites it. X-Forwarded-For is read only as a fallback for a self-hosted
+    deployment behind a different proxy, and it CAN be spoofed by anyone talking
+    to this process directly — which is why it buys nothing worse than the cap
+    being evaded, never a cap applied to someone else's address.
+
+    Not stored on any object that outlives the connection, not logged, and never
+    sent to a peer. Returns "" when there is nothing trustworthy to key on.
+    """
+    direct = (headers.get("cf-connecting-ip") or "").strip()
+    if direct:
+        return direct[:64]
+
+    forwarded = (headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    if forwarded:
+        return forwarded[:64]
+
+    return (getattr(client, "host", "") or "")[:64]
+
+
 def _admits(room: Room, auth: str | None) -> bool:
     """Does this room accept a peer presenting `auth`?
 
@@ -759,10 +876,11 @@ def _admits(room: Room, auth: str | None) -> bool:
 
 async def _join(room_hash: str, conn: Connection, country: str,
                 extra: dict | None = None, auth: str | None = None,
-                org: str | None = None):
+                org: str | None = None, ip: str = ""):
     """Put a connection in a room and welcome it. Returns (room, peer) or None.
 
-    None means the connection must be ended — the room is full, the deployment
+    None means the connection must be ended — the relay is at its room ceiling,
+    this address holds too many connections, the room is full, the deployment
     requires an org token this peer did not present, or the peer failed the
     locked-session admission check. The error frame has already been sent
     either way.
@@ -782,8 +900,23 @@ async def _join(room_hash: str, conn: Connection, country: str,
         await _send(conn, {"t": "error", "code": "ORG_TOKEN_REQUIRED"})
         return None
 
+    # Before the room is created, for the same reason as the join token: a check
+    # that runs after allocation does not bound allocation.
+    if MAX_CONNS_PER_IP and ip and ip_conns.get(ip, 0) >= MAX_CONNS_PER_IP:
+        await _send(conn, {"t": "error", "code": "TOO_MANY_CONNECTIONS"})
+        return None
+
     room = rooms.get(room_hash)
     if room is None:
+        # Creating a room is the only unbounded allocation a stranger can ask
+        # for, so this is where the ceiling belongs. An EXISTING room is never
+        # refused on this count — the cap must not lock people out of sessions
+        # that are already running, only stop new hashes being minted, which is
+        # what a sweep of the keyspace looks like from in here.
+        if len(rooms) >= MAX_ROOMS:
+            await _send(conn, {"t": "error", "code": "RELAY_BUSY"})
+            return None
+
         room = rooms[room_hash] = Room(hash=room_hash)
         # Frames from the other replicas are fanned out locally and NOT
         # re-published, or the two processes would bounce each one forever.
@@ -816,8 +949,13 @@ async def _join(room_hash: str, conn: Connection, country: str,
     # Provisional id: welcome must go out immediately (a client is entitled to
     # sit silent and still be told the room state), and `hello` has not arrived
     # yet. It is replaced by the client's originId the moment hello lands.
-    me = Peer(conn=conn, peer_id=uuid.uuid4().hex[:8], country=country)
+    me = Peer(conn=conn, peer_id=uuid.uuid4().hex[:8], country=country, ip=ip)
     room.peers[conn] = me
+    # Counted only once the peer is actually in a room, so every path that
+    # returned None above leaves the count untouched and _drop_peer is the sole
+    # decrement. Paired insert and remove, one site each.
+    if ip:
+        ip_conns[ip] = ip_conns.get(ip, 0) + 1
 
     # `existing > 0` on an intent:"create" means the auto-generated key is taken,
     # and the client must regenerate rather than land in a stranger's room (OI-2).
@@ -845,7 +983,7 @@ async def _after_departure(room_hash: str, room: Room) -> None:
 
 async def _depart(room_hash: str, room: Room, me: Peer) -> None:
     """Remove a peer and either re-announce the roster or start the TTL clock."""
-    room.peers.pop(me.conn, None)
+    _drop_peer(room, me.conn)
     await _after_departure(room_hash, room)
 
 
@@ -945,7 +1083,8 @@ async def ws(sock: WebSocket, room_hash: str):
     # client older than this check simply never sends one.
     joined = await _join(room_hash, conn, _country_of(sock.headers),
                          auth=sock.query_params.get("a"),
-                         org=sock.query_params.get("org"))
+                         org=sock.query_params.get("org"),
+                         ip=_client_ip(sock.headers, sock.client))
     if joined is None:
         await sock.close(code=1013)
         return
@@ -1004,7 +1143,8 @@ async def sse(room_hash: str, request: Request):
     joined = await _join(room_hash, conn, _country_of(request.headers),
                          extra={"sid": conn.sid},
                          auth=request.query_params.get("a"),
-                         org=request.query_params.get("org"))
+                         org=request.query_params.get("org"),
+                         ip=_client_ip(request.headers, request.client))
 
     async def stream() -> AsyncIterator[bytes]:
         # 2 KB of comment before anything else. Some proxies (and one or two
@@ -1043,7 +1183,7 @@ async def sse(room_hash: str, request: Request):
             # an await that suspends at that point is a RuntimeError ("async
             # generator ignored GeneratorExit") that would take the cleanup with
             # it. Telling the other peers is a separate task.
-            room.peers.pop(me.conn, None)
+            _drop_peer(room, me.conn)
             try:
                 asyncio.create_task(_after_departure(room_hash, room))
             except RuntimeError:

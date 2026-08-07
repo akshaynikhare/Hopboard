@@ -33,6 +33,7 @@ import * as relay from "../src/transport/relay.js";
 import * as proto from "../src/transport/protocol.js";
 import { on, EV } from "../src/core/bus.js";
 import { DEFAULT_RELAY_URL, normaliseRelay, TEXT, LOCK } from "../src/core/config.js";
+import { INVISIBLE_SOURCE } from "../src/core/text.js";
 
 /**
  * Read from package.json rather than written here.
@@ -113,6 +114,49 @@ is open. Clip contents are encrypted here, before they are sent; the relay only
 ever sees a room hash and ciphertext.`;
 
 /* ---------------------------------------------------------------- output -- */
+
+/**
+ * Escape sequences, stripped from clip text before it reaches a terminal.
+ *
+ * A clip is written by whoever else is in the room, and printing it raw hands
+ * them the terminal's own control channel. That is not theoretical: OSC 52 sets
+ * the TERMINAL's clipboard, so `realtimeclipboard watch` printing an untrusted
+ * clip is a pastejacking primitive against the machine running it — the exact
+ * attack src/clipboard/guard.js exists to stop in the browser. Others retitle
+ * the window, or use a bare CR to redraw the tail of a line over its head so
+ * that what is displayed is not what was sent.
+ *
+ * Built from strings so this file contains no literal control characters — a
+ * literal one is invisible in a diff, which is the property being defended
+ * against.
+ *
+ *   CSI   ESC [ … final byte   colours, cursor movement
+ *   OSC   ESC ] … BEL or ST    window title, and clipboard writes
+ *   two-character escapes, then any ESC left over
+ *   INVISIBLE_SOURCE          the single characters, shared with the browser
+ *                             halves via core/text.js. A terminal needs the
+ *                             sequences above ON TOP of that class, not instead
+ *                             of it, which is why this composes rather than
+ *                             redefining the ranges.
+ */
+const TERMINAL_UNSAFE = new RegExp([
+  "\\u001B\\[[0-9;?]*[ -/]*[@-~]",
+  "\\u001B\\][^\\u0007\\u001B]*(?:\\u0007|\\u001B\\\\)",
+  "\\u001B[@-Z\\\\-_]",
+  "\\u001B",
+  INVISIBLE_SOURCE,
+].join("|"), "g");
+
+/**
+ * Only when stdout is a terminal.
+ *
+ * A pipe is not a terminal and has no control channel to hijack, and the
+ * documented uses of this tool are pipes — `watch KEY > clip.txt`,
+ * `--json | jq`. Rewriting bytes there would corrupt the payload to defend
+ * against a threat that is not present. `--json` is additionally safe by
+ * construction: JSON.stringify escapes every one of these.
+ */
+const forTerminal = text => (stdout.isTTY ? text.replace(TERMINAL_UNSAFE, "") : text);
 
 const note = (msg, opts) => { if (!opts.quiet) stderr.write(`${msg}\n`); };
 
@@ -227,7 +271,7 @@ const readStdin = () => new Promise(resolve => {
 const emitClip = (text, msg, opts) => stdout.write(
   opts.json
     ? `${JSON.stringify({ text, seq: msg.seq ?? null, origin: msg.originId ?? null, receivedAt: new Date().toISOString() })}\n`
-    : (text.endsWith("\n") ? text : `${text}\n`),
+    : (t => t.endsWith("\n") ? t : `${t}\n`)(forTerminal(text)),
 );
 
 /* ------------------------------------------------------------------ main -- */

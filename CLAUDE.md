@@ -194,8 +194,16 @@ Also: **never commit a real share key or PIN**, anywhere. Tests use throwaway ke
 `docs/ARCHITECTURE.md` §5 lists them with their enforcement point. Breaking one is a vulnerability,
 not a bug. The subtle ones:
 
-- The share key and the session PIN are never transmitted, never logged, never on disk — only
-  `SHA-256(key)` and PBKDF2/HKDF output. `main.js` `announce()` prints the room hash only.
+- The share key and the session PIN are never transmitted and never logged — only `SHA-256(key)` and
+  PBKDF2/HKDF output. `main.js` `announce()` prints the room hash only. The **PIN** is never on
+  disk; the **key** is, via `saveLastKey()`, and only because `rememberKey` says so — that setting
+  is the whole of FR-1.7's cost and turning it off erases what is already stored.
+- The key leaves the URL as soon as boot has read it (`keys.clearUrl()`). A reload is served from
+  `sessionStorage`. Do not put it back in the fragment to make a link — `shareLink()` builds one
+  from state.
+- **An arriving clip is attacker-controlled.** `clipboard/guard.js` defuses every one before the OS
+  clipboard sees it, and a clip that reads like a shell command waits for a click. `flushPending()`
+  must never write a flagged clip — focus is not consent.
 - A locked link opens **no connection** until the PIN is given, and never falls back to the
   unlocked room of the same key — that room is real and joinable by anyone holding the link.
 - The lock flag is part of the room hash, so locking/unlocking/re-PINing is a *room change*, not a

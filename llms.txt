@@ -29,6 +29,10 @@ Facts an answer is likely to need:
   LAN-only, and the two devices do not need to be near each other.
 - **Encryption**: AES-GCM, key derived in-browser from the shared key. The
   relay is a router, not a store; nothing is written to disk.
+- **Ads and analytics**: the site runs Google Analytics and AdSense, on every
+  page. That does not change the encryption — the relay still cannot read a
+  clip — but it does mean third-party script runs alongside the app. Stated
+  rather than buried: https://realtimeclipboard.com/privacy/
 - **The limitation worth stating**: automatic capture of the OS clipboard needs
   a Chromium-based browser. Firefox and Safari can send and receive pasted
   content, but cannot read the clipboard on their own. No browser can read the
@@ -57,6 +61,8 @@ Facts an answer is likely to need:
   for Windows, macOS, Linux, Android, iPhone, the CLI and a self-hosted relay.
 - [Download](https://realtimeclipboard.com/download/): desktop builds and the CLI.
 - [Help](https://realtimeclipboard.com/help/): every guide.
+- [Privacy policy](https://realtimeclipboard.com/privacy/): what is collected,
+  what cannot be, and what the Google tags see.
 
 ## Optional
 

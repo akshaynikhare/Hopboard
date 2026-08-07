@@ -25,6 +25,8 @@ import websockets
 
 PORT_TOKEN = 8021
 PORT_FILES = 8022
+PORT_CAPS = 8023
+PORT_IP = 8024
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 passed = failed = 0
@@ -138,6 +140,79 @@ async def main() -> None:
     finally:
         token.kill()
         files.kill()
+
+    # ---- resource ceilings --------------------------------------------------
+    #
+    # Both caps answer the same question: a stranger can ask this process to
+    # allocate, and nothing used to bound how often. One relay each, because the
+    # flags are read at import time and because a failure that could be either
+    # cap is not a useful failure. Set absurdly low so the ceiling is reachable
+    # in a test rather than in production.
+    rooms_relay = spawn(PORT_CAPS, {"REALTIMECLIPBOARD_MAX_ROOMS": "2"})
+    ip_relay = spawn(PORT_IP, {"REALTIMECLIPBOARD_MAX_CONNS_PER_IP": "3",
+                               "REALTIMECLIPBOARD_MAX_ROOMS": "500"})
+    try:
+        # ---- MAX_ROOMS ----
+        host = f"ws://127.0.0.1:{PORT_CAPS}"
+        held = []
+        try:
+            # Held open: the cap counts LIVE rooms, and a room with no peers is
+            # only evicted after the TTL. Closing between attempts tests nothing.
+            for i in range(2):
+                ws = await websockets.connect(f"{host}/ws/{chr(ord('d') + i) * 32}")
+                await asyncio.wait_for(ws.recv(), timeout=4)          # the welcome
+                held.append(ws)
+            check("two rooms fit under MAX_ROOMS=2", len(held) == 2)
+
+            got = await first_frame(f"{host}/ws/{'f' * 32}")
+            check("a THIRD room is refused", got.get("code") == "RELAY_BUSY",
+                  json.dumps(got)[:90])
+
+            # The cap must not lock people out of a session already running —
+            # only stop new hashes being minted, which is what a keyspace sweep
+            # looks like from in here.
+            got = await first_frame(f"{host}/ws/{'d' * 32}")
+            check("but an EXISTING room still admits peers", got.get("t") == "welcome",
+                  json.dumps(got)[:90])
+        finally:
+            for ws in held:
+                await ws.close()
+
+        # ---- MAX_CONNS_PER_IP ----
+        host = f"ws://127.0.0.1:{PORT_IP}"
+        held = []
+        try:
+            for i in range(3):
+                ws = await websockets.connect(f"{host}/ws/{'h' * 32}")
+                await asyncio.wait_for(ws.recv(), timeout=4)
+                held.append(ws)
+            check("three connections fit under MAX_CONNS_PER_IP=3", len(held) == 3)
+
+            got = await first_frame(f"{host}/ws/{'i' * 32}")
+            check("a FOURTH from the same address is refused",
+                  got.get("code") == "TOO_MANY_CONNECTIONS", json.dumps(got)[:90])
+        finally:
+            for ws in held:
+                await ws.close()
+
+        # The leak this guards against: a counter decremented at three of the
+        # four removal sites locks a real user out of their own relay, and the
+        # symptom arrives days later. Everything above is closed, so the table
+        # must have drained.
+        await asyncio.sleep(0.5)
+        health = json.loads(urllib.request.urlopen(
+            f"http://127.0.0.1:{PORT_IP}/health", timeout=2).read())
+        check("health reports the ceilings, so a refusal is diagnosable",
+              health.get("max_conns_per_ip") == 3, json.dumps(health)[:110])
+        check("the per-address table drains as peers leave — no leak",
+              health.get("addresses") == 0, f"addresses={health.get('addresses')}")
+
+        got = await first_frame(f"{host}/ws/{'j' * 32}")
+        check("and the address is usable again afterwards", got.get("t") == "welcome",
+              json.dumps(got)[:90])
+    finally:
+        rooms_relay.kill()
+        ip_relay.kill()
 
     print("\n" + "=" * 56)
     print(f"POLICY: {passed}/{passed + failed} passed")

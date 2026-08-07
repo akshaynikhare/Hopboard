@@ -290,6 +290,45 @@ ok("an allowed device is served without an approver at all",
    sent.map(f => f.t).join(", ") || "nothing sent");
 transfer.cancel(ours.id, "test over");
 
+/* ---- peer-supplied filenames -------------------------------------------
+ *
+ * The name is chosen by whoever sent the file, rendered in the grid, and
+ * becomes the `download` attribute — the string a user reads before deciding
+ * whether to open what it names. Browsers already refuse a path separator
+ * there, so this is not about traversal. It is about the name being read as
+ * what it is.
+ *
+ * Escapes, never literals: a bidi override typed into this file would be
+ * invisible in review, which is the whole property under test.
+ */
+const named = (id, name) => {
+  registry.addRemote({ id, name, size: 10, type: "application/pdf",
+                       thumb: null, originId: "peerX" });
+  return registry.get(id).name;
+};
+
+ok("a bidi override cannot disguise the extension",
+   named("n1", "report‮txt.exe") === "reporttxt.exe", named("n1"));
+
+ok("control characters are stripped",
+   named("n2", "in voice.pdf") === "invoice.pdf", named("n2"));
+
+ok("path separators cannot survive, whatever consumes the name",
+   !/[\\/]/.test(named("n3", "../../etc/passwd")), named("n3"));
+
+ok("a leading dot cannot hide the file",
+   !named("n4", "...hidden.txt").startsWith("."), named("n4"));
+
+ok("an over-long name is bounded",
+   named("n5", "a".repeat(500)).length <= FILES.MAX_NAME_CHARS,
+   String(named("n5").length));
+
+ok("a name that sanitises to nothing still has one",
+   named("n6", " ‮  ") === "unnamed", named("n6"));
+
+ok("an ordinary name is left exactly alone",
+   named("n7", "Q3 report (final).pdf") === "Q3 report (final).pdf", named("n7"));
+
 console.log("\n" + "=".repeat(58));
 console.log(`FILES: ${pass}/${pass + fail} passed`);
 console.log("=".repeat(58));

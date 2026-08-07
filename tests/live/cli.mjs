@@ -19,6 +19,12 @@ import { dirname, join, resolve } from "node:path";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const BIN = join(REPO, "cli/realtimeclipboard.mjs");
+
+// Read, not restated. These assertions used to spell the lengths as 6 and 10,
+// so raising the keyspace failed a test that was checking the old constant
+// against the new generator rather than checking anything about the CLI.
+const { KEY } = await import(
+  new URL("../../src/core/config.js", import.meta.url).href);
 const BASE = process.argv[2] || process.env.RELAY_BASE
   || "wss://realtimeclipboard.fastapicloud.dev";
 const HTTP = BASE.replace(/^ws/i, "http");
@@ -67,8 +73,12 @@ const unknown = await run(["--nope"]);
 check("an unknown option exits 2", unknown.code === 2, `code ${unknown.code}`);
 
 const key = await newKey();
-check("`new` prints one usable key", /^[0-9A-Z]{6}$/.test(key), key);
-check("`new --long` is longer", /^[0-9A-Z]{10}$/.test((await run(["new", "--long"])).out.trim()));
+const longKey = (await run(["new", "--long"])).out.trim();
+check("`new` prints one usable key",
+  new RegExp(`^[0-9A-Z]{${KEY.LENGTH}}$`).test(key), `${key} (want ${KEY.LENGTH})`);
+check("`new --long` is longer",
+  new RegExp(`^[0-9A-Z]{${KEY.LONG_LENGTH}}$`).test(longKey)
+    && KEY.LONG_LENGTH > KEY.LENGTH, `${longKey} (want ${KEY.LONG_LENGTH})`);
 
 /* ---------- a clip crosses between two processes ----------
    Multi-line and non-ASCII on purpose: the payload goes through base64, JSON,

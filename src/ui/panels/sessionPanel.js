@@ -79,6 +79,14 @@ function onMenuEvent(e, close) {
     const next = sw.getAttribute("aria-checked") !== "true";
     sw.setAttribute("aria-checked", String(next));
     state.saveSetting(sw.dataset.k, next);
+
+    // Acts on the key already saved, not only on the next session. A switch
+    // called "remember this" that leaves the last one on disk when you turn it
+    // off is making a promise it is not keeping.
+    if (sw.dataset.k === "rememberKey") {
+      const { key, locked } = state.get();
+      storage.saveLastKey(key, locked, next);
+    }
     return menu.refresh();               // key strength and labels follow it
   }
 
@@ -219,6 +227,8 @@ function filesMenu() {
 function gearMenu() {
   return group("Security")
     + swRow("longKeys", "Longer keys", keyStrength())
+    + swRow("rememberKey", "Remember this session on this device",
+            "Off: the key is kept only until this tab closes, and never written to disk")
     + lockRows()
     + group("Presence")
     + swRow("cursors", "Show other cursors", "See where the other devices are pointing")

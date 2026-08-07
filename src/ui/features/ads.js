@@ -81,9 +81,9 @@ function mountUnit() {
 
   const ins = document.createElement("ins");
   ins.className = "adsbygoogle";
+  // display only — the unit writes its own height, and the box reserves space
+  // with a min-height so the editor does not jump. See styles/ads.css.
   ins.style.display = "block";
-  ins.style.width = "100%";
-  ins.style.height = "100%";
   ins.setAttribute("data-ad-client", GOOGLE.ADSENSE_CLIENT);
   ins.setAttribute("data-ad-slot", GOOGLE.ADSENSE_SLOTS.APP);
   ins.setAttribute("data-ad-format", "horizontal");
