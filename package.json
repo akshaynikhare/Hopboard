@@ -46,6 +46,7 @@
     "test:cli": "node tests/live/cli.mjs",
     "build": "node tools/build/build.mjs",
     "build:site": "node tools/build/build.mjs _site && node tools/check/site-check.mjs _site",
+    "build:desktop": "node tools/build/build.mjs _desktop --desktop",
     "build:og": "python tools/build/build-og-card.py",
     "check:og": "python tools/build/build-og-card.py --check",
     "check:csp": "node tools/build/build.mjs _site && node tools/check/csp-check.mjs",

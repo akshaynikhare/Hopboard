@@ -110,12 +110,17 @@ the app had never been compiled. The reasoning they held lives here instead.
   `tools/build/build.mjs --desktop` exists to make pointing at a real build
   possible. See the header comment there for why an ignore file was not the fix.
 
-  **The two paths in that line are relative to different directories, and that
-  is not a typo.** `beforeBuildCommand` runs from `desktop/` — the parent of
-  `src-tauri`, not `src-tauri` itself — so the script is `../tools/…`, while
-  `frontendDist` is resolved against `src-tauri/` and is `../../_desktop`.
-  Getting the first one wrong resolves to a path above the repository root and
-  fails with `Cannot find module`.
+  **`beforeBuildCommand` is an npm script and must stay one.** Its working
+  directory is not fixed: `tauri-action` in CI runs it from the repository root,
+  while `npx tauri build` inside `src-tauri/` runs it from `desktop/`. Any
+  relative path to `tools/build/build.mjs` is therefore correct in exactly one
+  of the two and fails with `Cannot find module` in the other — both of which
+  this repository has now done, on three runners each. `npm run` resolves the
+  package root by walking up from wherever it starts, so it lands on the same
+  directory either way.
+
+  `frontendDist` has no such problem: Tauri always resolves it against the
+  config file, so `../../_desktop` is the repository root.
 
 - **`security.csp`** is the website's policy plus what the shell needs. The
   webview renders clipboard content arriving from other devices, so it gets the
