@@ -142,21 +142,19 @@ chmod +x realtimeclipboard_&lt;version&gt;_amd64.AppImage
           <a href="/help/install/cli/">the command-line client</a>.
         </p>
 
-        <h2 id="pkg">Or from a package manager</h2>
-        <pre><code>yay -S realtimeclipboard-bin</code></pre>
+        <h2 id="pkg">There is no package manager here</h2>
         <p>
-          <b>Not published yet</b>, and Arch only. The PKGBUILD is generated from
-          each release by <code>tools/release/manifest.mjs</code>, but it has to
-          be pushed to the AUR by hand. The package is named
-          <code>realtimeclipboard-bin</code> because it packages the released
-          binary rather than building from source.
+          No Flathub, no Snap, no AUR — and no command on this page pretending
+          otherwise. Each of those is a repository somebody has to keep in step
+          with every release, and one that has quietly stopped being updated is
+          worse than one that never existed: it hands people an old build and
+          tells them it is current.
         </p>
         <p>
-          There is deliberately no Flathub line. No Flatpak manifest exists in
-          the repository and nothing in CI builds one, so a
-          <code>flatpak install</code> command here would be a command that
-          fails. When one exists it will appear here and on
-          <a href="/download/">the download page</a> together.
+          The three files above are the whole story. Each is a single artifact
+          from the release, none of them needs a repository, and the AppImage in
+          particular needs nothing installed at all — <code>chmod +x</code> and
+          run it.
         </p>
 
         <h2 id="check">Check it worked</h2>

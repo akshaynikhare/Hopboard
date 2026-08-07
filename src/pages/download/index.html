@@ -280,20 +280,21 @@
 
         <h3 id="pkg">Package managers</h3>
         <p>
-          <code>tools/release/manifest.mjs</code> generates each of these from the
-          release, but the manifest still has to be pushed to a tap, a bucket or
-          the AUR by hand afterwards. None of that has happened yet.
+          Two, and only once they are real. Each is a manifest
+          <code>tools/release/manifest.mjs</code> generates from the release,
+          which then has to be reviewed and merged by somebody else — so the
+          command works when the tag on it says so, and not before.
         </p>
 
         <div class="cmdgrid">
           <div class="cmdcard">
-            <h4><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-windows"/></svg> Windows — Scoop</h4>
+            <h4><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-windows"/></svg> Windows — winget</h4>
             <span class="tag">not published yet</span>
-            <pre><code>scoop bucket add realtimeclipboard https://github.com/akshaynikhare/scoop-realtimeclipboard
-scoop install realtimeclipboard</code></pre>
+            <pre><code>winget install AkshayNikhare.RealtimeClipboard</code></pre>
             <p class="hint">
-              There is no <code>winget</code> line here because nothing generates
-              a winget manifest.
+              Submitted to <code>microsoft/winget-pkgs</code> after each release
+              and merged by their reviewers, which takes days rather than
+              minutes.
               <a href="/help/install/windows/#pkg">Windows package notes</a>
             </p>
           </div>
@@ -310,13 +311,12 @@ scoop install realtimeclipboard</code></pre>
           </div>
 
           <div class="cmdcard">
-            <h4><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-linux"/></svg> Linux — AUR</h4>
-            <span class="tag">not published yet</span>
-            <pre><code>yay -S realtimeclipboard-bin</code></pre>
+            <h4><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-linux"/></svg> Linux — none</h4>
             <p class="hint">
-              Arch only. Everywhere else take the <code>.deb</code>,
-              <code>.rpm</code> or AppImage from the releases page — there is no
-              Flathub line because no Flatpak manifest exists.
+              No Flathub, Snap or AUR package, and no command here pretending
+              otherwise. Take the <code>.deb</code>, <code>.rpm</code> or
+              AppImage above; each is a single file and none of them needs a
+              repository.
               <a href="/help/install/linux/#pkg">Linux package notes</a>
             </p>
           </div>

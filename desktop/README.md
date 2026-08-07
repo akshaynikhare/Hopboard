@@ -102,10 +102,20 @@ the app had never been compiled. The reasoning they held lives here instead.
   remaining copies — `Cargo.toml` and `Cargo.lock` — together, because
   `cargo build --locked` fails outright when they disagree.
 
-- **`frontendDist: "../../"`** is the repository's own `src/`, taken as it stands.
-  Not a copy, not a variant, not a build output — the same files the website
-  serves. This is the most important line in the file: it is what stops the
-  desktop app becoming a second implementation that drifts.
+- **`frontendDist: "../../_desktop"`**, built by `beforeBuildCommand`, is the
+  same bundle the website ships — not a copy, not a variant. That is the most
+  important property in the file: it is what stops the desktop app becoming a
+  second implementation that drifts. It used to be `"../../"`, the repository
+  itself, which meant `node_modules/` and `docs/` went inside the installer;
+  `tools/build/build.mjs --desktop` exists to make pointing at a real build
+  possible. See the header comment there for why an ignore file was not the fix.
+
+  **The two paths in that line are relative to different directories, and that
+  is not a typo.** `beforeBuildCommand` runs from `desktop/` — the parent of
+  `src-tauri`, not `src-tauri` itself — so the script is `../tools/…`, while
+  `frontendDist` is resolved against `src-tauri/` and is `../../_desktop`.
+  Getting the first one wrong resolves to a path above the repository root and
+  fails with `Cannot find module`.
 
 - **`security.csp`** is the website's policy plus what the shell needs. The
   webview renders clipboard content arriving from other devices, so it gets the

@@ -135,19 +135,19 @@
         </p>
 
         <h2 id="pkg">Or from a package manager</h2>
-        <pre><code>scoop bucket add realtimeclipboard https://github.com/akshaynikhare/scoop-realtimeclipboard
-scoop install realtimeclipboard</code></pre>
+        <pre><code>winget install AkshayNikhare.RealtimeClipboard</code></pre>
         <p>
-          <b>Not published yet.</b> <code>tools/release/manifest.mjs</code>
-          generates the Scoop manifest from each release, but it still has to be
-          pushed to that bucket by hand, and nothing has been pushed yet.
+          <b>Not published yet.</b> The manifest is generated from each release
+          and submitted to <code>microsoft/winget-pkgs</code>, where it is
+          reviewed and merged by people who do not work on this project — so
+          there is a gap of days between a release and this command working.
+          It says so above until it does.
         </p>
         <p>
-          There is deliberately no <code>winget</code> line. Nothing in the
-          release workflow produces a winget manifest, so a
-          <code>winget install</code> command here would be a command that
-          errors. When one exists it will appear here and on
-          <a href="/download/">the download page</a> together.
+          There is deliberately no <code>scoop</code> line. A Scoop bucket is a
+          repository somebody has to keep in step with every release, and one
+          Windows channel that is genuinely maintained beats two that drift
+          apart. The <code>.msi</code> above is the same build either way.
         </p>
 
         <h2 id="check">Check it worked</h2>
@@ -232,8 +232,8 @@ scoop install realtimeclipboard</code></pre>
         <h2 id="remove">Uninstalling</h2>
         <p>
           Settings → Apps → Installed apps → RealtimeClipboard → Uninstall, or
-          <code>scoop uninstall realtimeclipboard</code> if that is how it
-          arrived.
+          <code>winget uninstall AkshayNikhare.RealtimeClipboard</code> if that
+          is how it arrived.
         </p>
         <p>
           There is nothing to clean up afterwards. No clipboard content is ever
