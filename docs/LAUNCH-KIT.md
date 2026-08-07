@@ -196,9 +196,66 @@ no intro, no logo.
 Worth an email only *after* traction: **Brodie Robertson** (`brodierobertsonbusiness@gmail.com`)
 and **Lon.TV** (`lon@lon.tv`). Both explicitly invite suggestions.
 
+### The shot list
+
+Two windows side by side, or a phone beside a laptop — the second is more convincing and harder to
+film. Screen recording only, no camera, no voice, no music, no intro card. Target 60 seconds.
+
+| t | Shot | The point it makes |
+|---|---|---|
+| 0–5s | Left window: open the app. A key appears. | No sign-up screen. Nothing was installed. |
+| 5–12s | Right window: type the same key. Both show connected. | The whole setup is one short string. |
+| 12–25s | Left: select a paragraph, `Ctrl+C`. Switch to right, `Ctrl+V`. It pastes. | **The one thing to show.** It lands on the *system* clipboard — not a message you copy out of a box. |
+| 25–35s | Right: copy something. Switch to left. Paste. | Both directions, no configuration. |
+| 35–48s | Drag an image onto the left. It appears on the right. Save it. | Files, peer-to-peer. |
+| 48–60s | Close both tabs. Reopen. Session gone. | Nothing persisted — the privacy claim, shown rather than asserted. |
+
+Record at 1280×720 or larger and keep the text legible at half size; most of its life is an
+embedded thumbnail in a README or a comment. Export a GIF **and** an MP4 — GitHub renders the GIF
+inline, Reddit and HN want a link.
+
+**Do not narrate the caveats in the video.** They belong in the post body, where they can be read
+and quoted accurately. A 60-second video that spends 15 seconds on disclaimers converts nobody and
+reassures nobody.
+
 ---
 
-## 6. Fire everything on one day
+## 6. The 5 MB cap — decided: do not raise it for this launch
+
+`SEO.md` §6 flags it as a launch risk twice: the file-sharing ceiling on Hacker News is 923 points
+against the clipboard's ~141, **but "the 5 MB file cap will become the top comment if you lead with
+files."** Both are true, and they point in opposite directions. This is the resolution.
+
+**What actually constrains the cap.** Not WebRTC — a data channel will stream far more than 5 MB in
+32 KB chunks. Two other things do:
+
+1. **The relay fallback.** When P2P fails, chunks go through the relay base64'd inside a JSON
+   envelope, which caps them at ~18 KB — 289 chunks for a 5 MB file, inside the relay's 400
+   chunks/sec bulk allowance. Raise the file cap and the fallback path is what breaks, on exactly
+   the corporate networks it exists to serve.
+2. **Memory.** Files are held in RAM, 20 per session, on both ends. Doing large files properly
+   means streaming to disk through the File System Access API, which is real work and does not
+   exist yet.
+
+**So the honest options were:** raise it properly (weeks, and the fallback needs its own answer),
+raise it carelessly (ship a cap that breaks on the networks that most need the fallback), or keep
+it and stop leading with files.
+
+**Keep it, and lead with the clipboard everywhere — including Hacker News.** Three reasons:
+
+- The cap is only fatal *if files are the pitch*. Nobody objects to a 5 MB limit on a clipboard
+  tool that also happens to send images.
+- **r/InternetIsBeautiful needs this anyway.** Rule 2 removes "not unique" posts, and Snapdrop and
+  PairDrop have both already run there *as file tools*. Leading on files invites the removal;
+  leading on the clipboard is the thing neither of them does.
+- It gives up the 923-point HN ceiling, which is a real cost. Take it: a plain link that survives
+  its comment thread beats a higher-ceiling framing that gets dismantled in the first reply.
+
+Say the cap plainly in the caveat block rather than waiting to be asked. **Revisit HN with a
+file-led submission once streaming-to-disk lands** — §6 already establishes that resubmission is
+the strategy and that LocalSend's same URL scored 1, 4 and 3 before it scored 563.
+
+## 7. Fire everything on one day
 
 GitHub Trending ranks star *velocity* against a repo's own baseline, so a zero-star repo needs a
 concentrated spike rather than a large one. Spreading launches across three weeks guarantees you
