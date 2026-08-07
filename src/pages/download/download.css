@@ -78,16 +78,14 @@
 
 /* The command blocks that sit in a section rather than inside a card. These had
    no rule at all: browser default, no overflow handling, and body's
-   overflow-x:hidden then clipped the end of a long line instead of scrolling
-   it. Margin rather than padding, so the border stays off the vertical rules. */
+   overflow-x:hidden then clipped the end of a long line. Margin rather than
+   padding, so the border stays off the vertical rules. */
 .tier > pre {
   margin: 0 var(--gut) 18px;
   padding: 10px 12px;
   background: var(--sunk);
   border: 1px solid var(--rule2);
   border-radius: 6px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
 }
 .tier > pre code { font-size: 0.86rem; }
 
@@ -142,6 +140,11 @@
 
 .dlcard .hint { margin: 8px 0 4px; }
 
+/* Commands are the one thing on this page a reader will copy. That used to be an
+   argument for scrolling the block rather than wrapping it — a wrapped command
+   reads as two. src/landing/copy.js makes the point moot by putting a button on
+   every block, and the wrapping rule now lives beside it in landing.css, because
+   the help pages carry the same commands and had the same scrollbar. */
 .dlcard pre,
 .cmdcard pre {
   margin: 0 0 8px;
@@ -149,9 +152,6 @@
   border-radius: 6px;
   background: var(--sunk);
   border: 1px solid var(--rule2);
-  /* Commands are the one thing on this page a reader will copy, and a wrapped
-     command is a mis-pasted command. Scroll the block, never the page. */
-  overflow-x: auto;
 }
 
 .dlcard code,

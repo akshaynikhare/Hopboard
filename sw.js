@@ -85,6 +85,7 @@ const SHELL = [
   "./src/files/registry.js",
   "./src/files/thumbs.js",
   "./src/files/transfer.js",
+  "./src/landing/copy.js",
   "./src/landing/download.js",
   "./src/landing/faq.js",
   "./src/landing/globe.js",

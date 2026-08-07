@@ -189,12 +189,25 @@ bad = jsFiles
 ok("innerHTML is written only in ui/primitives/dom.js", bad.length === 0,
    bad.length ? `${bad.join(", ")} — use setHTML() or clear()` : "");
 
-/* ---------- 7. only the clipboard module touches the clipboard ---------- */
+/* ---------- 7. only the clipboard module touches the clipboard ----------
+   What this protects is the echo loop, not the API: every read and write in
+   the SESSION has to pass the suppression window in clipboard/capture.js, or
+   a clip we just applied is seen as new and sent straight back (CLIPBOARD-FLOW
+   §6). src/landing/ is exempt because it holds no session — the copy buttons
+   on the marketing and help pages write a command string to the clipboard and
+   never read it, so there is nothing there to echo. */
 bad = jsFiles
   .filter(f => !f.includes("clipboard"))
-  .filter(f => /navigator\.clipboard/.test(read(f)))
+  .filter(f => {
+    const src = read(f);
+    if (!/navigator\.clipboard/.test(src)) return false;
+    // The exemption is write-only. A landing module that READS the clipboard
+    // is back inside the loop this rule exists to prevent, so it still fails.
+    return !rel(f).startsWith("src/landing/") || /navigator\.clipboard\.read/.test(src);
+  })
   .map(rel);
-ok("navigator.clipboard confined to clipboard/", bad.length === 0, bad.join(", "));
+ok("navigator.clipboard confined to clipboard/ (landing/ may write, not read)",
+   bad.length === 0, bad.join(", "));
 
 /* ---------- 8. UI modules do not import the transport ----------
    The boundary that let the transport stay swappable while everything else

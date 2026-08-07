@@ -890,21 +890,66 @@ h1 > .brandmark { vertical-align:-.06em; }
  * by `body { overflow-x:hidden }`. Nothing looked broken; the end of the command
  * was just not there.
  *
- * Scrolling rather than wrapping, for the reason download.css already gives
- * about its own `pre`: a wrapped command is a mis-pasted command.
+ * These used to scroll rather than wrap, on the argument that a wrapped command
+ * is a mis-pasted command. That held while selecting it by hand was the only way
+ * to take one — but a horizontal scrollbar inside a card on a phone is its own
+ * way to lose the end of a line, and people do not find it. src/landing/copy.js
+ * puts a button on every block instead, which is both the better path and the
+ * reason wrapping is now safe: `pre-wrap` keeps the real newlines, so a copy is
+ * byte-exact however the line happens to fold.
+ *
+ * !! If copy.js ever goes, `overflow-x:auto` has to come back with it. !!
  */
+pre {
+  white-space:pre-wrap;
+  /* `anywhere`, not `break-word`: the longest thing on these pages is a bucket
+     URL, and a URL offers no break opportunity at all, so `break-word` leaves it
+     overflowing exactly as before. */
+  overflow-wrap:anywhere;
+}
+
 .article pre {
   margin:0 var(--gut) 20px;
   padding:10px 12px;
   background:var(--sunk);
   border:1px solid var(--rule2);
   border-radius:6px;
-  overflow-x:auto;
-  /* Stops the swipe chaining to the browser's back gesture at the end of the
-     scroll, the same way .tablewrap does. */
-  overscroll-behavior-x:contain;
 }
 .article pre code { font-size:0.86rem; }
+
+/*
+ * The copy button, top-right inside the block it copies.
+ *
+ * `pre.has-copy` is set by copy.js, so the padding that reserves room for the
+ * button only exists when there is a button — no page ends up with a gap where
+ * an unusable control would have been.
+ */
+pre.has-copy { position:relative; padding-right:74px; }
+
+.copybtn {
+  position:absolute;
+  top:6px;
+  right:6px;
+  min-width:60px;
+  padding:3px 8px;
+  font:11px/1.5 var(--mono);
+  letter-spacing:.04em;
+  color:var(--dim);
+  background:var(--panel);
+  border:1px solid var(--rule2);
+  border-radius:4px;
+  cursor:pointer;
+  /* Faded until the block is hovered or the button is tabbed to — a command is
+     the thing worth looking at, not the furniture around it. Never below the
+     contrast floor, though: this is the visible resting state on touch, where
+     there is no hover at all. */
+  opacity:.72;
+  transition:opacity .15s var(--ease), color .15s var(--ease), border-color .15s var(--ease);
+}
+pre:hover .copybtn,
+.copybtn:focus-visible { opacity:1; color:var(--text); border-color:var(--rule2); }
+.copybtn:hover { color:var(--bright); }
+.copybtn:active { background:var(--sunk); }
 /* The reading measure, now that the container no longer supplies one. */
 .article > p,
 .article > ul,
