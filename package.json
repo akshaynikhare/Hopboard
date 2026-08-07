@@ -52,6 +52,7 @@
     "build:icons": "python tools/build/build-icons.py",
     "check:icons": "python tools/build/build-icons.py --check",
     "check:csp": "node tools/build/build.mjs _site && node tools/check/csp-check.mjs",
+    "seo:indexnow": "node tools/seo/indexnow.mjs",
     "relay": "python -m uvicorn main:app --app-dir backend --port 8000",
     "relay:up": "node tools/release/relay-up.mjs",
     "changelog": "node tools/release/changelog.mjs",

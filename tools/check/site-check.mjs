@@ -32,6 +32,10 @@ const ORIGIN = "https://realtimeclipboard.com";
 /** The host the site was published from until the move, and must never mention again. */
 const OLD_HOST = "akshaynikhare.github.io";
 
+/** Mirrors tools/seo/indexnow.mjs. IndexNow verifies by fetching the key at
+    `/<key>.txt`, so the filename IS the credential and a rename breaks it. */
+const INDEXNOW_KEY = "d10e264a86258c1431df1f72efb3cf83";
+
 let failed = 0;
 const fail = msg => { console.error(`  FAIL  ${msg}`); failed++; };
 const pass = msg => console.log(`  ok    ${msg}`);
@@ -65,6 +69,11 @@ const REQUIRED = [
   "help/install/iphone/index.html", "help/install/cli/index.html",
   "help/install/relay/index.html",
   "download/index.html", "download/download.css", "src/landing/download.js",
+  "snapdrop-alternative/index.html", "what-is-an-online-clipboard/index.html",
+  "online-clipboard-no-login/index.html", "clipboard-sync-different-networks/index.html",
+  // Crawler-facing and easy to lose: neither is referenced by any page, so a
+  // build that stopped copying them would look completely healthy.
+  "llms.txt", `${INDEXNOW_KEY}.txt`,
 ];
 
 console.log("\nSite check\n");
@@ -98,7 +107,61 @@ if (!/^\s*<\?xml/.test(sitemap) || !sitemap.includes("</urlset>")) {
   if (!locs.length) fail("sitemap.xml contains no <loc> entries");
   else if (foreign.length) foreign.forEach(u => fail(`sitemap.xml <loc> is off-origin: ${u}`));
   else pass(`sitemap.xml: ${locs.length} URLs, all on ${ORIGIN}`);
+
+  /**
+   * A sitemap entry is a request to index. Pairing one with a `noindex` on the
+   * page it names asks Google for two opposite things, and Search Console logs
+   * it as an error against the whole site on every crawl rather than ignoring
+   * the quieter of the two.
+   *
+   * /blog/ shipped exactly this way — noindex while it had no posts, listed in
+   * the sitemap regardless. The sitemap's own header warns against it for /app
+   * and the blog slipped past anyway, which is the argument for a check rather
+   * than a comment.
+   *
+   * The dead-URL half matters just as much: a <loc> for a page that is not in
+   * the deploy is a 404 handed straight to a crawler.
+   */
+  const sitemapPage = u => u.replace(ORIGIN, "").replace(/^\//, "").replace(/\/$/, "");
+  const fileFor = u => (sitemapPage(u) ? `${sitemapPage(u)}/index.html` : "index.html");
+
+  const dead = locs.filter(u => !existsSync(join(OUT, fileFor(u))));
+  dead.length ? dead.forEach(u => fail(`sitemap.xml lists ${u}, which is not in the deploy`))
+              : pass(`sitemap.xml: every URL resolves to a published page`);
+
+  const noindexed = locs.filter(u => /name="robots"[^>]*content="[^"]*noindex/i.test(read(fileFor(u))));
+  noindexed.length
+    ? noindexed.forEach(u => fail(`sitemap.xml lists ${u}, but that page is noindex — pick one`))
+    : pass("sitemap.xml lists no page that asks not to be indexed");
+
+  /**
+   * The other direction: a page that is indexable, reachable and absent from
+   * the sitemap. Not fatal on its own — internal links are how pages are
+   * really found — but on this site every content page is meant to be listed,
+   * and silently forgetting the entry is the documented failure mode
+   * (src/pages/CLAUDE.md: "Add it to sitemap.xml — that part is not derived").
+   */
+  const listed = new Set(locs.map(fileFor));
+  const orphans = htmlPages().filter(f =>
+    f !== "app.html" &&
+    !listed.has(f) &&
+    !/name="robots"[^>]*content="[^"]*noindex/i.test(read(f)));
+  orphans.length
+    ? orphans.forEach(f => fail(`${f} is indexable but missing from sitemap.xml`))
+    : pass("every indexable page is listed in sitemap.xml");
 }
+
+/* --------------------------------------------------------- IndexNow ---- */
+
+/**
+ * IndexNow's entire verification model is that the key sits at a public URL on
+ * the origin claiming the URLs. If the file's name and its contents disagree,
+ * the endpoint answers 403 and says nothing about which half is wrong.
+ */
+const keyBody = read(`${INDEXNOW_KEY}.txt`).trim();
+keyBody === INDEXNOW_KEY
+  ? pass("the IndexNow key file matches its own filename")
+  : fail(`${INDEXNOW_KEY}.txt contains "${keyBody}" — IndexNow will answer 403`);
 
 /* ---------------------------------------------------------- manifest ---- */
 

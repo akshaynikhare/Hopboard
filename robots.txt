@@ -37,7 +37,55 @@
 # fragment, which is never sent to a server and is not a distinct URL to a
 # crawler. Googlebot rendering /app gets an empty app with no key in it.
 
+# ---------------------------------------------------------------------------
+# Answer engines
+# ---------------------------------------------------------------------------
+#
+# The wildcard group below already allows every one of these. They are named
+# anyway because the failure they guard against is someone adding a Disallow
+# later "for the AI scrapers" and taking the citation crawlers out with it —
+# these are the bots that decide whether the site appears in a ChatGPT,
+# Perplexity or Copilot answer, and they are not the ones that train models.
+#
+#   OAI-SearchBot    ChatGPT's citation crawler. Blocking it removes the site
+#                    from ChatGPT answers outright. GPTBot is the training
+#                    crawler and is a separate decision.
+#   Claude-SearchBot / PerplexityBot   the same role at Anthropic and Perplexity.
+#   *-User           fetches made because a person asked, not crawls.
+#   bingbot          serves Bing, and Bing's index is what Copilot grounds on.
+#
+# !! A named group is read INSTEAD of the wildcard group, not in addition to
+# it. Anything added below `User-agent: *` has to be repeated here or it will
+# not apply to these bots. That asymmetry is the whole cost of naming them. !!
+#
+# Google-Extended is deliberately absent. It governs Gemini model training only,
+# Google states it is not a ranking signal, and it has no bearing on AI
+# Overviews — which are served off the ordinary Googlebot index. Adding it here
+# would imply a control it does not have.
+
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: bingbot
+Allow: /
+
 User-agent: *
 Allow: /
 
 Sitemap: https://realtimeclipboard.com/sitemap.xml
+
+# ---------------------------------------------------------------------------
+# robots.txt is not the thing most likely to block these
+# ---------------------------------------------------------------------------
+#
+# The site is served by Cloudflare, which has its own AI-crawler blocking that
+# operates at the edge and never consults this file. If "Block AI bots" / "AI
+# Scrapers and Crawlers" is enabled for the zone, OAI-SearchBot and
+# PerplexityBot get a 403 with everything above still saying Allow, and the
+# only visible symptom is that the site never gets cited anywhere.
+#
+# Verify in the dashboard, not here: Security -> Bots. Nothing in this
+# repository can assert it, which is exactly why it is written down.

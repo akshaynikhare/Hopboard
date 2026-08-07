@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html, which is the page that
+     actually needs them. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+
+<!--
+  Target: "sync clipboard without same wifi", "clipboard sync different
+  networks", "clipboard sync across networks". docs/SEO.md §2 names this the
+  differentiator to lead with — and §2 also records the correction that matters
+  here: the claim "the competition is all LAN-only" is WRONG. PairDrop pairs
+  across networks. Snapdrop, LocalSend, AirDrop and KDE Connect are the
+  genuinely same-network ones.
+
+  So the honest angle is not "only we cross networks", it is that almost every
+  tool a reader has already tried is same-network by design, and the reason is
+  worth explaining: local discovery is a broadcast, and broadcasts do not leave
+  the subnet. A reader who understands that stops trying to fix their firewall.
+-->
+<title>Clipboard Sync Across Different Networks — Without the Same Wi-Fi</title>
+<meta name="description" content="Most clipboard and file tools only work on one Wi-Fi network, because device discovery is a local broadcast. How to sync your clipboard between devices on different networks, and which tools actually do it.">
+<link rel="canonical" href="https://realtimeclipboard.com/clipboard-sync-different-networks/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="RealtimeClipboard">
+<meta property="og:title" content="Clipboard Sync Across Different Networks — Without the Same Wi-Fi">
+<meta property="og:description" content="Why most clipboard tools need one Wi-Fi network, and how to sync between devices that are nowhere near each other.">
+<meta property="og:url" content="https://realtimeclipboard.com/clipboard-sync-different-networks/">
+<meta property="og:image" content="https://realtimeclipboard.com/assets/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://realtimeclipboard.com/clipboard-sync-different-networks/#article",
+      "headline": "Clipboard sync across different networks, without the same Wi-Fi",
+      "description": "Why local device discovery does not cross a subnet, and which clipboard tools work between devices on different networks.",
+      "inLanguage": "en",
+      "datePublished": "2026-08-07",
+      "dateModified": "2026-08-07",
+      "publisher": { "@id": "https://realtimeclipboard.com/#org" },
+      "mainEntityOfPage": "https://realtimeclipboard.com/clipboard-sync-different-networks/"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "RealtimeClipboard",
+          "item": "https://realtimeclipboard.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Clipboard sync across different networks"
+        }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/src/landing/landing.css">
+<script type="module" src="/src/landing/faq.js"></script>
+</head>
+<body>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="/">
+        <b>RealtimeClipboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="https://github.com/akshaynikhare/RealtimeClipboard">GitHub</a>
+      <a class="tlink strong" href="/app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section class="sec">
+    <div class="in doc">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">RealtimeClipboard</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">Clipboard sync across different networks</span>
+      </nav>
+
+      <header class="pagehead">
+        <h1>Clipboard sync across different networks</h1>
+
+        <p class="lede">
+          <b>Most clipboard and file-sharing tools cannot do this, and the reason
+          is that they find each other by shouting on the local network.</b> A
+          broadcast does not leave the subnet, so a phone on mobile data is
+          invisible to a laptop on home Wi-Fi no matter what you change. To sync
+          across networks you need a tool that meets in the middle at a known
+          address instead — which is what a browser-based clipboard does.
+        </p>
+      </header>
+
+      <div class="article">
+
+        <h2>Why the same-Wi-Fi limit exists</h2>
+
+        <p>
+          AirDrop, LocalSend, KDE Connect and the original Snapdrop all work the
+          same way underneath. When you open them, each device sends a discovery
+          message to every address on its own network segment — mDNS, UDP
+          broadcast or Bluetooth, depending on the tool — and listens for
+          replies. Whatever answers, appears in the list.
+        </p>
+
+        <p>
+          That design is why they need no account and no configuration: nobody
+          has to be told where anybody is. It is also exactly why they stop at
+          the edge of the network. Routers do not forward broadcast traffic
+          between subnets, so two devices on different networks never hear each
+          other. There is nothing to fix, no port to open, no setting you have
+          missed — it is the mechanism working as designed.
+        </p>
+
+        <p>
+          Three common situations run into it, and none of them is a fault:
+        </p>
+
+        <ul>
+          <li><b>Phone on mobile data, laptop on Wi-Fi.</b> Different networks even though the devices are touching.</li>
+          <li><b>Office or campus Wi-Fi with client isolation.</b> Devices are on one network but deliberately walled off from each other, which is a security feature on guest and corporate networks.</li>
+          <li><b>Genuinely apart</b> — home and work, or two different cities.</li>
+        </ul>
+
+        <h2>What works instead</h2>
+
+        <p>
+          The alternative is for both devices to connect outward to the same
+          known address and be introduced there. Neither has to find the other,
+          so it makes no difference whether they are in one room or on opposite
+          sides of the world. The trade is that something in the middle now
+          knows the two are talking — so the question that matters becomes
+          <em>what that middle can see</em>.
+        </p>
+
+        <div class="tablewrap" tabindex="0" role="region"
+             aria-label="Which tools cross networks — scrolls sideways">
+          <table class="cmp">
+            <caption class="sr-only">
+              Clipboard and transfer tools compared by whether they work across
+              different networks, how the devices find each other, and whether
+              content lands on the system clipboard.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Tool</th>
+                <th scope="col">Across networks</th>
+                <th scope="col">How devices meet</th>
+                <th scope="col">System clipboard</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="me">
+                <th scope="row">RealtimeClipboard</th>
+                <td class="y">Yes</td>
+                <td>Short key typed on both</td>
+                <td class="y">Yes</td>
+              </tr>
+              <tr>
+                <th scope="row">PairDrop</th>
+                <td class="y">Yes</td>
+                <td>6-digit pairing code</td>
+                <td class="n">Text arrives as a message</td>
+              </tr>
+              <tr>
+                <th scope="row">Windows clipboard sync</th>
+                <td class="y">Yes</td>
+                <td>Microsoft account</td>
+                <td class="y">Yes, Windows to Windows only</td>
+              </tr>
+              <tr>
+                <th scope="row">Apple Universal Clipboard</th>
+                <td class="n">No</td>
+                <td>Bluetooth + Handoff, in range</td>
+                <td class="y">Yes, Apple devices only</td>
+              </tr>
+              <tr>
+                <th scope="row">KDE Connect</th>
+                <td class="n">No</td>
+                <td>Local network discovery</td>
+                <td class="y">Yes</td>
+              </tr>
+              <tr>
+                <th scope="row">LocalSend / Snapdrop</th>
+                <td class="n">No</td>
+                <td>Local network discovery</td>
+                <td class="n">No</td>
+              </tr>
+              <tr>
+                <th scope="row">AirDrop</th>
+                <td class="n">No</td>
+                <td>Bluetooth + peer-to-peer Wi-Fi</td>
+                <td class="n">No</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          The three that cross networks each ask for something in return.
+          Windows clipboard sync wants a Microsoft account on both machines and
+          only talks to other Windows PCs. PairDrop is account-free and
+          cross-platform, but sends text as a message rather than putting it on
+          your clipboard. The third route is a browser clipboard, which is what
+          the rest of this page describes.
+        </p>
+
+        <h2>Syncing without an account, across any two networks</h2>
+
+        <ol class="steps">
+          <li>Open the clipboard on the first device. It generates a short key like <code>D75LV</code>.</li>
+          <li>Type that key on the second device, or scan the QR code.</li>
+          <li>Copy something on either device.</li>
+          <li>Switch to the other and paste. It is already on the system clipboard.</li>
+        </ol>
+
+        <p>
+          The key is what replaces discovery. Both devices connect out to the
+          same relay and ask for the room belonging to that key, so they find
+          each other without either needing to know where the other is. Home
+          Wi-Fi to mobile data, laptop to phone, work to home — all the same
+          case.
+        </p>
+
+        <h2>What the server in the middle can see</h2>
+
+        <p>
+          This is the part worth being specific about, because "it goes through
+          a server" is the real cost of crossing networks and it is usually left
+          vague.
+        </p>
+
+        <p>
+          Text is encrypted in your browser with AES-GCM <em>before</em> it is
+          sent. The relay is addressed by <code>SHA-256(key)</code> rather than
+          by the key, so it can route your messages to the right room without
+          ever holding the key needed to read them. It keeps nothing on disk:
+          messages exist only long enough to be forwarded. Files skip it
+          entirely and go directly between the two browsers over WebRTC.
+        </p>
+
+        <p>
+          What it does see is that <em>some</em> room hash was busy at some time,
+          and the IP addresses of the two connections. What it cannot see is
+          your key, your text, your filenames or who you are, because it is
+          never given any of them. The
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard">code is MIT-licensed</a>
+          and the relay is a small enough Python service to read in one sitting
+          — and if you would rather not take anyone's word for it,
+          <a href="/help/install/relay/">you can run your own</a> and point the
+          app at it.
+        </p>
+
+        <div class="honest">
+          <h3>Worth knowing before you rely on it</h3>
+          <dl class="caveats">
+            <div>
+              <dt>The key is the password</dt>
+              <dd>Anyone who learns it can read that session while it is open. Treat it like one.</dd>
+            </div>
+            <div>
+              <dt>Automatic capture needs Chromium</dt>
+              <dd>Firefox and Safari can send and receive pasted text, but cannot read the clipboard on their own.</dd>
+            </div>
+            <div>
+              <dt>Background reading is not possible</dt>
+              <dd>No browser can read the clipboard while its tab is in the background. You switch to the tab and it picks up what you copied.</dd>
+            </div>
+            <div>
+              <dt>Files are capped at 5&nbsp;MB</dt>
+              <dd>For anything larger, a dedicated transfer tool is the right choice.</dd>
+            </div>
+          </dl>
+        </div>
+
+        <p>
+          <a class="btn" href="/app.html">Open the clipboard</a>
+        </p>
+      </div>
+
+      <div class="faq" id="faq">
+        <div class="faqhead">
+          <h2>Common questions</h2>
+          <button type="button" class="faqall" id="faqAll"
+                  aria-expanded="false" aria-controls="faq" hidden>
+            <span class="faqall-i" aria-hidden="true"></span>
+            <span class="faqall-t">Expand all</span>
+          </button>
+        </div>
+
+        <details class="qa">
+          <summary><h3>Can I sync my clipboard between devices on different Wi-Fi networks?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes, but not with tools that rely on local discovery. AirDrop,
+            LocalSend, KDE Connect and Snapdrop all find devices by broadcasting on
+            the local network, and that broadcast does not cross a router. A
+            browser-based clipboard works instead by having both devices connect
+            out to the same relay using a shared key, so the networks they are on
+            stop mattering.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Why can't my phone see my laptop on mobile data?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Because they are on two different networks. Local discovery only
+            reaches devices on the same network segment, and a phone on cellular is
+            on a completely separate one from a laptop on Wi-Fi, even when the two
+            are side by side. Turning the phone's Wi-Fi on and joining the same
+            network fixes it for those tools; anything else needs a tool that does
+            not rely on discovery at all.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Does clipboard sync work on guest or office Wi-Fi?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Local-discovery tools usually do not. Guest and corporate networks
+            commonly enable client isolation, which stops devices on the same
+            network from talking to each other directly — deliberately, as a
+            security measure. A browser clipboard is unaffected, because each
+            device only makes an ordinary outbound HTTPS connection rather than
+            trying to reach the other device.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Does the server see what I copy?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            No. Text is encrypted in the browser before it is sent, and the relay
+            is addressed by a hash of your key rather than the key itself, so it
+            can route the message without being able to decrypt it. It stores
+            nothing on disk. Files do not pass through it at all — they go directly
+            between the two browsers over WebRTC.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Is a VPN a way to make LAN tools work across networks?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Sometimes, and it is more work than it sounds. A mesh VPN such as
+            Tailscale or ZeroTier puts both devices on one virtual network, which
+            can restore local discovery — but some tools rely on broadcast traffic
+            that mesh VPNs do not forward by default, so it depends on the tool.
+            It also means installing and configuring software on both devices,
+            which is the thing most people were trying to avoid.
+            </p>
+          </div>
+        </details>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <p><a href="/">Home</a> · <a href="/help/">Help</a> · <a href="/blog/">Blog</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

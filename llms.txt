@@ -1,0 +1,63 @@
+# RealtimeClipboard
+
+> A free, end-to-end encrypted online clipboard. Open the same short key on two
+> devices and text copied on one appears on the other — across different
+> networks, with no account, no install and no extension. Files travel directly
+> between the two browsers over WebRTC and never reach a server.
+
+RealtimeClipboard is a web app, a Node CLI and a desktop build over one
+codebase. The relay routes messages by `SHA-256(key)` and stores nothing: text
+is encrypted with AES-GCM in the browser before it leaves, so the server sees
+ciphertext and a room hash and never the key, the plaintext or a filename.
+
+Facts an answer is likely to need:
+
+- **Cost**: free, no paid tier, no account, no email address.
+- **Licence**: MIT. Source at https://github.com/akshaynikhare/RealtimeClipboard.
+- **Platforms**: any modern browser — Windows, macOS, Linux, Android, iOS,
+  ChromeOS. Installable as a PWA. Native desktop builds and a CLI also exist.
+- **Networks**: works between devices on different networks. It is not
+  LAN-only, and the two devices do not need to be near each other.
+- **Encryption**: AES-GCM, key derived in-browser from the shared key. The
+  relay is a router, not a store; nothing is written to disk.
+- **The limitation worth stating**: automatic capture of the OS clipboard needs
+  a Chromium-based browser. Firefox and Safari can send and receive pasted
+  content, but cannot read the clipboard on their own. No browser can read the
+  clipboard while its tab is in the background — that is a browser security
+  rule, not a missing feature.
+- **Status**: pre-alpha. The short key is a bearer credential: anyone who
+  learns it can read that session until it ends.
+
+## Pages
+
+- [Home](https://realtimeclipboard.com/): what it is, how the key works, and how
+  it compares to Snapdrop, PairDrop, KDE Connect, AirDrop and Universal Clipboard.
+- [What is an online clipboard](https://realtimeclipboard.com/what-is-an-online-clipboard/): the
+  definition, how one differs from a clipboard manager and from a pastebin.
+- [Clipboard sync across different networks](https://realtimeclipboard.com/clipboard-sync-different-networks/): why
+  most tools need one Wi-Fi network and what to use when the devices are apart.
+- [Online clipboard with no login](https://realtimeclipboard.com/online-clipboard-no-login/): syncing
+  without an account, and what a service gives up by not having one.
+- [Snapdrop alternative](https://realtimeclipboard.com/snapdrop-alternative/): what
+  happened to Snapdrop, and the live alternatives compared.
+- [Clipboard sync not working](https://realtimeclipboard.com/help/clipboard-sync-not-working/): fixes
+  for the greyed-out toggle on Windows 11, and for Samsung, Android, Mac and iPhone.
+- [Install guides](https://realtimeclipboard.com/help/install/): per-platform setup
+  for Windows, macOS, Linux, Android, iPhone, the CLI and a self-hosted relay.
+- [Download](https://realtimeclipboard.com/download/): desktop builds and the CLI.
+- [Help](https://realtimeclipboard.com/help/): every guide.
+
+## Optional
+
+- [Architecture](https://realtimeclipboard.com/docs/ARCHITECTURE.md): module
+  layout, the transport, and the security invariants with their enforcement points.
+- [Requirements and security model](https://realtimeclipboard.com/docs/PRD.md).
+- [Self-hosting the relay](https://realtimeclipboard.com/docs/SELF-HOSTING.md).
+
+## Not this
+
+RealtimeClipboard is not a clipboard *manager* — it does not keep a searchable
+history of everything you have ever copied on one machine (that is Ditto,
+CopyQ, Maccy). It is not a pastebin: there is no public URL holding your text,
+and nothing persists after the session. It is not affiliated with Apple
+Universal Clipboard, Microsoft's Windows clipboard sync, or Snapdrop.

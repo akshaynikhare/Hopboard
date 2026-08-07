@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html, which is the page that
+     actually needs them. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+
+<!--
+  Target: "online clipboard no login", "clipboard sync free no account",
+  "clipboard sync no app". docs/SEO.md §2 ranks the no-account cluster first
+  among winnable terms — a site with zero Wayback captures holds positions 1-3
+  on ~500-word pages, which is the proof that authority is not the gate here.
+
+  The reader's query already contains their objection: they have been asked to
+  sign up for something that should not need it. So the page's job is to be the
+  page that does not ask, and to explain what having no account actually costs
+  them — a session that ends, and a key that is the only credential. Hiding
+  either would be the same failure as the sign-up wall.
+-->
+<title>Online Clipboard With No Login — No Account, No App, Free</title>
+<meta name="description" content="An online clipboard that needs no login, no email and no install. Type one short key on both devices and copy-paste between them — end-to-end encrypted, free, open source.">
+<link rel="canonical" href="https://realtimeclipboard.com/online-clipboard-no-login/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="RealtimeClipboard">
+<meta property="og:title" content="Online Clipboard With No Login — No Account, No App, Free">
+<meta property="og:description" content="Copy on one device, paste on another. One short key instead of a sign-up — end-to-end encrypted and open source.">
+<meta property="og:url" content="https://realtimeclipboard.com/online-clipboard-no-login/">
+<meta property="og:image" content="https://realtimeclipboard.com/assets/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://realtimeclipboard.com/online-clipboard-no-login/#article",
+      "headline": "An online clipboard with no login",
+      "description": "How clipboard sync works without an account, what a shared key replaces, and what having no account costs you.",
+      "inLanguage": "en",
+      "datePublished": "2026-08-07",
+      "dateModified": "2026-08-07",
+      "publisher": { "@id": "https://realtimeclipboard.com/#org" },
+      "mainEntityOfPage": "https://realtimeclipboard.com/online-clipboard-no-login/"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "RealtimeClipboard",
+          "item": "https://realtimeclipboard.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Online clipboard with no login"
+        }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/src/landing/landing.css">
+<script type="module" src="/src/landing/faq.js"></script>
+</head>
+<body>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="/">
+        <b>RealtimeClipboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="https://github.com/akshaynikhare/RealtimeClipboard">GitHub</a>
+      <a class="tlink strong" href="/app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section class="sec">
+    <div class="in doc">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">RealtimeClipboard</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">Online clipboard with no login</span>
+      </nav>
+
+      <header class="pagehead">
+        <h1>An online clipboard with no login</h1>
+
+        <p class="lede">
+          <b>You do not need an account to sync a clipboard — you need a shared
+          secret, and an account is only one way of having one.</b> Open this
+          page on two devices, type the same short key on both, and whatever you
+          copy on one is on the other's clipboard. No email address, no
+          password, no install, no extension.
+        </p>
+      </header>
+
+      <div class="article">
+
+        <p>
+          <a class="btn" href="/app.html">Open the clipboard</a>
+        </p>
+
+        <h2>Why most clipboard tools ask you to sign in</h2>
+
+        <p>
+          A sync service has to answer one question: which two devices belong
+          together? An account answers it by making both devices prove they are
+          you. That works, and it brings along everything an account requires —
+          an email address, a password, a server that stores which devices are
+          yours, and a record of when they were used.
+        </p>
+
+        <p>
+          A shared key answers the same question differently. Both devices
+          present the same short string, so the service can put them in the same
+          room without ever learning who they belong to. The key is knowledge,
+          not identity, and knowledge can be typed in five seconds.
+        </p>
+
+        <p>
+          That single substitution removes the sign-up form, the password
+          reset, the email confirmation and the account database at once. It
+          also means the service genuinely cannot tell you apart from anyone
+          else, because it was never given anything that would.
+        </p>
+
+        <h2>How it works</h2>
+
+        <ol class="steps">
+          <li>Open the clipboard on the first device. It generates a short key like <code>D75LV</code>.</li>
+          <li>Type that key on the second device, or scan the QR code it shows.</li>
+          <li>Copy anything on either device.</li>
+          <li>Switch to the other device and paste — it is already on the system clipboard.</li>
+        </ol>
+
+        <p>
+          The key never leaves your browser. What reaches the relay is
+          <code>SHA-256(key)</code> — a hash used purely as a room address —
+          along with your text already encrypted with AES-GCM under a key
+          derived from the one you typed. The relay routes ciphertext between
+          two connections and writes nothing to disk. Files skip it altogether
+          and travel directly between the two browsers over WebRTC.
+        </p>
+
+        <h2>What no account actually costs you</h2>
+
+        <p>
+          Every no-login service trades something away, and a page that will not
+          say what is hiding it.
+        </p>
+
+        <div class="honest">
+          <h3>The trade, stated plainly</h3>
+          <dl class="caveats">
+            <div>
+              <dt>The key is the only credential</dt>
+              <dd>There is no second factor and no identity behind it. Anyone who learns the key can read that session while it is open.</dd>
+            </div>
+            <div>
+              <dt>Nothing is kept</dt>
+              <dd>No account means no server-side history. Close the session and it is gone — that is the design, not a limitation to work around.</dd>
+            </div>
+            <div>
+              <dt>No recovery</dt>
+              <dd>Forget the key and there is nobody to ask. Generate a new one; it costs nothing.</dd>
+            </div>
+            <div>
+              <dt>Automatic capture needs Chromium</dt>
+              <dd>Firefox and Safari can send and receive pasted text, but cannot read the clipboard on their own.</dd>
+            </div>
+          </dl>
+        </div>
+
+        <p>
+          If a session needs to be harder to walk into, the key can be locked
+          with a PIN. That changes the room itself rather than adding a
+          permission check on top of it, so a locked link cannot be opened by
+          someone who has the key but not the PIN — and it does not silently
+          fall back to the unlocked room of the same key.
+        </p>
+
+        <h2>No install either</h2>
+
+        <p>
+          It is a web page, so there is nothing to install and nothing to
+          approve. That matters most on the machines where it is not your call:
+          a work laptop with locked-down software installation, a shared or
+          library computer, a Chromebook, or a phone you would rather not add
+          another app to.
+        </p>
+
+        <p>
+          If you do want it to feel like an app, it installs as a PWA from the
+          browser's own menu — no store account involved. The
+          <a href="/help/install/">install guides</a> cover each platform, and
+          there are <a href="/download/">native desktop builds and a CLI</a> if
+          you would rather have those.
+        </p>
+
+        <h2>Is a no-login clipboard safe?</h2>
+
+        <p>
+          For its intended use — moving text between your own devices — the
+          absence of an account makes it safer rather than less safe, because
+          there is no account to breach and no stored history to leak. The
+          encryption is done in your browser, so the operator of the service
+          cannot read your clipboard even if they wanted to.
+        </p>
+
+        <p>
+          The real risk is the one named above: a short key is short enough to
+          be guessed by someone determined, so it is the wrong tool for a secret
+          that would matter in a year. Use the PIN lock for anything sensitive,
+          and treat an unlocked session the way you would treat a note left on a
+          desk. The <a href="https://github.com/akshaynikhare/RealtimeClipboard">source is on GitHub</a>
+          under the MIT licence, and you can
+          <a href="/help/install/relay/">run your own relay</a> if you would
+          rather not trust anyone else's.
+        </p>
+
+        <p>
+          <a class="btn" href="/app.html">Open the clipboard</a>
+        </p>
+      </div>
+
+      <div class="faq" id="faq">
+        <div class="faqhead">
+          <h2>Common questions</h2>
+          <button type="button" class="faqall" id="faqAll"
+                  aria-expanded="false" aria-controls="faq" hidden>
+            <span class="faqall-i" aria-hidden="true"></span>
+            <span class="faqall-t">Expand all</span>
+          </button>
+        </div>
+
+        <details class="qa">
+          <summary><h3>Is there an online clipboard that does not require an account?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes. A shared short key can identify a session instead of a signed-in
+            identity, so both devices simply type the same key and are placed in
+            the same room. No email address, password or profile is involved at any
+            point, and the service cannot tell one user from another because it is
+            never given anything that would.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Do I need to install anything?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            No. It runs in a browser tab on Windows, macOS, Linux, Android, iOS and
+            ChromeOS. You can optionally install it as a progressive web app from
+            the browser's own menu, which needs no app store and no account, and
+            there are native desktop builds and a command-line tool if you prefer.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Is a clipboard with no login secure?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            The text is encrypted in your browser before it is sent, and the server
+            is addressed by a hash of your key rather than the key itself, so it
+            cannot decrypt anything it routes. Having no account removes the two
+            things most often breached — a credential database and stored history.
+            The trade is that the short key is the only thing protecting a session,
+            so lock it with a PIN for anything sensitive.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Is it really free, and what is the catch?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Free, with no paid tier and no trial. The honest catch is maturity
+            rather than money: it is pre-alpha, file transfers are capped at 5 MB,
+            and automatic clipboard capture needs a Chromium-based browser. It is
+            open source under the MIT licence, so nothing stops you running it
+            yourself.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>What happens to my text after I close the tab?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            It is gone. The relay holds messages only long enough to forward them
+            and writes nothing to disk, and with no account there is no server-side
+            history attached to you. Anything kept locally lives in your own
+            browser storage and is cleared with it.
+            </p>
+          </div>
+        </details>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <p><a href="/">Home</a> · <a href="/help/">Help</a> · <a href="/blog/">Blog</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

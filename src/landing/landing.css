@@ -105,7 +105,11 @@ body {
 
 a { color:var(--link); }
 
-code { font:0.92em/1 var(--mono); color:var(--key); }
+/* break-word for the reason spelled out at `pre` below, and because a filename
+   like RealtimeClipboard_<version>_x64_en-US.msi is one unbreakable word — which
+   in a phone-width column is a box wider than the viewport, and those cost the
+   whole page rather than one line. */
+code { font:0.92em/1 var(--mono); color:var(--key); overflow-wrap:break-word; }
 
 .sr-only {
   position:absolute; width:1px; height:1px; overflow:hidden;
@@ -243,16 +247,14 @@ h3 {
 .brand {
   display:flex;
   align-items:center;
+  flex:none;
   gap:9px;
   color:var(--text);
   text-decoration:none;
 }
-/* The app icon itself, not a redrawing of it — one file behind the favicon, the
-   installed app and this row, so the header cannot show a mark the launcher
-   does not. Width and height are on the element too: it is above the fold and a
-   late-arriving intrinsic size would shift the whole row. */
-.brand .mark { width:22px; height:22px; transition:transform .35s var(--ease); }
-.brand:hover .mark { transform:translateY(-1px) rotate(-4deg); }
+/* The bar is the wordmark alone. The app icon used to sit beside it — the same
+   file as the favicon and the launcher icon — and it is still both of those;
+   what went is the third copy, in a row where the name already says it. */
 .brand b { font-size:15.5px; font-weight:650; letter-spacing:-.01em; }
 
 /*
@@ -290,7 +292,14 @@ h1 > .brandmark { vertical-align:-.06em; }
   padding:3px 6px;
 }
 .topbar .spacer { flex:1; }
+/* Nothing in this row may shrink or wrap: a flex item shrinks before it
+   overflows, so a row that did not fit squeezed "Open the app" to a third of
+   its width and wrapped it down three lines, standing a sticky translucent bar
+   over the page beneath it. The row runs out of room instead, and the
+   breakpoints drop parts in priority order. */
 .tlink {
+  flex:none;
+  white-space:nowrap;
   font-size:13.5px;
   color:var(--dim);
   text-decoration:none;
@@ -317,13 +326,18 @@ h1 > .brandmark { vertical-align:-.06em; }
 
 /* A single soft wash behind the hero, anchored to the key panel's side of the
    grid. It gives the fold somewhere to look without adding a shape the rest of
-   the page would then have to answer for. */
+   the page would then have to answer for.
+
+   The inline insets are 0 and must stay >= 0 — CLAUDE.md, "nothing may be wider
+   than the viewport". A negative one here cost every section its right-hand 79px
+   on a phone. The blur softens the cut, so the wash loses no shape by ending on
+   the container edge. */
 .hero > .in { position:relative; }
 .hero > .in::after {
   content:"";
   position:absolute;
   z-index:-1;
-  inset:-8% -12% 24% 30%;
+  inset:-8% 0 24% 30%;
   background:radial-gradient(60% 60% at 70% 30%,color-mix(in srgb,var(--blue) 22%,transparent),transparent 70%);
   filter:blur(28px);
   pointer-events:none;
@@ -610,6 +624,23 @@ h1 > .brandmark { vertical-align:-.06em; }
 }
 .card:hover { background:color-mix(in srgb,var(--panel) 60%,transparent); }
 .card:hover::before { height:22px; }
+
+/* The card icons. Stroke settings live here rather than on 24 elements in the
+   markup — the drawing is the geometry, the weight is the house style, and only
+   one of those belongs in an SVG. `fill:none` is the reason the shapes read as
+   line work at all; without it every rect and circle fills solid black. */
+.cardicon {
+  display:block;
+  width:23px; height:23px;
+  margin-bottom:13px;
+  fill:none;
+  stroke:var(--dim);
+  stroke-width:1.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  transition:stroke .2s var(--ease);
+}
+.card:hover .cardicon { stroke:var(--link); }
 
 /* ------------------------------------------------------------------- live */
 
@@ -1225,6 +1256,28 @@ kbd {
 .honest .sq-list li { font-size:14.5px; }
 .honest .sq-list li::before { background:var(--warn); }
 
+/* Caveats: a label rail and a line each, rather than five paragraphs opening
+   with a bold clause. The rail is a fixed track, not `auto` — with `auto` every
+   label sets its own width, the sentences start at five different places, and
+   the block goes back to reading as prose. */
+.caveats { display:grid; gap:13px 0; }
+.caveats > div {
+  display:grid;
+  grid-template-columns:168px 1fr;
+  gap:0 18px;
+  align-items:start;
+}
+.caveats dt {
+  justify-self:start;
+  font:10.5px/1.5 var(--mono);
+  text-transform:uppercase;
+  letter-spacing:.1em;
+  color:var(--warn);
+  border:1px solid currentColor;
+  padding:2px 7px;
+}
+.caveats dd { color:var(--dim); font-size:14.5px; }
+
 /* ---------------------------------------------------------------- closing */
 
 .closing {
@@ -1300,26 +1353,109 @@ footer a:hover { color:var(--link); }
      second column and push the prose off the right edge of the page. */
   .doc > .article, .doc > .hublist { grid-column:1 / -1; }
 
-  .hero-grid, .shead, .steps, .cards, .livegrid, .closing, .footgrid {
+  /* .steps is absent on purpose — it stops being a grid at all below, so a
+     column count for it here would be a rule that never applies. */
+  .hero-grid, .shead, .cards, .livegrid, .closing, .footgrid {
     grid-template-columns:1fr;
   }
-  .hero-copy { padding-top:40px; }
   .keypanel  { grid-column:1; }
-  .steps li + li { margin-top:26px; }
-  .steps li:nth-child(3), .steps li:nth-child(4) { padding-top:0; }
   .card:nth-child(-n+3), .card:nth-child(-n+2) { border-top:1px solid var(--rule); }
   .card:first-child { border-top:0; }
   .stats { gap:18px 20px; }
-  .topbar .row { height:54px; gap:9px; }
-  .tlink.strong { padding:6px 10px; }
-  /* Scoped to the bar, which is the only place this rule was ever about: the
-     `pre-alpha` badge is the first thing to drop when the row runs out of room.
-     Unscoped it also hid the "not published yet" pills on /download/, which is
-     the one screen size where a reader most needs to be told a command does not
-     work yet. */
-  .topbar .tag { display:none; }
-  .hero > .in::after { inset:-6% -20% 40% 0; }
   .sec > .in > .hint { max-width:none; }
+  .hero > .in::after { inset:-6% 0 40% 0; }
+
+  /* The bar takes two rows on a phone, each one justified edge to edge: the
+     name and the one action on the first, the rest of the nav on the second.
+     One row cannot hold all of it — 163px of wordmark against a 324px row on a
+     360px phone leaves nothing for three links plus a button, and a flex row
+     that does not fit shrinks its items rather than overflowing, which is how
+     "Open the app" ended up three lines tall.
+
+     The break is the spacer, which is already in the markup on every page: a
+     100%-basis item takes a line to itself, so it both forces the wrap and IS
+     the space between the two rows. That is why row-gap is 0 — a gap would
+     apply to the spacer's own line as well and pad the bar twice. Nothing here
+     depends on a link count this sheet cannot see, so /help/install/windows/
+     with four links wraps the same way, down to 320px.
+
+     `order` puts the button on the first row and the badge on the second; both
+     sit last in the markup on purpose, so this is the one place where reading
+     order and tab order differ. It costs a keyboard user one backward jump at
+     the end of a five-item header, which is the price of the layout. */
+  .topbar .row { flex-wrap:wrap; height:auto; padding-block:9px; column-gap:12px; row-gap:0; }
+  .brand { order:1; }
+  .tlink.strong { order:2; margin-left:auto; padding:6px 10px; }
+  .topbar .spacer { order:3; flex:0 0 100%; height:9px; }
+  .tlink { order:4; font-size:13px; }
+  .topbar .tag { order:5; margin-left:auto; }
+  /* Or #faq and #compare land underneath the bar. Measured, not guessed: the
+     two rows come to 85px, 89px on the narrowest phones, and this leaves the
+     same ~17px of air above the target that the base value does. */
+  html { scroll-padding-top:106px; }
+
+  /* Vertical rhythm, retuned for one column — CLAUDE.md, "phone spacing is
+     retuned, never phone content". Eight section headers at 70px of padding and
+     a gap under every block are the air around a row on a desktop and the
+     height of the page once stacked. Only the distance between things changes. */
+  .shead { padding:30px 0 18px; }
+  .hero-copy { padding-top:34px; padding-bottom:20px; }
+  .keypanel { margin-bottom:30px; }
+  .note { padding-bottom:26px; }
+  .stage { padding-bottom:28px; }
+  .steps, .cards, .faq, .livegrid { padding-bottom:30px; }
+  .card { padding:20px var(--gut); }
+  .adslot { padding:26px var(--gut); }
+  .honest { padding:20px 18px; margin-bottom:30px; }
+  /* A 168px rail out of a 290px panel leaves the sentence four words a line, so
+     the label goes back above its line here. */
+  .caveats > div { grid-template-columns:1fr; gap:5px 0; }
+  .globewrap { padding-top:26px; }
+  .closing { padding:34px 0; }
+  .footgrid { padding:22px 0 34px; }
+  .sec > .in > .hint { padding-bottom:24px; }
+  .qa summary { padding:11px 0; }
+  .qa-a { padding-bottom:14px; }
+
+  /* The number moves out into the margin, the way an article's steps already
+     do. Stacked above its own line it cost 40px of dead height each and made
+     four steps read as four sections. */
+  .steps { display:block; }
+  .steps li { padding-left:calc(var(--gut) + 34px); }
+  .steps li + li { margin-top:16px; }
+  .steps li:nth-child(3), .steps li:nth-child(4) { padding-top:0; }
+  .steps li::before { position:absolute; left:var(--gut); top:1px; margin-bottom:0; }
+
+  /* Two thirds the desktop cap. The globe is the one thing here to look at
+     rather than read, but at the full column width it is a 326px square in a
+     page that is already long, and it says as much at 260. */
+  .globewrap .globefield { max-width:260px; }
+
+  /* The comparison table is off on a phone. Seven columns cannot be made to
+     work in 326px: it was the tallest block on the page, and reading it meant
+     dragging a window sideways across a grid whose row headers scrolled away
+     with it.
+
+     The section stays. Its h2 and the paragraph under it make the same claim in
+     sentences — the nearby tools are file droppers, this is a clipboard — so
+     what a phone loses is the grid, not the comparison. The footnote goes with
+     it because "if something HERE has gone out of date" names a table that is
+     no longer on the page.
+
+     This is the one place the rule in CLAUDE.md bends, and it costs something
+     real: mobile-first indexing means the phone rendering is the indexed one,
+     so those seven rows stop counting for the query they were written to win.
+     A <details> would keep them; that is a markup change, and this was asked
+     for as a hide. */
+  #compare .tablewrap, #compare > .in > .hint { display:none; }
+
+  /* Compacter hero type. The clamp floors are desktop sizes, and at 15.5px/1.65
+     the lede alone ran six lines deep before the key panel — the one thing on
+     this page anybody came to use — got anywhere near the fold. */
+  .hero h1 { font-size:28px; }
+  .hero .lede { font-size:15px; line-height:1.5; }
+  .hero-list { margin-top:18px; font-size:13.5px; }
+  .hero-list li { margin-bottom:7px; padding-left:17px; }
 }
 
 /* Fine for a phone in landscape, but a 44px-tall dotted path is not worth the
@@ -1327,6 +1463,17 @@ footer a:hover { color:var(--link); }
 @media (max-width:620px) {
   .flabel { font-size:10.5px; }
   .fpill  { font-size:11.5px; padding:6px 10px; }
+}
+
+/* Below this the wordmark and the button stop sharing a line — 163px of brand
+   and a 101px button need 276px, and the row's own inline padding leaves 256px
+   of a 320px screen. Rather than let the button wrap to a line of its own and
+   make a three-line bar, the parts go back to markup order: name and badge
+   above, links and button below with the button still on the right. Two rows
+   either way, and the one action is still the rightmost thing in the bar. */
+@media (max-width:340px) {
+  .topbar .row > * { order:0; }
+  .topbar .tag { margin-left:0; }
 }
 
 /* ------------------------------------------------------------ the ad slot --
@@ -1390,7 +1537,7 @@ footer a:hover { color:var(--link); }
   }
   /* Hover states may still change colour — that is feedback, not motion — but
      nothing is allowed to move. */
-  .btn:hover, .brand:hover .mark { transform:none; }
+  .btn:hover { transform:none; }
 }
 
 /* Windows high-contrast / forced colours: the rules and squares are decoration

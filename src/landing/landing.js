@@ -123,19 +123,24 @@ const LAYOUTS = {
       { x: 1080, y: 180, kind: "end",   name: "Your desktop", sub: "pastes",           place: "below" },
     ],
   },
+  // The viewBox is aspect-locked to the column, so its height IS what this
+  // diagram costs a phone: at 420x660 it took 512px of a 390px screen. Every y
+  // here is that one scaled by 0.788, which keeps the curve and gives back
+  // 108px. `gap` is in PIXELS, not viewBox units, so captions sit the same
+  // distance from their node whatever the height.
   tall: {
     gap: 46,
-    vb: "0 0 420 660",
-    text:  "M92 70 C 92 190 328 200 328 330 C 328 460 92 470 92 590",
-    files: "M64 92 C 8 300 8 360 64 568",
+    vb: "0 0 420 520",
+    text:  "M92 55 C 92 150 328 158 328 260 C 328 362 92 370 92 465",
+    files: "M64 72 C 8 236 8 284 64 448",
     // Under the diagram rather than beside the curve: at 360px there is not
     // enough width for a caption next to the relay's own label without the two
     // colliding.
-    filesLabel: { x: 210, y: 645, place: "mid" },
+    filesLabel: { x: 210, y: 508, place: "mid" },
     nodes: [
-      { x: 92,  y: 70,  kind: "end",   name: "Your laptop",  sub: "copies",          place: "right" },
-      { x: 328, y: 330, kind: "relay", name: "Relay",        sub: "ciphertext only", place: "left"  },
-      { x: 92,  y: 590, kind: "end",   name: "Your desktop", sub: "pastes",          place: "right" },
+      { x: 92,  y: 55,  kind: "end",   name: "Your laptop",  sub: "copies",          place: "right" },
+      { x: 328, y: 260, kind: "relay", name: "Relay",        sub: "ciphertext only", place: "left"  },
+      { x: 92,  y: 465, kind: "end",   name: "Your desktop", sub: "pastes",          place: "right" },
     ],
   },
 };

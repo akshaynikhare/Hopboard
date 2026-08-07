@@ -122,11 +122,11 @@ Prefix `/RealtimeClipboard/` until the domain moves. Priority order:
 | Slug | Target keyword |
 |---|---|
 | `/` | online clipboard *(done)* |
-| `/online-clipboard-no-login` | online clipboard no login |
+| `/online-clipboard-no-login` | online clipboard no login *(done 2026-08-07)* |
 | `/clipboard-sync-no-app` | clipboard sync no app |
 | `/share-text-between-devices` | share text between devices |
-| `/clipboard-sync-different-networks` | sync clipboard without same wifi — **the differentiator** |
-| `/snapdrop-alternative` | snapdrop alternative — **write this next** |
+| `/clipboard-sync-different-networks` | sync clipboard without same wifi — **the differentiator** *(done 2026-08-07)* |
+| `/snapdrop-alternative` | snapdrop alternative *(done 2026-08-07)* |
 | `/live-clipboard` | live clipboard / realtime clipboard |
 | `/android-to-pc-clipboard` | share clipboard android to pc |
 | `/windows-to-android-clipboard` | sync clipboard windows android |
@@ -134,7 +134,7 @@ Prefix `/RealtimeClipboard/` until the domain moves. Priority order:
 | `/chromebook-clipboard-sync` | chromebook clipboard sync — low competition, supported platform |
 | `/online-clipboard-for-files` | online clipboard for files |
 | `/is-online-clipboard-safe` | snippet bait |
-| `/what-is-an-online-clipboard` | snippet bait |
+| `/what-is-an-online-clipboard` | snippet bait *(done 2026-08-07)* |
 
 **Added after the §3 mine** — these were not visible before and two of them are
 the best intent in the whole set:
@@ -351,6 +351,26 @@ The `Allow: /` in `robots.txt` covers all of these. Do not add bot-specific bloc
 | **`SearchAction` / sitelinks searchbox** | Removed November 2024 |
 | **`aggregateRating`** | Google's review policy: *"If the entity that's being reviewed controls the reviews about itself, their pages… are ineligible."* Self-supplied ratings are a manual-action risk. This does mean the Software rich result is unattainable — accept that |
 | **`BreadcrumbList`** | One page, no hierarchy. Fabricating one is a markup/visible-text mismatch |
+
+**Amended 2026-08-07 — two of these rows no longer hold.**
+
+`BreadcrumbList` **is now shipped**, on every page except the homepage. The row above was written
+when the site was one page; there is now a real two- and three-level hierarchy, and each page's
+markup renders the same trail its JSON-LD declares. The original reasoning stands and is the reason
+the homepage still has none — there is nothing above it.
+
+`llms.txt` **is now shipped**, and the evidence above is unchanged and still says it will probably
+do nothing. It was added on an explicit instruction to prepare the site for AI systems, and it is
+kept on the narrow argument that the file costs one page of prose, has no ranking downside, and
+sits next to the thing that *does* matter — being crawlable, snippet-eligible, and structured so a
+passage can be lifted out. **Do not let it displace that work.** If it is ever cited as evidence
+the site is "AEO-ready", the ordering has already gone wrong: what makes this site citable is the
+answer-first opening sentence on every page and the comparison tables, not this file.
+
+The corollary the row understates, and which turned out to be the real risk: **the likeliest thing
+to remove this site from ChatGPT and Perplexity answers is not a missing file, it is Cloudflare's
+edge blocking `OAI-SearchBot` before `robots.txt` is ever consulted.** That check is in
+`robots.txt`'s footer and in `LAUNCH-KIT.md` §4, and it can only be done in the dashboard.
 
 On schema generally, the best available study (Ahrefs, 1,885 pages that added
 JSON-LD vs 4,000 controls) found **no uplift on any platform** — and a small
@@ -852,6 +872,28 @@ the above cost.
 | `manifest.webmanifest` | Description retargeted |
 | `README.md` | Restructured for Google and LLM extraction: keyword-bearing H1, one-sentence description above the fold, feature bullets in search phrasing, comparison table, question-shaped FAQ |
 
+## 9b. What was changed in the 2026-08-07 pass
+
+The strategy above was already researched; this pass executed the parts that live in the repo.
+
+| File | Change |
+|---|---|
+| `sitemap.xml` | **`/blog/` removed** — it carries `noindex` and was listed anyway, which is the exact mixed signal the file's own header warns about for `/app`. Four keyword pages added |
+| `robots.txt` | Named `Allow` groups for the citation crawlers (`OAI-SearchBot`, `Claude-SearchBot`, `PerplexityBot`, the `*-User` agents, `bingbot`), with the group-inheritance footgun documented. `Google-Extended` deliberately still absent. Footer records the Cloudflare edge-blocking risk that `robots.txt` cannot control |
+| `llms.txt` | Added — see the amendment in §4 for the argument and its limits |
+| `<key>.txt`, `tools/seo/indexnow.mjs` | **IndexNow.** One call reaches Bing, Yandex, Seznam and Naver. `npm run seo:indexnow`, run by hand *after* a deploy is live |
+| `src/pages/snapdrop-alternative/` | §2's highest-value page, and §10 item 10 |
+| `src/pages/clipboard-sync-different-networks/` | The differentiator, written against §2's correction — PairDrop is **not** LAN-only and the page says so |
+| `src/pages/online-clipboard-no-login/` | The no-account cluster, §2's top-ranked winnable term |
+| `src/pages/what-is-an-online-clipboard/` | Definitional snippet bait; the strongest AEO page on the site |
+| `index.html`, `help/index.html` | Contextual links to all four, so none is an orphan. The help hub keeps its two-hop guarantee |
+| `tools/check/site-check.mjs` | Three new gates: no sitemap URL may point at a `noindex` page, no sitemap URL may 404, and no indexable page may be missing from the sitemap. Plus the IndexNow key/filename match |
+| `docs/LAUNCH-KIT.md` | New. The submission copy for every channel §6 approved, at each length, with the caveat block that has to travel with it |
+
+**The `/blog/` defect is the one worth remembering.** The rule was already written down, in the
+sitemap's own header, and the blog still shipped breaking it — because a comment governs whoever
+reads it and nothing else. That is why this pass turned the rule into a check.
+
 ## 10. Still to do, in order
 
 **Today, free, ~1 hour**
@@ -892,8 +934,13 @@ the above cost.
    Same-host internal links, currently forgone entirely.
 8. Submit to **nuzulul/awesome-webrtc** (File Transfer category) and **hemanth/awesome-pwa**.
 9. Run Google Trends manually and fill in section 3.
-10. Write `/snapdrop-alternative` — the highest-value single page available, and the
-    window is closing.
+10. ~~Write `/snapdrop-alternative` — the highest-value single page available, and the
+    window is closing.~~ **Done 2026-08-07**, along with
+    `/clipboard-sync-different-networks`, `/online-clipboard-no-login` and
+    `/what-is-an-online-clipboard`. The rest of §2's page list is still unbuilt —
+    the device-pair matrix (`/android-to-pc-clipboard` and its siblings) is the
+    largest remaining block, and §2's note that a static generator becomes
+    necessary past a dozen or so pages now applies: this is 16 URLs.
 
 11. Submit to the **Microsoft Store via PWABuilder** — registration is free now, and
     it is the exact user base. Start at `storedeveloper.microsoft.com`.
