@@ -749,21 +749,173 @@ h3 {
    keyword set). Measure is capped at ~72ch because these are read top to
    bottom, unlike the landing page's scannable blocks. */
 
+/*
+ * Document pages — /download/, /help/, /blog/ and the articles under them.
+ *
+ * These were the only pages in the site NOT on the column grid. Every block on
+ * the landing page is a cell of `repeat(var(--cols),1fr)` carrying `--gut`, and
+ * that is the whole reason its type and panel borders sit clear of the vertical
+ * rules. The document pages were plain blocks with `padding: x 0`, so two
+ * things went wrong at once and neither was local to one page:
+ *
+ *   1. Everything sat flush against the container edge, which is exactly where
+ *      the outer rules are drawn. A heading touching a hairline reads as a
+ *      rendering fault, and a card border landing on one reads as a doubled
+ *      line — the failure the --gut comment at the top of this file exists to
+ *      prevent, reintroduced by pages that opted out of the grid.
+ *   2. A 72ch block in a 3-column container left the last column-and-a-bit
+ *      empty, with fixed rules still drawn through it. That is not whitespace,
+ *      it is a bounded empty box, and it reads as a layout that broke.
+ *
+ * So `.in` gets the same grid the rules use, and the page header adopts the
+ * landing page's own `.shead` shape: label rail in column 1, title and lede
+ * beside it. Nothing here is new — it is the section-header pattern from the
+ * landing page, applied to the pages that had been improvising instead.
+ */
+.sec > .in.doc {
+  display:grid;
+  grid-template-columns:repeat(var(--cols),1fr);
+  align-items:start;
+}
+/* The horizontal rule is a pseudo-element ON .in (see the note at the top of
+   this file). As a grid item it would take one cell and stop a third of the way
+   across, so it is spanned explicitly. */
+.sec > .in.doc::before { grid-column:1 / -1; }
+
+/* Full width and inset by default, so a page that adds a block gets the grid
+   for free and nothing has to be listed here by name. Matches how the deploy
+   finds content pages by scanning rather than by a hand-kept list. */
+.doc > * {
+  grid-column:1 / -1;
+  padding-left:var(--gut);
+  padding-right:var(--gut);
+  /* A `1fr` track is `minmax(auto,1fr)`, so its floor is the widest thing it
+     contains that refuses to shrink — and a grid item defaults to
+     `min-width:auto`, which passes that refusal straight up. One <pre> holding a
+     long command was therefore able to widen the COLUMN, and with it the whole
+     page, on any screen narrower than the command. `body` has `overflow-x:hidden`,
+     so the symptom was not a scrollbar; it was the right-hand edge of every
+     paragraph on the page being quietly cut off. */
+  min-width:0;
+}
+
+.doc > .crumb {
+  grid-column:1;
+  /* Optically aligned with the h1 beside it rather than with its box — the same
+     +7px nudge .shead .eyebrow uses against its own heading. */
+  padding-top:calc(clamp(22px,3vw,34px) + 6px);
+}
+.doc > .pagehead {
+  grid-column:2 / -1;
+  padding-right:clamp(var(--gut),4vw,60px);
+}
+
+/*
+ * Prose blocks take two of the three columns rather than a 72ch box.
+ *
+ * The reason is the dividers, not the width. An `.article h2` carries a
+ * border-top and every `.hublist` row is separated by one — those ARE horizontal
+ * rules in the page grid, and a 72ch container ended each of them in the middle
+ * of a column. A rule that stops in open space is the one thing this layout
+ * must never do; it is the same defect the `.sec > .in::before` note at the top
+ * of this file explains, arriving from the other direction.
+ *
+ * Spanning columns lands every divider on a vertical rule. The reading measure
+ * does not disappear — it moves onto the prose itself, which is where it always
+ * belonged: a 72ch limit is a statement about line length, not about how wide a
+ * section divider should be.
+ */
+.doc > .article,
+.doc > .hublist {
+  grid-column:1 / span 2;
+  max-width:none;
+  /* The gutter moves off this block and onto its children, one level down.
+     A divider here is a BORDER on a child — `.article h2`, `.hublist li` — and
+     a border sits outside the padding box, so a child that carries the gutter
+     itself draws its rule across the full span while its type stays inset.
+     Keeping the gutter up here instead would inset the border too, and every
+     divider would stop a gutter short of the vertical rule it is meant to meet.
+     This is exactly how `.card` is built on the landing page. */
+  padding-left:0;
+  padding-right:0;
+}
+.article > *,
+.hublist li {
+  padding-left:var(--gut);
+  padding-right:var(--gut);
+}
+/* …except the children that bring their own border. For those the gutter has
+   to be MARGIN, because padding would land inside the border and leave the
+   border itself sitting on the vertical rule — which is what the base
+   `.tablewrap` rule already says in its own comment, and what these two
+   `.article` overrides had quietly undone by zeroing the inline margin. */
+.article > .tablewrap,
+.article > .honest,
+.article > pre {
+  padding-left:0;
+  padding-right:0;
+}
+
+/*
+ * Command blocks in an article. There were no `pre` rules in this file at all,
+ * which meant the browser default — `white-space:pre`, no overflow handling —
+ * and a command longer than the column simply ran off the edge and was clipped
+ * by `body { overflow-x:hidden }`. Nothing looked broken; the end of the command
+ * was just not there.
+ *
+ * Scrolling rather than wrapping, for the reason download.css already gives
+ * about its own `pre`: a wrapped command is a mis-pasted command.
+ */
+.article pre {
+  margin:0 var(--gut) 20px;
+  padding:10px 12px;
+  background:var(--sunk);
+  border:1px solid var(--rule2);
+  border-radius:6px;
+  overflow-x:auto;
+  /* Stops the swipe chaining to the browser's back gesture at the end of the
+     scroll, the same way .tablewrap does. */
+  overscroll-behavior-x:contain;
+}
+.article pre code { font-size:0.86rem; }
+/* The reading measure, now that the container no longer supplies one. */
+.article > p,
+.article > ul,
+.article > ol,
+.hublist p { max-width:72ch; }
+
+/* Prose sitting directly on the page rather than inside .article — the section
+   intros on /download/. They span the full three columns, and at this container
+   width that is a 1100px line, which is not a line anyone reads twice. */
+.doc > p { max-width:72ch; }
+.doc > p.honest { max-width:none; }   /* a callout panel, not a paragraph */
+
 .crumb {
   font:11.5px/1.4 var(--mono);
   text-transform:uppercase;
   letter-spacing:.11em;
   color:var(--dim);
-  padding-top:clamp(26px,3.4vw,40px);
 }
 .crumb a { color:var(--dim); text-decoration:none; }
 .crumb a:hover { color:var(--link); }
 .crumb span[aria-current] { color:var(--text); }
 
+/* Title and lede. Split out of .article so the header can sit on the grid while
+   the prose below keeps a reading measure — one block cannot do both. */
+.pagehead {
+  padding-block:clamp(22px,3vw,34px) clamp(30px,4vw,46px);
+}
+.pagehead h1 { margin-bottom:18px; }
+.pagehead .lede { max-width:58ch; }
+
 .article {
   max-width:72ch;
-  padding:clamp(22px,3vw,34px) 0 clamp(34px,4vw,50px);
+  /* padding-block, not the shorthand: the inline padding is the grid gutter
+     above, and a shorthand here would silently reset it. */
+  padding-block:clamp(22px,3vw,34px) clamp(34px,4vw,50px);
 }
+/* The header already opened the page; the prose starts straight after it. */
+.pagehead + .article { padding-top:0; }
 .article h1 { margin-bottom:20px; }
 .article h2 {
   margin-top:clamp(38px,4.6vw,58px);
@@ -794,16 +946,27 @@ h3 {
   top:1px;
   margin-bottom:0;
 }
-.article .honest { margin:clamp(26px,3.4vw,38px) 0; }
+/* Inline margin, not 0: this component brings its own `padding` shorthand, so
+   it cannot take the gutter as padding the way its siblings do. Margin is the
+   only axis left, and without it the panel border lands on a vertical rule. */
+.article .honest { margin:clamp(26px,3.4vw,38px) var(--gut); }
 .article .honest p { color:var(--dim); margin-bottom:0; }
-.article .tablewrap { margin:clamp(22px,3vw,30px) 0; }
+.article .tablewrap { margin:clamp(22px,3vw,30px) var(--gut); }
+/* The 760px floor is tuned for the landing page's seven-column comparison,
+   which spans the whole container. An article table has two of three columns to
+   live in, and that floor would put a horizontal scrollbar under a table that
+   fits perfectly well. Lower, not removed: the point of a floor is that the
+   table scrolls on a phone rather than squashing to unreadable. */
+.article .cmp { min-width:520px; }
 .article .btn { margin-top:10px; }
 
 /* Hub lists — the contents of /help/ and /blog/. Each row is a link plus the
    one line that tells you whether it is the page you wanted. */
 .hublist { list-style:none; max-width:72ch; }
 .hublist li {
-  padding:18px 0;
+  /* padding-block only — the inline padding is the grid gutter, set above, and
+     the shorthand would reset it and pull every row divider off the rules. */
+  padding-block:18px;
   border-top:1px solid var(--rule);
 }
 .hublist li:last-child { border-bottom:1px solid var(--rule); }
@@ -1007,6 +1170,10 @@ footer a:hover { color:var(--link); }
   .keypanel   { grid-column:1 / span 1; margin-top:0; }
   .shead .eyebrow { grid-column:1 / -1; padding-top:0; }
   .shead .htext   { grid-column:1 / -1; padding-right:var(--gut); }
+  /* Same collapse as .shead above: at two columns a label rail costs half the
+     width and buys nothing, so the crumb goes back to being a line above. */
+  .doc > .crumb    { grid-column:1 / -1; padding-top:clamp(26px,3.4vw,40px); }
+  .doc > .pagehead { grid-column:1 / -1; padding-top:14px; padding-right:var(--gut); }
   .steps li:nth-child(3) { padding-top:28px; }
   .card:nth-child(-n+3) { border-top:1px solid var(--rule); }
   .card:nth-child(-n+2) { border-top:0; }
@@ -1033,6 +1200,10 @@ footer a:hover { color:var(--link); }
   :root { --cols:1; --gut:14px; }
   .rules span:nth-child(2) { display:none; }
   .rules span:nth-child(1) { border-right:1px solid var(--rule); }
+
+  /* `1 / span 2` against a single-column template would invent an implicit
+     second column and push the prose off the right edge of the page. */
+  .doc > .article, .doc > .hublist { grid-column:1 / -1; }
 
   .hero-grid, .shead, .steps, .cards, .livegrid, .closing, .footgrid {
     grid-template-columns:1fr;
