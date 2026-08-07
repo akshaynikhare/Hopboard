@@ -6,7 +6,7 @@
 
   "build": {
     "beforeDevCommand": "",
-    "beforeBuildCommand": "node ../tools/build/build.mjs _desktop --desktop",
+    "beforeBuildCommand": "npm run build:desktop",
     "frontendDist": "../../_desktop",
     "devUrl": "http://127.0.0.1:8080"
   },
