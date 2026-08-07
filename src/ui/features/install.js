@@ -138,9 +138,12 @@ const drop = id => $(id)?.remove();
  * two rows of the thing people came here to type in on saying "there is also an
  * app" — twice, in a tinted box that reads like a warning.
  *
- * It stays until it is answered. A timer was tried and taken out: one that
- * clears itself is one nobody is looking at when it goes, which makes it an
- * offer never made rather than one declined.
+ * They are one offer with two destinations, so they share a line, in --dim.
+ *
+ * It stays until it is answered. A timer was tried and taken out: the row is
+ * quiet enough to sit in the header indefinitely, and one that clears itself is
+ * one nobody is looking at when it goes — which makes it an offer never made
+ * rather than one declined.
  *
  * `message` is only used when an offer is alone; with both live the row has no
  * space for either sentence and the buttons carry the meaning.
