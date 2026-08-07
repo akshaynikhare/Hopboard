@@ -472,18 +472,6 @@ export const LINKS = {
   SPONSOR: `https://github.com/sponsors/${REPO.OWNER}`,
 };
 
-/**
- * The app offer in the header — the desktop build and the PWA install, sharing
- * one quiet row (ui/features/install.js).
- *
- * A minute is long enough to read a sentence you did not ask for, finish the
- * paste you came here for, and come back to it; short enough that the header is
- * the header again by the time you next look up. Only the × is remembered — a
- * row that timed out has not been declined, so the offer returns on a later
- * visit.
- */
-export const OFFER = { DISMISS_MS: 60_000 };
-
 export const IMAGES = {
   /** Clipboard image types we will read and share. */
   TYPES: ["image/png", "image/jpeg", "image/webp", "image/gif"],
