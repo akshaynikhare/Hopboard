@@ -14,10 +14,18 @@ name: Release
 # Triggered by the same `v*` tag that deploys the site, so the app, the CLI, the
 # desktop builds and the relay image all carry one version.
 
+# A `v*` tag is the ONLY thing that runs this, and that is the whole trigger
+# list on purpose. There was a `workflow_dispatch` here, for re-running a
+# release whose macOS leg had failed. It cost more than it saved: dispatched off
+# a branch, `github.ref_name` is a BRANCH name, and everything below builds a
+# version string out of it — so a dispatch off main would have tagged the
+# release "main" and handed the manifests a URL for "vmain". The guard that
+# caught it had to be the first step of the first job, and a guard whose only
+# job is to reject the trigger above it is an argument for deleting the trigger.
+# Re-running a release is `gh run rerun`, which keeps the tag it started from.
 on:
   push:
     tags: ["v*"]
-  workflow_dispatch:
 
 permissions:
   contents: write
@@ -30,18 +38,29 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0, because the check below needs main's history and a tag
+      # checkout is otherwise a single commit with no branches at all.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-      # workflow_dispatch is allowed here for re-runs, but github.ref_name is a
-      # BRANCH name then, not a tag. Everything downstream builds a version
-      # string out of it, so a dispatch off main would tag the release "main"
-      # and hand the manifests a URL for "vmain".
-      - name: Refuse to run off a tag
+      # A tag says nothing about which branch it came from, and the ruleset on
+      # main does not cover tags — `git tag v9.9.9 && git push origin v9.9.9`
+      # on a feature branch is a release of that branch, from a commit that was
+      # never reviewed and may never land. docs/RELEASING.md leans on tags being
+      # unprotected to recover from the ruleset refusing the release commit, so
+      # the hole is one this project uses deliberately and has to close here
+      # instead: ancestry, not the ref name. The tagged commit must be one main
+      # already contains.
+      - name: Refuse a tag that is not on main
         run: |
-          case "${{ github.ref }}" in
-            refs/tags/v*) echo "releasing ${{ github.ref_name }}" ;;
-            *) echo "::error::${{ github.ref }} is not a v* tag"; exit 1 ;;
-          esac
+          set -euo pipefail
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
+            echo "::error::${{ github.ref_name }} points at $GITHUB_SHA, which is not on main"
+            exit 1
+          fi
+          echo "releasing ${{ github.ref_name }} from $GITHUB_SHA, which main contains"
 
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }

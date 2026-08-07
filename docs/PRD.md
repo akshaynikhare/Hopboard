@@ -133,7 +133,7 @@ A static web app. Open it on machine A, get a short share key (e.g. `D75LV`). En
 | FR-4.1 | `manifest.webmanifest` with `name`, `short_name`, `start_url`, `display: standalone`, `theme_color`, 192/512 px icons (incl. maskable) | Must |
 | FR-4.2 | Service worker caching the app shell so the UI loads offline (sync itself requires network) | Must |
 | FR-4.3 | Served over HTTPS — satisfied by Cloudflare Pages, and enforced by `Strict-Transport-Security` in `_headers` | Must |
-| FR-4.4 | Custom in-app "Install app" button driven by `beforeinstallprompt` | Should |
+| FR-4.4 | Custom in-app "Install" action driven by `beforeinstallprompt` | Should |
 | FR-4.5 | `start_url` must restore the last room from `localStorage` (fragments are not preserved by the manifest) | Must |
 | FR-4.6 | SW update flow: new version detected → non-blocking "Update available · Reload" toast | Should |
 

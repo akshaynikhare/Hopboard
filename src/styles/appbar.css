@@ -43,7 +43,78 @@
   white-space:nowrap;
 }
 
-.tabspace { flex:1; }
+/* Spacer and notice host both — see #mount-notice in app.html. `min-width:0` is
+   what lets the notice inside it shrink instead of shoving the sync ladder off
+   the right-hand end. */
+.tabspace { flex:1; min-width:0; display:flex; justify-content:center; align-items:center; }
+
+/* The app offer: desktop build, PWA install (ui/features/install.js).
+   Quiet by construction. It is the only thing in this bar nobody asked for, so
+   it gets --dim text, no fill and no border until the pointer is on it — and it
+   clears itself after a minute. Anything louder in a bar you read to find your
+   session key is an advert wearing the app's chrome. */
+.topnotice {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+  padding:2px 3px 2px 8px;
+  border:1px solid transparent;
+  border-radius:3px;
+  color:var(--dim);
+  font-size:11.5px;
+}
+.topnotice:hover { border-color:var(--bd); background:var(--hover); }
+
+.topnotice-ico {
+  width:13px; height:13px; flex:none;
+  fill:none; stroke:currentColor; stroke-width:1.6;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+
+/* One line, always. The bar cannot grow a row, so a long sentence truncates
+   rather than wrapping the header open. */
+.topnotice-msg {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+/* A link, not a button: a filled control here would out-rank the sync ladder
+   two centimetres to its right, which is the setting that actually matters. */
+.topnotice-act {
+  flex:none;
+  border:0;
+  background:none;
+  padding:0;
+  color:var(--dim);
+  font:inherit;
+  font-size:11.5px;
+  font-weight:600;
+  text-decoration:underline;
+  text-underline-offset:2px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.topnotice-act:hover { color:var(--blue); }
+
+.topnotice-x {
+  display:flex;
+  flex:none;
+  border:0;
+  background:none;
+  color:var(--dim);
+  padding:2px;
+  border-radius:3px;
+  cursor:pointer;
+}
+.topnotice-x:hover { background:var(--bd); color:var(--text); }
+.topnotice-x svg {
+  width:12px; height:12px;
+  fill:none; stroke:currentColor; stroke-width:2;
+  stroke-linecap:round;
+}
 
 /* Live / Manual segmented control. */
 .modeswitch {

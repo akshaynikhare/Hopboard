@@ -114,6 +114,18 @@ html, body {
 
 .appbar .key { font-size:13px; letter-spacing:.12em; padding:6px 7px 6px 11px; }
 
+/* The app offer (ui/features/install.js). The bar already wraps here, so rather
+   than truncate a sentence into a strip between the key and the switch, the
+   notice claims a whole row and reads normally. `:not(:empty)` is what keeps
+   that from costing a row the rest of the time — with no offer up, this element
+   is the spacer and nothing else. */
+#mount-notice:not(:empty) { flex-basis:100%; justify-content:flex-start; }
+.topnotice { font-size:12.5px; padding-left:2px; }
+.topnotice-msg { white-space:normal; overflow:visible; }
+/* Finger sizes, same as the icon buttons beside them. */
+.topnotice-act { padding:7px 2px; }
+.topnotice-x { min-width:34px; min-height:34px; justify-content:center; align-items:center; }
+
 /* The project links ride with the switch onto the second row rather than
    claiming one of their own: they are the least urgent thing in the header,
    and a phone that wrapped for them would push the editor down for a link
