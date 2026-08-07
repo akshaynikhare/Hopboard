@@ -106,12 +106,16 @@ async function homebrew() {
   // A cask for the app. The CLI is a separate formula and deliberately not
   // bundled into it: somebody automating a server wants `realtimeclipboard` on PATH and
   // has no use for a tray icon, and installing a GUI to get a pipe is rude.
+  // replaceAll, not replace: the version appears twice in a Tauri asset URL —
+  // once in the tag and once in the filename. Substituting only the first left
+  // the cask pointing at v#{version}/RealtimeClipboard_0.3.0_universal.dmg,
+  // which works for exactly one release and 404s for every one after it.
   write("realtimeclipboard.rb", `
 cask "realtimeclipboard" do
   version "${version}"
   sha256 "${hash}"
 
-  url "${dmg.browser_download_url.replace(version, "#{version}")}"
+  url "${dmg.browser_download_url.replaceAll(version, "#{version}")}"
   name "RealtimeClipboard"
   desc "End-to-end encrypted clipboard shared between your devices"
   homepage "https://github.com/${OWNER}/${REPO}"
@@ -140,11 +144,24 @@ cask "realtimeclipboard" do
 end
 `);
 
+  /* The formula needs the tarball's checksum, and `brew audit` rejects one
+     without it. It can only exist once the npm job has published — which is a
+     separate channel that may have failed or been skipped — so a missing
+     tarball skips this formula rather than failing the whole run. */
+  const tgz = `https://registry.npmjs.org/realtimeclipboard/-/realtimeclipboard-${version}.tgz`;
+  const tgzRes = await fetch(tgz);
+  if (!tgzRes.ok) {
+    console.log(`  skipping realtimeclipboard-cli.rb — ${tgz} is not published (HTTP ${tgzRes.status})`);
+    return;
+  }
+  const tgzHash = createHash("sha256").update(Buffer.from(await tgzRes.arrayBuffer())).digest("hex");
+
   write("realtimeclipboard-cli.rb", `
 class RealtimeClipboardCli < Formula
   desc "Online clipboard on the command line — pipe text between machines"
   homepage "https://github.com/${OWNER}/${REPO}"
   url "https://registry.npmjs.org/realtimeclipboard/-/realtimeclipboard-${version}.tgz"
+  sha256 "${tgzHash}"
   license "MIT"
 
   depends_on "node"
