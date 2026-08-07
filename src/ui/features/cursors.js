@@ -72,8 +72,7 @@
 import { on, EV } from "../../core/bus.js";
 import * as state from "../../core/state.js";
 import * as device from "../../core/device.js";
-import { $, esc, setHTML } from "../primitives/dom.js";
-import { lazyStyleHref } from "../../core/paths.js";
+import { $, esc, setHTML, lazyStyle } from "../primitives/dom.js";
 
 /** Frame types. "cursor" is ROOM_WIDE in the relay — broadcast, never targeted. */
 export const FT = { CURSOR: "cursor" };
@@ -386,8 +385,12 @@ const ARROW =
  * relay's eight-peer cap, two peers can collide; the label is the identity and
  * the colour is only a hint, so that is a cost worth paying for staying inside
  * tokens.css instead of inventing hues.
+ *
+ * Exported because the editor tints a peer's caret line in the gutter with the
+ * same index. One peer, one colour, wherever they show up — a pointer in one
+ * hue and a caret in another reads as two people.
  */
-function paletteIndex(id) {
+export function paletteIndex(id) {
   let h = 0x811c9dc5;
   for (let i = 0; i < id.length; i++) {
     h ^= id.charCodeAt(i);
@@ -578,26 +581,17 @@ export function init() {
  * Stylesheet
  * ------------------------------------------------------------------ */
 
-const STYLE_HREF = lazyStyleHref("cursors.css");
-
 /**
- * This module owns its own CSS, so styles/main.css needs no edit and a double
- * init() cannot produce a duplicate <link> (the ui/install.js and
- * ui/historyPanel.js idiom). Two checks, because either could be true first:
- * the <link> we injected, or the --cursors-css marker that cursors.css sets if
- * main.css ever @imports it directly.
+ * The --cursors-css marker is checked as well as the <link>, because either
+ * could be true first: the one lazyStyle() injects, or the marker cursors.css
+ * sets if main.css ever @imports it directly.
  */
 function ensureStyles() {
-  if (document.querySelector('link[data-hb-style="cursors"]')) return;
   try {
     const marker = getComputedStyle(document.documentElement)
       .getPropertyValue("--cursors-css").trim();
     if (marker === "1") return;
   } catch { /* no computed style here — inject and move on */ }
 
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = STYLE_HREF;
-  link.dataset.hbStyle = "cursors";
-  document.head.appendChild(link);
+  lazyStyle("cursors.css");
 }

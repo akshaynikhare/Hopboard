@@ -34,3 +34,33 @@
 }
 #editor::selection { background:var(--sel); }
 #editor::placeholder { color:var(--dim); opacity:.7; }
+
+/* A peer's caret line, tinted in their own colour (tokens.css .c0-.c4).
+
+   Not a real inline caret, deliberately: a <textarea> has no per-character DOM,
+   so pixel-accurate positioning means a mirror div with matched font metrics —
+   ~150 lines that break quietly on zoom, wrapping and mobile. "Someone else is
+   on line 4, in blue" is the signal that actually stops two people colliding,
+   and the gutter was already rendering one element per line. */
+.gutter div.peer {
+  color:var(--peer);
+  font-weight:600;
+}
+
+/* Who is typing, beside the editor's own actions. Sits in the flow rather than
+   floating over the text: an overlay on a code panel covers the thing you are
+   reading, which is the one place it must not. */
+.edtyping {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  min-width:0;
+  overflow:hidden;
+}
+.edtyper {
+  color:var(--peer);
+  font-size:11px;
+  white-space:nowrap;
+  text-overflow:ellipsis;
+  overflow:hidden;
+}

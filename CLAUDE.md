@@ -96,6 +96,30 @@ Event names are `EV.*` constants in `bus.js` — a typo'd string literal is a si
 | Add a stylesheet | `styles/` to bundle it; `styles/lazy/` only if the component is optional **and** `mobile.css` says nothing about it |
 | Add a content page | `src/pages/<name>/index.html` — **root-absolute links only** — plus a `sitemap.xml` entry |
 | Add a colour | `styles/tokens.css` |
+| Add a per-peer colour | `paletteIndex()` in `ui/features/cursors.js`, classes `.c0`–`.c4` in `tokens.css` — one person, one colour everywhere they appear |
+
+### The sync ladder, and the stream/commit split
+
+Two things are easy to get wrong here because both look like one concept and are two.
+
+**The rung is one setting, not three.** `syncMode` is `off | manual | live`, and each rung adds one
+thing to the one below: nothing → the session syncs in the window → the OS clipboard is wired both
+ways. Reading and writing the clipboard are *derived* from it (`bindsClipboard()`), and sending
+anything at all is derived from it (`sharesSession()`). Do not add a second switch governing either
+direction — receiving had one, it defaulted on independently of the mode, and a device set to Manual
+stopped sending while arriving clips still landed on its clipboard. The stored strings are a
+compatibility surface: relabel the UI, never the values.
+
+**Typing streams; clips commit.** `EV.TEXT_TYPED`/`EV.TEXT_STREAMED` carry keystrokes for the far
+editor to render and do nothing else — no history, no clipboard write, no dedupe, no size check.
+`EV.TEXT_CAPTURED`/`EV.TEXT_RECEIVED` carry a clip that settled, and every one of those applies. If
+you find yourself putting a side effect on the stream path, it belongs on the commit path instead.
+The commit boundary is idle (`TEXT.COMMIT_IDLE_MS`), blur, or Ctrl/Cmd+Enter.
+
+Two people typing at once is **never merged** — that needs a CRDT and this is a clipboard. An
+incoming stream is dropped while you are typing, an incoming commit is *offered* rather than
+applied (`editor.isDirty()` → `EV.CLIP_OFFERED`), and what stops the collision in practice is
+seeing it coming: the peer's caret tints their line in the gutter, in their own colour.
 
 Adding a feature should change no existing module beyond one `init()` line in `main.js`. If it
 does, the boundary is probably in the wrong place.

@@ -6,7 +6,7 @@
  * already reported the same things:
  *
  *   #sbPeers  "2 devices"  roster, split-brain warning, leave
- *   #sbMode   "Live sync"  Live/Manual, clipboard polling, receiving, images
+ *   #sbMode   "App only"   the sync ladder, clipboard polling, images
  *   #sbP2P    "P2P idle"   the file settings
  *   #sbGear   (gear)       key strength and pointer sharing
  *
@@ -28,6 +28,7 @@ import { emit, on, EV } from "../../core/bus.js";
 import * as state from "../../core/state.js";
 import * as keys from "../../core/keys.js";
 import * as storage from "../../core/storage.js";
+import { IS_DESKTOP } from "../../core/native.js";
 import * as os from "../../clipboard/os.js";
 import * as capture from "../../clipboard/capture.js";
 import * as menu from "../primitives/statusMenu.js";
@@ -37,10 +38,6 @@ import * as menu from "../primitives/statusMenu.js";
 import * as syncMode from "../features/syncMode.js";
 import { $, esc, on as bind } from "../primitives/dom.js";
 
-/** Switches that are ON for anyone who has never touched them. */
-const DEFAULT_ON = new Set(["autowrite", "thumbs", "images", "cursors"]);
-const SWITCHES = ["autowrite", "images", "autoaccept", "thumbs", "longKeys", "cursors"];
-
 /** Set by the relay when the room may have moved replica; shown in the roster. */
 let splitBrain = null;
 
@@ -49,8 +46,6 @@ export function init() {
   bind("bLink", "click", e => { e.stopPropagation(); copyLink(); });
   bind("sbKey", "click", copyLink);
   bind("bQr",   "click", () => showQr());
-
-  restoreSettings();
 
   menu.attach("sbPeers", { label: "Devices", render: devicesMenu, onEvent: onMenuEvent });
   menu.attach("sbMode",  { label: "Sync",    render: syncMenu,    onEvent: onMenuEvent });
@@ -67,6 +62,9 @@ export function init() {
   on(EV.PEERS_CHANGED, ({ count, list }) => renderPeers(count, list));
   on(EV.SYNC_MODE, () => menu.refresh());
   on(EV.INSTANCE_CHANGED, ({ from, to }) => { splitBrain = { from, to }; menu.refresh(); });
+  // The tray's "Copy share link" — it asks rather than being told the key, so
+  // the link is built here where the session already is.
+  on("ui:copy-link", copyLink);
 
   renderPeers(1, []);
 }
@@ -74,30 +72,6 @@ export function init() {
 /* ------------------------------------------------------------------
    settings
 ------------------------------------------------------------------- */
-
-function persist(name, value) {
-  state.setSetting(name, value);
-  storage.saveSettings(state.get().settings);
-  emit(EV.SETTINGS_CHANGED, { name, value });
-}
-
-/**
- * Seed the settings object from storage.
- *
- * `?? DEFAULT_ON` matters: a setting added after a user's preferences were
- * saved reads back undefined, and Boolean(undefined) would silently turn a
- * default-on feature off for everyone who used an earlier build.
- *
- * Purely state now — it used to read and write the switch elements, which only
- * worked because they existed at boot. They are rendered on demand.
- */
-function restoreSettings() {
-  const saved = storage.loadSettings();
-  if (saved) Object.assign(state.get().settings, saved);
-
-  const s = state.get().settings;
-  for (const k of SWITCHES) s[k] = s[k] ?? DEFAULT_ON.has(k);
-}
 
 /** One handler for all four menus: they are made of the same three controls. */
 function onMenuEvent(e, close) {
@@ -107,12 +81,12 @@ function onMenuEvent(e, close) {
   if (sw && e.type === "click") {
     const next = sw.getAttribute("aria-checked") !== "true";
     sw.setAttribute("aria-checked", String(next));
-    persist(sw.dataset.k, next);
+    state.saveSetting(sw.dataset.k, next);
     return menu.refresh();               // key strength and labels follow it
   }
 
   if (e.target.id === "poll" && e.type === "change") {
-    persist("poll", e.target.value);
+    state.saveSetting("poll", e.target.value);
     capture.startPolling();
     return;
   }
@@ -130,6 +104,7 @@ function onMenuEvent(e, close) {
   if (action === "unlock") { close(); return emit("session:unlock"); }
   if (action === "repin")  { close(); return emit("session:repin"); }
   if (action === "whatsnew") { close(); return emit("ui:whatsnew"); }
+  if (action === "guide")    { close(); return emit("ui:guide"); }
   if (action === "relay")       { close(); return changeRelay(); }
   if (action === "relay-reset") { close(); return changeRelay(true); }
 }
@@ -198,33 +173,42 @@ function rosterRows() {
     </div>`).join("");
 }
 
+/**
+ * The same ladder as the header switch, rendered from the same array.
+ *
+ * There is no "Receiving" switch any more. It used to sit here, defaulting on
+ * and independent of the mode, which meant a device set to Manual stopped
+ * sending while arriving clips still landed on its system clipboard. Both
+ * directions belong to the rung now — see ui/features/syncMode.js.
+ */
 function syncMenu() {
-  const live = state.get().settings.syncMode !== SYNC_MODES.MANUAL;
+  const mode = state.get().settings.syncMode;
   const poll = state.get().settings.poll;
 
-  return group("Clipboard")
+  return group("How far sync reaches")
     + `<div class="sacts seg">
-         <button class="btn ghost${live ? " on" : ""}" type="button"
-                 data-act="mode" data-mode="${SYNC_MODES.LIVE}" data-mi="live"
-                 aria-pressed="${live}">Live</button>
-         <button class="btn ghost${live ? "" : " on"}" type="button"
-                 data-act="mode" data-mode="${SYNC_MODES.MANUAL}" data-mi="manual"
-                 aria-pressed="${!live}">Manual</button>
+         ${syncMode.RUNGS.map(r => `
+           <button class="btn ghost${r.mode === mode ? " on" : ""}" type="button"
+                   data-act="mode" data-mode="${esc(r.mode)}" data-mi="${esc(r.mode)}"
+                   aria-pressed="${r.mode === mode}">${esc(r.label)}</button>`).join("")}
        </div>
-       <div class="snote">${live
-         ? "Anything you copy while this window has focus is shared."
-         : "Nothing leaves this machine until you press Send."}</div>`
-    + group("Live mode")
-    + `<div class="srow">
-         <div class="l"><b>Check clipboard every</b><span>Only while Live and focused</span></div>
-         <select id="poll" data-mi="poll" aria-label="Clipboard poll interval">
-           ${Object.keys(POLL_OPTIONS).map(o =>
-             `<option${o === poll ? " selected" : ""}>${esc(o)}</option>`).join("")}
-         </select>
-       </div>`
-    + swRow("images", "Share copied images", "Screenshots appear as previews on your other devices")
-    + group("Receiving")
-    + swRow("autowrite", "Auto-write incoming", "Put received text straight on this machine's clipboard");
+       <div class="snote">${esc(syncMode.noteFor(mode))}</div>`
+    + group("Clipboard")
+    // Polling is the browser's substitute for a clipboard-change event, so it
+    // has nothing to do below the rung that reads the clipboard at all.
+    + (mode === SYNC_MODES.LIVE
+      ? `<div class="srow">
+           <div class="l"><b>Check clipboard every</b><span>Only while this window has focus</span></div>
+           <select id="poll" data-mi="poll" aria-label="Clipboard poll interval">
+             ${Object.keys(POLL_OPTIONS).map(o =>
+               `<option${o === poll ? " selected" : ""}>${esc(o)}</option>`).join("")}
+           </select>
+         </div>`
+      : `<div class="snote">This device is not reading its clipboard.</div>`)
+    + swRow("images", "Share copied images", "Screenshots you copy appear as previews on your other devices")
+    + (mode === SYNC_MODES.LIVE ? "" :
+      `<div class="snote">Below the Clipboard rung nothing is read automatically —
+       but an image you paste or drop in here is still shared.</div>`);
 }
 
 function filesMenu() {
@@ -241,11 +225,30 @@ function gearMenu() {
     + lockRows()
     + group("Presence")
     + swRow("cursors", "Show other cursors", "See where the other devices are pointing")
+    + (IS_DESKTOP ? desktopRows() : "")
     + group("Relay")
     + relayRows()
     + group("About")
     + `<div class="sacts">
          <button class="btn ghost" type="button" data-act="whatsnew" data-mi="whatsnew">What's new</button>
+       </div>`;
+}
+
+/**
+ * Only in the installed app, because only there is there a tray to close to.
+ *
+ * The switch is off-by-default nowhere: closing to the tray is what an app
+ * whose job is to keep watching should do. It is a switch rather than a fact
+ * because the alternative — no way to make X mean X — is the single most
+ * complained-about behaviour in tray applications, and being unable to turn it
+ * off is what makes it a trap rather than a default.
+ */
+function desktopRows() {
+  return group("Desktop")
+    + swRow("closeToTray", "Keep running when I close the window",
+            "Off: the X button quits, and your clipboard stops being watched")
+    + `<div class="sacts">
+         <button class="btn ghost" type="button" data-act="guide" data-mi="guide">How this works</button>
        </div>`;
 }
 
@@ -418,9 +421,6 @@ function newKey() {
   emit("session:rotate");
 }
 
-const keyLength = () =>
-  state.get().settings.longKeys ? keys.LENGTHS.LONG : keys.LENGTHS.NORMAL;
-
 /**
  * Say what the setting buys in numbers, not adjectives. "More secure" is
  * unfalsifiable; "~29 bits" versus "~49 bits" lets someone decide.
@@ -430,7 +430,7 @@ const keyLength = () =>
  * the app is not honouring.
  */
 function keyStrength() {
-  const n = keyLength();
+  const n = keys.nextLength();
   return `${n} characters · ~${Math.round(keys.entropyBits(n))} bits · applies to the next key`;
 }
 

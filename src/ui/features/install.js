@@ -19,6 +19,7 @@ import { $, esc, setHTML, scriptURL } from "../primitives/dom.js";
 import { fromUrl, isValid, fragment } from "../../core/keys.js";
 import { loadLastKey, read, write } from "../../core/storage.js";
 import { APP_ROOT, atRoot, lazyStyleHref } from "../../core/paths.js";
+import { IS_DESKTOP } from "../../core/native.js";
 
 /* Resolved through core/paths.js rather than from this module's own location.
    These three URLs are the reason that file exists: computing them from
@@ -298,13 +299,13 @@ const DESKTOP_DISMISSED = "desktopDismissed";
  * removes. Anywhere else, this is an advert; here it is an answer.
  *
  * Three things it must never do:
- *   - appear inside the desktop app itself, which is what `__TAURI__` rules out;
+ *   - appear inside the desktop app itself, which is what IS_DESKTOP rules out;
  *   - appear on a phone, where a native app could not watch the clipboard
  *     either and the claim would simply be false;
  *   - come back after it has been dismissed.
  */
 function showDesktop() {
-  if (globalThis.__TAURI__) return;                    // already the real thing
+  if (IS_DESKTOP) return;                              // already the real thing
   if (read(DESKTOP_DISMISSED, false)) return;
 
   // Coarse on purpose: this only decides whether a sentence is true. A pointer

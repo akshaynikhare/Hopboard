@@ -58,7 +58,7 @@ These are deliberate and documented in [docs/PRD.md](docs/PRD.md). Reports about
 them are welcome as discussion, but they are design, not defects:
 
 - **The share key is a bearer credential.** Anyone who has it can read the
-  session. That is what makes a 5-character key with no account possible.
+  session. That is what makes a short key with no account possible.
 - **A 4-digit PIN is weak** and the UI says so in bits. The stretching is set
   against an offline attacker, not against the arithmetic.
 - **No background clipboard capture**, on any browser. `readText()` needs focus.

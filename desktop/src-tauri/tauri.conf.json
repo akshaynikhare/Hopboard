@@ -12,6 +12,8 @@
   },
 
   "app": {
+    "withGlobalTauri": true,
+
     "windows": [
       {
         "label": "main",
@@ -31,13 +33,6 @@
     "security": {
       "csp": "default-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' ipc: http://ipc.localhost https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev; require-trusted-types-for 'script'; trusted-types realtimeclipboard",
       "assetProtocol": { "enable": false, "scope": [] }
-    },
-
-    "trayIcon": {
-      "id": "main",
-      "iconPath": "icons/icon.png",
-      "iconAsTemplate": false,
-      "menuOnLeftClick": false
     }
   },
 
@@ -53,7 +48,7 @@
     ],
     "category": "Productivity",
     "shortDescription": "An encrypted clipboard shared between your devices",
-    "longDescription": "Copy on one machine and paste on another. RealtimeClipboard watches the system clipboard and sends what you copy, end-to-end encrypted, to the other devices sharing a five-character key. No account, and nothing is written to disk on any machine or on the relay.",
+    "longDescription": "Copy on one machine and paste on another. RealtimeClipboard watches the system clipboard and sends what you copy, end-to-end encrypted, to the other devices sharing a short key. No account, and nothing is written to disk on any machine or on the relay.",
     "copyright": "MIT",
     "licenseFile": "../../LICENSE",
 
@@ -72,7 +67,11 @@
 
     "linux": {
       "deb": {
-        "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0"]
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0",
+          "libayatana-appindicator3-1 | libappindicator3-1"
+        ]
       }
     }
   }

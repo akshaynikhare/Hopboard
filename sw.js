@@ -43,7 +43,7 @@
 
 const KILL = false;
 
-const VERSION = "v5";
+const VERSION = "v7";
 const CACHE = `realtimeclipboard-shell-${VERSION}`;
 
 /** Hosts this worker must never touch, whatever the request looks like. */
@@ -78,6 +78,7 @@ const SHELL = [
   "./src/core/device.js",
   "./src/core/history.js",
   "./src/core/keys.js",
+  "./src/core/native.js",
   "./src/core/paths.js",
   "./src/core/state.js",
   "./src/core/storage.js",
@@ -105,6 +106,7 @@ const SHELL = [
   "./src/styles/history.css",
   "./src/styles/layout.css",
   "./src/styles/lazy/cursors.css",
+  "./src/styles/lazy/desktop.css",
   "./src/styles/lazy/install.css",
   "./src/styles/lazy/lock.css",
   "./src/styles/lazy/whatsnew.css",
@@ -122,6 +124,7 @@ const SHELL = [
   "./src/ui/features/ads.js",
   "./src/ui/features/appLinks.js",
   "./src/ui/features/cursors.js",
+  "./src/ui/features/desktopPrefs.js",
   "./src/ui/features/hints.js",
   "./src/ui/features/install.js",
   "./src/ui/features/lockButton.js",
@@ -131,6 +134,7 @@ const SHELL = [
   "./src/ui/features/whatsNew.js",
   "./src/ui/panels/editor.js",
   "./src/ui/panels/filesPanel.js",
+  "./src/ui/panels/guidePanel.js",
   "./src/ui/panels/historyPanel.js",
   "./src/ui/panels/sessionPanel.js",
   "./src/ui/primitives/dom.js",

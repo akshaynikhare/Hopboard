@@ -1,5 +1,7 @@
 /** DOM helpers. Small on purpose — this is not a framework. */
 
+import { lazyStyleHref } from "../../core/paths.js";
+
 export const $  = sel => document.getElementById(sel) || document.querySelector(sel);
 export const $$ = sel => [...document.querySelectorAll(sel)];
 
@@ -83,6 +85,26 @@ export const clear = el => setHTML(el, "");
  * built out of remote input cannot reach the sink by accident.
  */
 export const scriptURL = url => (policy ? policy.createScriptURL(url) : url);
+
+/**
+ * Load a `styles/lazy/` sheet on first use, once.
+ *
+ * `name` doubles as the marker attribute, so two modules asking for the same
+ * sheet get one <link> rather than two. Four modules had grown their own
+ * identical copy of this; the fifth is what made it a helper.
+ *
+ * Resolved through core/paths.js, never from import.meta.url — bundling
+ * collapses the tree and would move every such path at once, silently.
+ */
+export function lazyStyle(name) {
+  const id = name.replace(/\.css$/, "");
+  if (document.querySelector(`link[data-hb-style="${id}"]`)) return;
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = lazyStyleHref(name);
+  link.dataset.hbStyle = id;
+  document.head.appendChild(link);
+}
 
 export function on(el, event, handler, opts) {
   (typeof el === "string" ? $(el) : el)?.addEventListener(event, handler, opts);

@@ -27,22 +27,11 @@
 import { LOCK } from "../../core/config.js";
 import { pinEntropyBits } from "../../core/keys.js";
 import * as modal from "../primitives/modal.js";
-import { esc } from "../primitives/dom.js";
-import { lazyStyleHref } from "../../core/paths.js";
+import { esc, lazyStyle } from "../primitives/dom.js";
 
 /* Loaded on first use rather than from main.css: the dialog is rare and its
-   stylesheet is dead weight on every session that never locks. Resolved through
-   core/paths.js so this module's own depth never enters into it. */
-const STYLE_HREF = lazyStyleHref("lock.css");
-
-function ensureStyles() {
-  if (document.querySelector('link[data-hb-style="lock"]')) return;
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = STYLE_HREF;
-  link.dataset.hbStyle = "lock";
-  document.head.appendChild(link);
-}
+   stylesheet is dead weight on every session that never locks. */
+const ensureStyles = () => lazyStyle("lock.css");
 
 const COPY = {
   create: {

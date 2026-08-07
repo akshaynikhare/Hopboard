@@ -55,7 +55,14 @@ const VERSION = JSON.parse(
 /* ------------------------------------------------------------------ args -- */
 
 function parse(args) {
-  const opts = { relay: null, pin: null, once: false, json: false, timeout: 0, quiet: false };
+  const opts = {
+    relay: null, pin: null, once: false, json: false, timeout: 0, quiet: false,
+    // A CLI key gets pasted into shells, scripts and CI configs, where length is
+    // friction with no QR code to fall back on — so unlike the installed desktop
+    // app this stays short unless asked. REALTIMECLIPBOARD_LONG is the way to
+    // ask once, for a machine that generates a lot of them.
+    long: !!process.env.REALTIMECLIPBOARD_LONG,
+  };
   const rest = [];
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
@@ -86,6 +93,8 @@ Options
   --relay <url>    relay to use            (default ${DEFAULT_RELAY_URL})
                    or set REALTIMECLIPBOARD_RELAY
   --pin <pin>      join a locked session   (or set REALTIMECLIPBOARD_PIN)
+  --long           new: a 10-character key (~49 bits) instead of 6 (~29 bits)
+                   or set REALTIMECLIPBOARD_LONG
   --once           watch: exit after the first clip
   --json           one JSON object per line instead of raw text
   --timeout <s>    give up after this many seconds

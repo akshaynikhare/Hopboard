@@ -91,7 +91,7 @@ html, body {
 /* ------------------------------------------------------------------ *
  * App header
  *
- * At 360px the key, its three buttons and the Live/Manual switch do not fit on
+ * At 360px the key, its three buttons and the sync ladder do not fit on
  * one row, and at 320px they are not close. Rather than pick a control to drop,
  * the bar wraps: `flex-wrap` puts the mode switch on a second row only when the
  * first is genuinely full, and `margin-left:auto` keeps it right-aligned in
@@ -275,8 +275,8 @@ select { min-height:38px; font-size:16px; padding:7px 8px; }
  * carrying a menu is the only way to reach what is inside it, and hiding it
  * would hide those settings on the device where the sidebar pane they came from
  * was already the hardest to get at. #sbMode used to be dropped because the
- * Live/Manual switch is in the header one row up — the switch is, but the
- * polling interval, image sharing and auto-write are not, so it stays.
+ * sync ladder is in the header one row up — the ladder is, but the polling
+ * interval and image sharing are not, so it stays.
  *
  * Dropped: the key (the header shows it, and "Copy link" is in the device
  * menu) and the relay tier (a readout, and not one you act on from a phone).

@@ -386,7 +386,7 @@ and zero target keywords.
 Now:
 
 > End-to-end encrypted online clipboard: sync clipboard text between devices and
-> send files peer-to-peer. No account, no install - just a 5-character key.
+> send files peer-to-peer. No account, no install - just a short key.
 
 ### Topics — the exploit
 
@@ -873,10 +873,10 @@ a relay, and there are no reliable free TURN servers.
 
 12. **Publish a threat model** before posting anywhere. Someone *will* open the
     network tab. It should state what the key derives, the entropy of a
-    five-character key, rate limiting, room-hash collision handling, session
+    short key, rate limiting, room-hash collision handling, session
     lifetime, and exactly what the relay sees.
 13. **Reconsider PBKDF2.** HN commenters explicitly flagged PBKDF2 as outdated and
-    named Argon2 in the QuickClip thread. Combined with a 5-character shared secret,
+    named Argon2 in the QuickClip thread. Combined with a short shared secret,
     this is the most likely single point of attack on the launch.
 14. **Document the WebRTC fallback.** Is there TURN? What happens when the direct
     connection fails? "It silently fails" is the recurring complaint about every

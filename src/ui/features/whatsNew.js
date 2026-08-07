@@ -27,13 +27,12 @@
 import { emit } from "../../core/bus.js";
 import { read, write } from "../../core/storage.js";
 import * as modal from "../primitives/modal.js";
-import { esc } from "../primitives/dom.js";
-import { atRoot, lazyStyleHref } from "../../core/paths.js";
+import { esc, lazyStyle } from "../primitives/dom.js";
+import { atRoot } from "../../core/paths.js";
 
 const SEEN = "seenVersion";
 const SOURCE = atRoot("changelog.json");
 const FULL_LOG = atRoot("CHANGELOG.md");
-const STYLE_HREF = lazyStyleHref("whatsnew.css");
 
 let log = null;          // the parsed changelog, once it has loaded
 
@@ -135,11 +134,4 @@ async function load() {
   }
 }
 
-function ensureStyles() {
-  if (document.querySelector('link[data-hb-style="whatsnew"]')) return;
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = STYLE_HREF;
-  link.dataset.hbStyle = "whatsnew";
-  document.head.appendChild(link);
-}
+const ensureStyles = () => lazyStyle("whatsnew.css");

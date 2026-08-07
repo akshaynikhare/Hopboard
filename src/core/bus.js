@@ -31,8 +31,18 @@ export function emit(event, payload) {
 /** Canonical event names. Typos here are silent bugs, so use the constants. */
 export const EV = {
   // clipboard
-  TEXT_CAPTURED:   "text:captured",    // {text, how} — local capture, needs sending
-  TEXT_RECEIVED:   "text:received",    // {text, from} — arrived from a peer
+  TEXT_CAPTURED:   "text:captured",    // {text, how} — a clip settled here, needs sending
+  TEXT_RECEIVED:   "text:received",    // {text, from} — a clip arrived from a peer
+  /**
+   * Typing, not clips. {text, caret} out, {text, caret, name, from} in.
+   *
+   * The pair above is the COMMIT channel: a clip that settled, bound for
+   * history, the OS clipboard and the size cap. This pair is the VIEW channel —
+   * what the text looks like mid-keystroke. Keeping them apart is what stops a
+   * streamed sentence becoming six history entries and six clipboard writes.
+   */
+  TEXT_TYPED:      "text:typed",
+  TEXT_STREAMED:   "text:streamed",
   TIER_CHANGED:    "clipboard:tier",   // {tier, note}
   PENDING_CLIP:    "clipboard:pending",// {pending, text} — arrived while unfocused
   CLIP_OFFERED:    "clipboard:offered",// {text} — arrived, but the editor has unsent work

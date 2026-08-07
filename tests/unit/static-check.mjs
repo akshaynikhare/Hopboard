@@ -417,7 +417,7 @@ bad = [
 /* And the reverse: a lazy sheet nobody fetches is dead weight the bundle never
    reveals, because it is not in the bundle. */
 const fetched = new Set(jsFiles.flatMap(f =>
-  [...read(f).matchAll(/lazyStyleHref\("([^"]+)"\)/g)].map(m => m[1])));
+  [...read(f).matchAll(/lazyStyle(?:Href)?\("([^"]+)"\)/g)].map(m => m[1])));
 bad.push(...lazyDir.filter(n => !fetched.has(n)).map(n => `${n}: in lazy/ but never fetched`));
 ok(`every stylesheet loads exactly once (${eager.size} eager, ${lazyDir.length} lazy)`,
    bad.length === 0, bad.join("; "));
@@ -520,6 +520,54 @@ const confOk = conf.version === "../../package.json" || conf.version === pkgVers
 ok(`desktop and package.json versions agree (${pkgVersion})`,
    confOk && cargoVersion === pkgVersion && lockVersion === pkgVersion,
    `package.json ${pkgVersion}, Cargo.toml ${cargoVersion}, Cargo.lock ${lockVersion}, tauri.conf ${conf.version}`);
+
+/* ---------- 23b-23f. the desktop shell's native half is actually reachable ----
+   Every one of these shipped wrong, silently, and each has the same shape: the
+   app kept running and quietly stopped being a desktop app. */
+const MAIN_RS = read(join(SRC_TAURI, "src/main.rs"));
+
+/* Without this, `globalThis.__TAURI__` does not exist — the default is false.
+   Three modules feature-tested it and all three failed at once: T0 never
+   started, incoming clips fell back to a path needing window focus, and the
+   status bar reported a browser tier. The one reason the app exists, off, with
+   no error anywhere. */
+ok("desktop shell injects the JS API (withGlobalTauri)", conf.app?.withGlobalTauri === true,
+   "without it globalThis.__TAURI__ is undefined and clipboard/ silently degrades to the browser");
+
+/* Two builders means two icons. The config block builds one at Builder::build()
+   with whatever the config can express — and it cannot express a per-platform
+   show_menu_on_left_click, nor guarantee a menu exists at creation, which is
+   what Linux needs before it will draw the icon at all. */
+ok("the tray is built in exactly one place",
+   (conf.app?.trayIcon === undefined) === /TrayIconBuilder/.test(MAIN_RS),
+   "declare it in tauri.conf.json OR build it in main.rs, never both");
+
+/* tauri-bundler writes deb.depends verbatim — it merges nothing and detects
+   nothing (crates/tauri-bundler/src/bundle/linux/debian.rs). So the tray's
+   runtime library is only there if this file names it. The alternation covers
+   both: libappindicator3-1 is gone from newer Debian, libayatana- absent from
+   older. */
+ok("the .deb depends on an appindicator library",
+   /appindicator/.test((conf.bundle?.linux?.deb?.depends ?? []).join(" ")),
+   "the tray icon needs it at runtime and the bundler will not add it for you");
+
+/* One owner for the native feature test, the way clipboard/os.js is the one
+   owner of navigator.clipboard. Three independent sniffs is three chances to
+   get the same answer wrong at once, which is exactly what happened. */
+bad = jsFiles
+  .filter(f => rel(f) !== "src/core/native.js")
+  .filter(f => /__TAURI__|__TAURI_INTERNALS__/.test(stripComments(read(f))))
+  .map(rel);
+ok("Tauri globals confined to core/native.js", bad.length === 0, bad.join(", "));
+
+/* A bare generate() ignores the key-length setting. Two of the six call sites
+   did, and they were the two that generate a key FOR the user rather than at
+   their request: the first-run key and the collision retry. */
+bad = jsFiles
+  .filter(f => /keys\.generate\(\s*\)|[^.\w]generate\(\s*\)/.test(stripComments(read(f))))
+  .map(rel);
+ok("no bare generate() — key length comes from keys.nextLength()",
+   bad.length === 0, bad.join(", "));
 
 /* ---------- 24. no page advertises a channel that does not exist ----------
    /download/ shipped `winget install`, `scoop install`, `brew install --cask`,

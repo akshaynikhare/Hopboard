@@ -95,6 +95,10 @@
   box-shadow:0 0 0 1px color-mix(in srgb, var(--editor) 55%, transparent);
 }
 
+/* The five identity colours live in tokens.css as .c0-.c4, because the editor
+   wears them too (peer carets in the gutter) and cannot borrow them from a
+   sheet that is only fetched when pointers are on. */
+
 /* ---------------------------------------------------------------- palette
 
    Five identities, hashed from the peer id in cursors.js. All five are
@@ -103,11 +107,7 @@
    --bad is deliberately NOT here. Red means "something has gone wrong"
    everywhere else in this app, and another person is not an error. */
 
-.hb-cursor.c0 { --peer:var(--blue); }
-.hb-cursor.c1 { --peer:var(--ok); }
-.hb-cursor.c2 { --peer:var(--str); }
-.hb-cursor.c3 { --peer:var(--num); }
-.hb-cursor.c4 { --peer:var(--warn); }
+/* Mapped in tokens.css — see the note above. */
 
 /* ---------------------------------------------------------------- motion */
 

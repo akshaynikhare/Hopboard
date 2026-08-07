@@ -17,7 +17,7 @@
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="RealtimeClipboard">
 <meta property="og:title" content="Install RealtimeClipboard on macOS">
-<meta property="og:description" content="One download for Intel and Apple Silicon, what a working install looks like, and why the app ships set to Manual.">
+<meta property="og:description" content="One download for Intel and Apple Silicon, what a working install looks like, and how the menu-bar item works.">
 <meta property="og:url" content="https://realtimeclipboard.com/help/install/mac/">
 <meta property="og:image" content="https://realtimeclipboard.com/assets/social/og-card.png">
 <meta property="og:image:width" content="1200">
@@ -102,7 +102,7 @@
         <p class="lede">
           One download covers Intel and Apple Silicon. macOS asks for no
           permission to read the clipboard, which makes the install trivial and
-          is exactly why the app ships set to Manual.
+          is exactly why the app explains itself on first launch.
         </p>
       </header>
 
@@ -155,9 +155,12 @@
 
         <h2 id="check">Check it worked</h2>
         <ul class="sq-list">
-          <li><b>A menu-bar item appears.</b> Click it to bring the window back;
-            Quit is in its menu, on purpose — an app that watches your clipboard
-            has to have a visible way to stop it.</li>
+          <li><b>A menu-bar item appears.</b> Click it and the menu opens, the
+            way a menu-bar item should — <b>Open RealtimeClipboard</b> is the
+            first entry, and <b>Quit</b> is the last, on purpose: an app that
+            watches your clipboard has to have a visible way to stop it.
+            Closing the window with the red button does not quit; it leaves the
+            app in the menu bar so it can keep watching.</li>
           <li><b>The status bar reads <code>T0 · watching the system clipboard</code></b>,
             bottom right of the window. That is the native watcher confirming
             itself. Safari on the same machine reports
@@ -167,18 +170,20 @@
 
         <h2 id="first">Your first sync</h2>
         <ol class="steps">
-          <li>Note the five-character key at the top of the app, or type your own.</li>
+          <li>Note the short key at the top of the app, or type your own.</li>
           <li>Open <a href="/app.html">the app</a> on a second device and enter
             the same key.</li>
           <li>Copy something on the Mac, without switching to RealtimeClipboard. It
             appears on the other device.</li>
         </ol>
         <p class="honest">
-          Nothing happened? The app ships set to <b>Manual</b>. macOS grants
-          clipboard access to any running application with no prompt at all, so
-          nothing in the operating system would have told you this app had begun
-          reading every copy you make. That is precisely why it does not begin
-          until you say so. Switch to <b>Live</b> for the automatic behaviour.
+          Nothing happened? Check the switch at the top of the window says
+          <b>Live</b>. On <b>Manual</b>, nothing leaves the Mac until you paste
+          it in. It is worth knowing that switch is there: macOS grants clipboard
+          access to any running application with no prompt at all, so nothing in
+          the operating system would tell you this app had begun reading every
+          copy you make — which is why the app says so itself, on first launch,
+          and puts the same switch in the menu bar as <b>Share what I copy</b>.
         </p>
 
         <h2 id="trouble">When it does not work</h2>

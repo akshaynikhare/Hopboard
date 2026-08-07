@@ -7,7 +7,8 @@
  */
 
 import { emit, EV } from "./bus.js";
-import { DEFAULT_SYNC_MODE } from "./config.js";
+import { DEFAULT_SYNC_MODE, SYNC_MODES, KEY, TEXT } from "./config.js";
+import * as storage from "./storage.js";
 
 const state = {
   key: null,
@@ -45,19 +46,88 @@ const state = {
   tier: "T1",                // clipboard capture tier, see clipboard/capture.js
   lastSent: "",              // dedupe guard (FR-2.7)
   suppressUntil: 0,          // loop-suppression deadline (FR-2.6)
+  lastLocalCopyAt: 0,        // a local copy outranks an arriving clip — see recentLocalCopy()
   settings: {
-    syncMode: DEFAULT_SYNC_MODE,   // live | manual — see config.js
-    autowrite: true,
-    autoread: true,
+    // off | manual | live — one ladder, see config.js SYNC_MODES. Reading and
+    // writing the OS clipboard are both derived from this and neither has a
+    // switch of its own: two controls over one behaviour eventually disagree,
+    // and then the app looks like it is ignoring its own setting.
+    syncMode: DEFAULT_SYNC_MODE,
     autoaccept: false,
     thumbs: true,
     images: true,
     cursors: true,
+    longKeys: KEY.DEFAULT_LONG,    // installed builds default to 10 chars
+    closeToTray: true,             // desktop only; the X button hides, Quit is in the tray
     poll: "1s",
   },
 };
 
 export const get = () => state;
+
+/**
+ * Seed settings from storage.
+ *
+ * Runs first in boot(), and the ordering is the point: resolveKey() asks how
+ * long the next key should be, and used to be answered from the defaults
+ * because the panel that restored preferences had not initialised yet.
+ *
+ * A key absent from the saved object keeps its default above. That is what
+ * lets a setting be ADDED without silently turning it off for everyone who
+ * saved their preferences under an earlier build.
+ */
+export function restore() {
+  const saved = storage.loadSettings();
+  if (saved) Object.assign(state.settings, saved);
+
+  migrateReceiving(saved);
+
+  /**
+   * One-time move to the long key on installed builds.
+   *
+   * Anyone who toggled any switch before this shipped has an explicit
+   * `longKeys: false` they never chose — persist() writes the whole settings
+   * object, so the old default was recorded as a decision. Gated on a marker so
+   * it happens once and a later deliberate "off" stands.
+   *
+   * Nothing existing is invalidated: this only changes the NEXT key generated.
+   */
+  if (KEY.DEFAULT_LONG && !storage.read("longKeyDefault")) {
+    state.settings.longKeys = true;
+    storage.write("longKeyDefault", KEY.LONG_LENGTH);
+    storage.saveSettings(state.settings);
+  }
+}
+
+/**
+ * Receiving used to be its own switch, defaulting on and independent of the
+ * mode, so Manual stopped this machine SENDING while incoming clips still
+ * landed on its system clipboard. Both directions are the mode's now.
+ *
+ * Anyone who turned that switch off asked for exactly one thing: nothing
+ * arriving should touch their clipboard. On the new ladder only Manual honours
+ * that, so they are moved there rather than silently promoted to a Live rung
+ * that does the thing they opted out of. The dead keys go with them, which is
+ * also what makes this run once — after the next save they are not on disk.
+ */
+function migrateReceiving(saved) {
+  if (!saved) return;
+  if (!("autowrite" in saved) && !("autoread" in saved)) return;
+
+  if (saved.autowrite === false && state.settings.syncMode === SYNC_MODES.LIVE) {
+    state.settings.syncMode = SYNC_MODES.MANUAL;
+  }
+  delete state.settings.autowrite;
+  delete state.settings.autoread;
+  storage.saveSettings(state.settings);
+}
+
+/** Change a setting and remember it. The only path that persists one. */
+export function saveSetting(name, value) {
+  state.settings[name] = value;
+  storage.saveSettings(state.settings);
+  emit(EV.SETTINGS_CHANGED, { name, value });
+}
 
 export function setKey({ key, roomHash, aesKey, locked = false, authToken = null }) {
   state.key = key;
@@ -191,3 +261,16 @@ export function setSetting(name, value) {
 /** Mute local capture briefly after applying a remote clip (FR-2.6). */
 export function suppress(ms) { state.suppressUntil = Date.now() + ms; }
 export function isSuppressed() { return Date.now() < state.suppressUntil; }
+
+/**
+ * When this machine last put something on its own clipboard.
+ *
+ * Distinct from `suppressUntil`, which is about not echoing our own writes back
+ * to the room. This is about precedence: for a few seconds after you copy
+ * something here, what you copied is what you are about to paste, and a clip
+ * arriving from another device does not get to take it away.
+ */
+export function markLocalCopy() { state.lastLocalCopyAt = Date.now(); }
+export function recentLocalCopy() {
+  return Date.now() - state.lastLocalCopyAt < TEXT.LOCAL_COPY_GRACE_MS;
+}

@@ -20,16 +20,17 @@ either.
 
 ## What is in Rust, and what is deliberately not
 
-`src-tauri/src/main.rs` is about 150 lines and does four things:
+`src-tauri/src/main.rs` does four things:
 
 1. watches the system clipboard and emits `clipboard://text`
 2. writes incoming clips to the clipboard without needing focus
-3. tray icon, global hotkey, launch-at-login
+3. owns the tray icon and its menu, the window's lifetime, and a global hotkey
 4. refuses to run twice
 
 **Rust never sees a frame, a room hash, or a key.** The protocol, the encryption,
-the transport and the whole UI are the JavaScript in `../src/`, loaded unmodified
-via `frontendDist: "../../"`. That is what keeps the wire protocol at exactly two
+the transport and the whole UI are the JavaScript in `../src/`, built into
+`_desktop/` by `npm run build:desktop` and loaded unmodified. That is what keeps
+the wire protocol at exactly two
 implementations — this app's JavaScript, and the Python relay — however many
 platforms ship. A Rust client would have been a second place for the crypto to be
 subtly and silently wrong.
@@ -39,6 +40,49 @@ On the JavaScript side the integration is one new capture tier, **T0**, in
 `capture()` funnel as the paste and focus tiers, so `main.js`, the editor, the
 history and the transport are all untouched — the boundary in
 [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) §3 doing exactly what it was for.
+
+Everything crossing the IPC boundary goes through
+[`src/core/native.js`](../src/core/native.js), which is the only module allowed
+to mention `__TAURI__` — the static check enforces it. Three modules used to
+feature-test that global independently, which is how all three came to fail at
+once (see `withGlobalTauri` below).
+
+### The tray, per platform
+
+The three platforms genuinely differ, and the menu is the only thing common to
+all of them — which is why **Open RealtimeClipboard** is its first item.
+
+| | left click | double click | right click |
+|---|---|---|---|
+| **Windows** | show the window | show the window | menu |
+| **macOS** | menu | — | menu |
+| **Linux** | — | — | menu |
+
+`DoubleClick` is documented **Windows Only** in `tray-icon`, and on Linux no
+tray click event is delivered at all: libappindicator offers a context menu and
+nothing else. So clicks are a convenience on two platforms and the menu is the
+guarantee on three. macOS opens the menu on a left click because that is what a
+menu-bar item does; the handler returns early there so one click cannot both
+open the menu and raise the window.
+
+The menu is built in `main.rs`, not declared in `tauri.conf.json`, for three
+reasons: the config cannot express a per-platform `show_menu_on_left_click`; the
+Linux icon may not appear at all unless a menu exists when it is created; and
+having icon, menu and both handlers in one block beats having them in two files.
+
+### Closing is not quitting
+
+The **X** button hides the window so the watching continues, and the first close
+says so in a dialog offering *Quit now* / *Keep it running* and an "always quit
+instead" checkbox that becomes `settings.closeToTray`. **Quit** is in the tray
+menu regardless.
+
+That shape is deliberate. Before it, close hid the window, the tray had no menu
+and no click handler, and the only way to quit was Task Manager — the exact
+complaint people file about tray applications. A dialog works here rather than a
+notification because `prevent_close()` means the window is still on screen while
+the question is asked; if the webview cannot answer within two seconds the shell
+hides the window anyway, because an unclosable window is the worse failure.
 
 ## Build
 
@@ -124,8 +168,9 @@ the app had never been compiled. The reasoning they held lives here instead.
 
 - **`security.csp`** is the website's policy plus what the shell needs. The
   webview renders clipboard content arriving from other devices, so it gets the
-  same protection. `tauri:` and `ipc:` are how the frontend reaches the four
-  commands in `main.rs`. The relay origins must match `src/core/config.js` —
+  same protection. `ipc:` is how the frontend reaches the commands in `main.rs`
+  (`set_clipboard`, `set_window_prefs`, `resolve_close`, `set_sync_indicator`).
+  The relay origins must match `src/core/config.js` —
   `tests/unit/static-check.mjs` asserts that for the web pages, and a self-hoster
   changes both.
 
@@ -138,19 +183,33 @@ the app had never been compiled. The reasoning they held lives here instead.
   arbitrary paths off the disk, which this app has no reason to do. `asset:` is
   gone from `img-src` for the same reason.
 
-- **`trayIcon.iconAsTemplate: false`**, and it must stay false while the tray
-  icon is `icons/icon.png`. A macOS template image is drawn from its **alpha
-  channel alone**, and that icon is a full-bleed opaque square — as a template it
-  renders as a solid black block in the menu bar rather than a clipboard. Turning
-  it on needs a separate monochrome-on-transparent asset, which would then be
-  invisible on a dark Windows taskbar. Hence one colour icon for all three.
+- **`app.withGlobalTauri: true`** is what makes the native half exist. It
+  defaults to **false** (`tauri-utils`, `with_global_tauri` under
+  `#[serde(default)]`), and without it `globalThis.__TAURI__` is never injected.
+  This repo ships zero runtime dependencies, so there is no `@tauri-apps/api`
+  import to fall back on: every feature test in `src/clipboard/` failed, T0 never
+  started, incoming clips took a path that needs window focus, and the status bar
+  reported a browser tier — while the help pages told people to look for
+  `T0 · watching the system clipboard` as proof the install had worked. The app
+  ran perfectly and was not a desktop app. The static check now asserts it.
 
-- **`trayIcon.menuOnLeftClick: false`** — left click shows the window. Quit lives
-  in the menu, because an app that watches your clipboard must have a visible way
-  to stop it.
+  It injects the whole JS API onto `window`, so `capabilities/default.json` is
+  the real gate and is kept correspondingly short.
 
-- **`app.windows[0].visible: true`** — started hidden when launched at login
-  (`--hidden`); shown from the tray or the global hotkey.
+- **There is no `app.trayIcon` block.** The tray is built in `main.rs` — see
+  [The tray, per platform](#the-tray-per-platform). Note that the config could
+  not have expressed the behaviour anyway: `menuOnLeftClick` is applied and then
+  overwritten by `showMenuOnLeftClick`, which defaults to **true**, so the
+  committed `false` never took effect and the shipped app was in "left click
+  opens a menu" mode with no menu attached. Left click did nothing.
+
+  The icon comes from `bundle.icon` via `default_window_icon()`. It stays a
+  colour icon rather than a macOS template image: a template is drawn from its
+  **alpha channel alone**, and that asset is a full-bleed opaque square, so it
+  would render as a solid black block in the menu bar. A monochrome-on-
+  transparent asset would fix macOS and then be invisible on a dark Windows
+  taskbar, so it needs to be a *separate* asset — worth doing now that the menu
+  bar is the primary macOS interaction, and not done here.
 
 - **`bundle.targets`** is one list covering every desktop platform; `tauri-action`
   picks the ones each runner can actually produce.
@@ -159,6 +218,14 @@ the app had never been compiled. The reasoning they held lives here instead.
   refuses the install on a distribution too old to run it. Without it the package
   installs cleanly and then fails at launch with a missing symbol, which reads as
   "the app is broken" rather than "the dependency is wrong".
+
+  It also names `libayatana-appindicator3-1 | libappindicator3-1`, and the
+  alternation is required: the plain package is gone from newer Debian, the
+  ayatana one is absent on some older releases, so naming either alone breaks the
+  install on the other. This list is **not merged with anything** — `tauri-bundler`
+  writes `settings.deb().depends` verbatim into the control file, with no
+  auto-detection — so a tray library missing here is a tray library missing at
+  runtime. Verify with `dpkg -I` on the built `.deb`.
 
 - **`bundle.windows.certificateThumbprint: null`** and **`macOS.signingIdentity:
   null`** are empty so a local build still works. See [Signing](#signing) for what
@@ -243,11 +310,28 @@ moment they exist. Notarization is what removes the Gatekeeper dialog entirely.
 
 ## Defaults worth knowing
 
-The app ships set to **Manual** sync, unlike the website. It reads every copy you
-make while it is running, and that is a materially larger thing to agree to than
-a browser tab that can only look when you are looking at it. The
-[`SYNC_MODES` comment in `core/config.js`](../src/core/config.js) makes the same
-argument. Live is one click away for anyone who wants it.
+The app ships set to **Live** sync, the same as the website —
+`DEFAULT_SYNC_MODE` in [`core/config.js`](../src/core/config.js) is not
+per-surface. This paragraph used to claim Manual, and that was never true of any
+build.
+
+It is worth stating why it stays Live rather than being made true. The consent
+argument for Manual is real — the app reads every copy you make while it is
+running, which is a materially larger thing to agree to than a browser tab that
+can only look while you are looking at it. But a default of Manual means the
+first thing a new user copies does not arrive, and the first impression of a
+clipboard app whose first clip does not sync is that it is broken, not that it is
+careful. The consent is better obtained where the guide now obtains it: at first
+launch, in words, with the switch in the dialog.
+
+**Installed builds default to a 10-character key**, where the website stays at 6
+(`KEY.DEFAULT_LONG` in `core/config.js`). Six characters is ~29 bits and chosen
+for a phone keyboard; an installed app links a device by QR or by a copied link,
+so it does not pay that cost, and it is the surface running unattended all day.
+
+The share key is the only thing sent per-surface. The **key derivation is
+unchanged** — length is not a wire format, `isValid` has always accepted 4–32
+characters, and `tests/unit/lock.mjs`'s golden vectors are unaffected.
 
 Nothing is written to disk beyond the settings file — no history, no cache, no
 log. That claim is checkable and should be checked: run a full session under

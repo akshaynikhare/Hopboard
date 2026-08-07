@@ -24,9 +24,10 @@
  * the session. See docs/CLIPBOARD-FLOW.md §6. !!
  */
 
-import { POLL_OPTIONS, TEXT, SYNC_MODES, IMAGES } from "../core/config.js";
+import { POLL_OPTIONS, TEXT, bindsClipboard, IMAGES } from "../core/config.js";
 import { emit, EV } from "../core/bus.js";
 import * as state from "../core/state.js";
+import * as native from "../core/native.js";
 import * as os from "./os.js";
 
 let pollTimer = null;
@@ -36,9 +37,10 @@ export function start() {
   if (started) return;
   started = true;
 
-  // T1 — paste. The floor the product stands on, not an edge case, and the
-  // ONLY path that still runs in manual mode: pasting here is the deliberate
-  // act that manual mode is about.
+  // T1 — paste. The floor the product stands on, not an edge case, and the ONLY
+  // path that still runs below the Clipboard rung: pasting here is the
+  // deliberate act, and it is what lets images keep working on a rung that
+  // never reads the clipboard by itself.
   document.addEventListener("paste", e => {
     const image = os.imageFromPaste(e);
     if (image) {
@@ -47,7 +49,7 @@ export function start() {
       return;
     }
     const text = (e.clipboardData || window.clipboardData)?.getData("text");
-    if (text) capture(text, "Captured by paste");
+    if (text) fromClipboard(text, "Captured by paste");
   });
 
   // T2 — focus and visibility. visibilitychange is the dominant path on Android,
@@ -78,18 +80,17 @@ export function start() {
  * Absent outside Tauri, so this is a no-op in a browser rather than a branch.
  */
 function startNative() {
-  const tauri = globalThis.__TAURI__;
-  if (!tauri?.event?.listen) return;
+  if (!native.IS_DESKTOP) return;
 
-  tauri.event.listen("clipboard://text", ({ payload }) => {
-    // Mode is checked HERE as well as in the native side, deliberately.
-    // Manual mode means nothing leaves this machine unless the user says so,
-    // and that promise must not depend on a second process having got the
+  native.listen("clipboard://text", text => {
+    // Mode is checked HERE as well as in the native side, deliberately. Off and
+    // App both promise that nothing leaves this machine unless the user says
+    // so, and that promise must not depend on a second process having got the
     // message. The cheap check is the one that is load-bearing.
-    if (state.get().settings.syncMode !== SYNC_MODES.LIVE) return;
+    if (!bindsClipboard(state.get().settings.syncMode)) return;
     if (state.isSuppressed()) return;                // FR-2.6, and see the header
-    if (typeof payload === "string" && payload) capture(payload, "Copied anywhere");
-  }).catch(() => { /* the shell is older than this event; the other tiers stand */ });
+    if (typeof text === "string" && text) fromClipboard(text, "Copied anywhere");
+  });
 
   state.setTier("T0", "watching the system clipboard");
 }
@@ -98,7 +99,7 @@ export async function detectTier() {
   // The native watcher outranks anything the browser can offer, and unlike the
   // others it does not depend on a permission or on focus. Do not let the
   // browser's own detection downgrade the reported tier underneath it.
-  if (globalThis.__TAURI__?.event) return;
+  if (native.IS_DESKTOP) return;
   if (!os.canRead()) return state.setTier("T1", "paste only");
 
   const apply = s => {
@@ -121,10 +122,10 @@ export async function requestPermission() {
   await detectTier();
 }
 
-/** T3 — only meaningful while the window is focused, and only in live mode. */
+/** T3 — only meaningful while the window is focused, and only on the top rung. */
 export function startPolling() {
   clearInterval(pollTimer);
-  if (state.get().settings.syncMode !== SYNC_MODES.LIVE) return;
+  if (!bindsClipboard(state.get().settings.syncMode)) return;
   const ms = POLL_OPTIONS[state.get().settings.poll] ?? 0;
   if (!ms) return;
   pollTimer = setInterval(() => { if (document.hasFocus()) tryRead(); }, ms);
@@ -133,15 +134,13 @@ export function startPolling() {
 /**
  * Called when the mode changes so polling starts or stops immediately.
  *
- * `autoread` is derived from the mode rather than set independently. It used
- * to have its own toggle, which meant two controls governed one behaviour and
- * could disagree — the kind of thing that produces a bug report saying the app
- * ignores its own setting. Live mode IS auto-read.
+ * Reading and writing the OS clipboard are both derived from the rung, and
+ * neither has a switch of its own. They each used to: two controls governing
+ * one behaviour is the kind of thing that produces a bug report saying the app
+ * ignores its own setting. The Clipboard rung IS auto-read and auto-write.
  */
 export function applyMode() {
-  const live = state.get().settings.syncMode === SYNC_MODES.LIVE;
-  state.setSetting("autoread", live);
-  if (live) startPolling();
+  if (bindsClipboard(state.get().settings.syncMode)) startPolling();
   else stopPolling();
   emit(EV.SYNC_MODE, { mode: state.get().settings.syncMode });
 }
@@ -150,14 +149,13 @@ export function stopPolling() { clearInterval(pollTimer); }
 
 export async function tryRead() {
   const s = state.get();
-  // Manual mode: the OS clipboard is not watched at all. Nothing leaves this
-  // machine unless the user pastes it here or presses Send.
-  if (s.settings.syncMode !== SYNC_MODES.LIVE) return;
-  if (!s.settings.autoread) return;
+  // Off and App: the OS clipboard is not watched at all. Nothing leaves this
+  // machine unless the user pastes it in here.
+  if (!bindsClipboard(s.settings.syncMode)) return;
   if (state.isSuppressed()) return;          // just applied a remote clip (FR-2.6)
 
   const text = await os.read();
-  if (text) capture(text, "Captured on focus");
+  if (text) fromClipboard(text, "Captured on focus");
 
   // Images are checked on focus only, never on the poll tick: clipboard.read()
   // is markedly more expensive than readText() and would burn battery at 1 Hz
@@ -194,6 +192,19 @@ function captureImage(blob, how) {
   });
 }
 
+/**
+ * Text that came off THIS machine's clipboard, whichever tier found it.
+ *
+ * The mark is what gives a local copy precedence over an arriving clip for the
+ * next few seconds (see apply()). Set before the dedupe, not after: copying the
+ * same thing twice is still you reaching for it, even though there is nothing
+ * new to send.
+ */
+function fromClipboard(text, how) {
+  state.markLocalCopy();
+  capture(text, how);
+}
+
 /** Single funnel for every captured clip, whatever tier found it. */
 export function capture(text, how) {
   const s = state.get();
@@ -206,38 +217,75 @@ export function capture(text, how) {
 /**
  * Apply an incoming clip to the OS clipboard.
  *
- * Order matters: lastSent and the suppression window are set BEFORE the write,
- * so our own poller recognises the value it is about to see and does not bounce
- * it straight back to the sender.
+ * Two reasons the write is deferred rather than done, and they queue into the
+ * same place so there is one rule to learn instead of two:
  *
- * writeText() also requires focus, so a clip arriving while the window is in the
- * background cannot be written immediately. It is queued rather than dropped and
- * flushed on the next focus — same gesture the user already needs for sending,
- * so there is one rule to learn instead of two.
+ *   - writeText() requires focus, so a clip arriving in the background cannot
+ *     be written at all.
+ *   - a clip YOU copied here seconds ago outranks one arriving now. Without
+ *     this, two devices both in use overwrite each other's system clipboard,
+ *     and the moment it costs you is reaching for something you just copied and
+ *     finding it replaced.
+ *
+ * Neither case drops the clip: it is held and offered, and flushed by the same
+ * focus gesture the user already makes.
  */
 export async function apply(text) {
-  const s = state.get();
-  if (!s.settings.autowrite) return false;
+  if (!bindsClipboard(state.get().settings.syncMode)) return false;
 
-  s.lastSent = text;
-  state.suppress(TEXT.SUPPRESS_MS);
-
-  if (!document.hasFocus()) {
+  if (!document.hasFocus() || state.recentLocalCopy()) {
     pending = text;
     emit(EV.PENDING_CLIP, { pending: true, text });
     return false;
   }
+  return writeNow(text);
+}
+
+/**
+ * The actual write, and the ordering that makes it safe.
+ *
+ * lastSent and the suppression window are set BEFORE writing, so our own poller
+ * recognises the value it is about to see and does not bounce it straight back
+ * to the sender. Both deferral paths above route through here rather than
+ * calling os.write() themselves, because that ordering is the only thing
+ * between the user and an endless clipboard storm — see the file header.
+ */
+function writeNow(text) {
+  state.get().lastSent = text;
+  state.suppress(TEXT.SUPPRESS_MS);
   return os.write(text);
+}
+
+/**
+ * Put text on this machine's clipboard because the user deliberately asked —
+ * restoring from history, not a clip arriving from a peer.
+ *
+ * Bypasses the local-copy grace window on purpose: that window exists to stop
+ * a REMOTE clip taking away something you just copied, and this is not remote.
+ * Still gated on the rung, so below Clipboard it is a no-op rather than a
+ * surprise write.
+ *
+ * This is also what makes restoring a clip stick on the top rung. Without it,
+ * the poll tick a second later reads the OS clipboard, finds whatever is
+ * actually there rather than the clip just restored, and broadcasts that
+ * instead — so the click appears to do nothing. Writing the restored clip means
+ * the poller reads back what it expects and dedupes on lastSent.
+ */
+export async function putOnClipboard(text) {
+  if (!bindsClipboard(state.get().settings.syncMode)) return false;
+  if (!text || !document.hasFocus()) return false;
+  state.markLocalCopy();
+  return writeNow(text);
 }
 
 let pending = null;
 
-/** Flush a clip that arrived while we were in the background. */
+/** Flush a clip that arrived while we were away, or while a local copy held it off. */
 export async function flushPending() {
   if (pending === null) return;
   const text = pending;
   pending = null;
-  const ok = await os.write(text);
+  const ok = await writeNow(text);
   emit(EV.PENDING_CLIP, { pending: false });
   if (ok) emit(EV.TOAST, "Pending clip written to your clipboard");
 }

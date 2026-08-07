@@ -499,8 +499,27 @@ The schema below is transport-agnostic on purpose, and this is now load-bearing 
 { "t": "hello", "intent": "create" | "join", "originId": "u7f3" }
 
 { "t": "clip", "payload": "<base64 ciphertext>", "iv": "<base64>", "originId": "u7f3", "ts": 1754400000000 }
+
+// live typing, for the far editor to render — NOT a clip. `text` and `caret`
+// are sealed inside `payload`; only `t` and `originId` are readable.
+{ "t": "stream", "payload": "<base64 ciphertext>", "iv": "<base64>", "originId": "u7f3" }
+
 { "t": "ping" }
 ```
+
+**`clip` versus `stream`.** A clip is a discrete thing that settled: it is retained by the room and
+replayed to late joiners (FR-3.3), it goes into history, and on the Clipboard rung it is written to
+the receiving machine's OS clipboard. A stream is what the text looks like mid-keystroke: broadcast,
+never retained, never replayed, never written to anyone's clipboard. Merging the two would put a
+history entry and a clipboard write behind every keystroke in the session.
+
+The split is also what lets a stream carry the *whole* text rather than a diff, which is why this
+protocol has no positions and no operational transform in it. That trade only holds while the text
+is small, so the client stops streaming above 4 KB and the text syncs on commit alone. Anything
+larger is pasted rather than typed, and a paste commits immediately.
+
+A server that does not know `stream` answers `UNKNOWN_TYPE`; the client treats that as "this relay
+is older than live typing" and degrades to commit-only, which is the pre-streaming behaviour.
 
 `intent` exists to prevent a silent collision: an auto-generated key that happens to match a **live** room would otherwise drop the user straight into a stranger's clipboard. On `intent: "create"`, a `welcome` reporting `peers > 0` means the key is taken — the client discards it, regenerates, and reconnects (max 5 attempts). On `intent: "join"`, `peers == 0` is legitimate and simply means you arrived first.
 
@@ -517,7 +536,11 @@ The schema below is transport-agnostic on purpose, and this is now load-bearing 
 - Server never inspects, decrypts, logs, or persists `payload`.
 - Server assigns `seq`; clients discard out-of-order `seq`.
 - Sender is excluded from its own broadcast; `originId` is a second-line defence against loops.
-- Limits: 32 KB/message, 10 messages/sec/connection, 8 peers/room.
+- Limits: 32 KB/message, 8 peers/room, and **per frame class** per connection: 10/s `interactive`
+  (`clip`, `ping`, `hello`), 20/s `cursor`, 20/s `stream`, 60/s `signal`, 400/s `bulk`
+  (`file-chunk`). The classes exist so that presence and live typing — both a steady trickle —
+  cannot rate-limit the clips, which are the product. A client that puts `stream` in the
+  `interactive` bucket would sit on its ceiling with one person typing.
 
 ---
 

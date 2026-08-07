@@ -3,6 +3,8 @@
  * if you find a magic number elsewhere, it belongs here.
  */
 
+import { IS_DESKTOP } from "./native.js";
+
 /**
  * Relay endpoint.
  *
@@ -153,6 +155,46 @@ export const TEXT = {
   MAX_BYTES: CLIP_MAX_BYTES,                          // the wire limit — authoritative
   MAX_CHARS: Math.floor(CLIP_MAX_BYTES / 1000) * 1000, // the friendly one, for the counter
   SUPPRESS_MS: 1500,          // loop-suppression window after applying a remote clip (FR-2.6)
+
+  /**
+   * Typing is streamed for the far editor to render; a CLIP is still a discrete
+   * thing, made when the text settles. The split is what keeps history, the OS
+   * clipboard write, the dedupe and the size cap resting on whole thoughts
+   * instead of on `h`, `he`, `hel`.
+   *
+   * COMMIT_IDLE_MS is generous because the commit is invisible: the text is
+   * already on the far screen via the stream, so this only decides when it
+   * becomes a clip. A mid-sentence thinking pause is 300-500 ms, and anything
+   * under that would fragment one sentence into six history entries.
+   */
+  COMMIT_IDLE_MS: 800,
+
+  /** 10 sends/sec — half the relay's 20/s `stream` budget, as cursors.js does. */
+  STREAM_THROTTLE_MS: 100,
+
+  /**
+   * Above this, typing is not streamed at all and the text syncs on commit only.
+   *
+   * A stream frame carries the WHOLE text, which is what lets this feature exist
+   * without diffs, positions or operational transform. That trade only holds
+   * while the text is small: re-sending 20 KB per keystroke would be 200 KB/s
+   * through the relay for one person editing a stack trace.
+   *
+   * The degradation is invisible because big text is pasted, never typed —
+   * nobody collaboratively types a stack trace — so the case streaming is for
+   * (a URL, a token, a sentence) is entirely inside this bound.
+   */
+  STREAM_MAX_BYTES: 4096,
+
+  /**
+   * How long a local copy outranks an arriving clip.
+   *
+   * Two devices in Clipboard mode both being used by a human means every copy on
+   * one overwrites the other's system clipboard, and the moment that actually
+   * hurts is "I copied something, went to paste it, and it was gone". Inside
+   * this window the arriving clip is queued and offered instead of written.
+   */
+  LOCAL_COPY_GRACE_MS: 10_000,
 };
 
 export const FILES = {
@@ -204,8 +246,19 @@ export const FILES = {
 export const KEY = {
   // Crockford-ish: no 0/O, no 1/I/L. Ambiguity here becomes a support ticket.
   ALPHABET: "23456789ABCDEFGHJKMNPQRSTVWXYZ",
-  LENGTH: 6,                  // PRD D3
-  LONG_LENGTH: 10,            // "high security" option
+  LENGTH: 6,                  // PRD D3 — the web default
+  LONG_LENGTH: 10,            // "high security" option, PRD §7.3
+
+  /**
+   * Installed builds default to the long key; the web keeps six.
+   *
+   * PRD §7.3's argument for six characters is convenience, and the convenience
+   * is a phone keyboard. An installed app links a device by QR or by a copied
+   * link, so it is the one surface that does not pay the typing cost the short
+   * key buys — and it is the surface running unattended all day reading every
+   * copy, which is the case §7.3 says should take the 10-character option.
+   */
+  DEFAULT_LONG: IS_DESKTOP,
 };
 
 export const CRYPTO = {
@@ -351,24 +404,37 @@ export const NET = {
 export const POLL_OPTIONS = { "Off": 0, "500ms": 500, "1s": 1000, "2s": 2000 };
 
 /**
- * How much of the OS clipboard the app takes on itself.
+ * How far the sync reaches on THIS device. One ladder, three rungs, each adding
+ * exactly one thing to the one below it:
  *
- *   live   — anything you copy anywhere is picked up when this window has
- *            focus, and sent. The default, and what "shared clipboard" means.
- *   manual — nothing leaves this machine until you paste it in here or press
- *            Send. Receiving is unaffected.
+ *   off    — nothing leaves and nothing arrives. The editor is private again.
+ *   manual — the session syncs in the app window. The OS clipboard is neither
+ *            read nor written; the app is a window onto the room.
+ *   live   — the OS clipboard is wired to the room in both directions. What you
+ *            copy anywhere goes out; what arrives is copied here.
  *
- * Manual exists because "live" means every password, token and private
- * message you copy for any reason goes to every device in the session. That is
- * the point of the product, and it is also a lot of trust to extend
- * permanently — someone on a shared or work machine may want the sharing to be
- * a deliberate act.
+ * The room itself is unconditional: every connected device sees every clip in
+ * the app view whatever rung it is on. The rung only decides how deep into the
+ * machine the connection goes, which is why the labels name the destination
+ * (Off / App / Clipboard) rather than a manner of working.
+ *
+ * The stored strings are a compatibility surface. "live" and "manual" are on
+ * disk for every existing user under STORAGE_PREFIX, and relabelling the UI is
+ * free while renaming these silently resets the one preference where being
+ * wrong matters most. Change the labels in ui/features/syncMode.js instead.
  */
 export const SYNC_MODES = {
-  LIVE: "live",
+  OFF: "off",
   MANUAL: "manual",
+  LIVE: "live",
 };
 export const DEFAULT_SYNC_MODE = SYNC_MODES.LIVE;
+
+/** Does this rung let the OS clipboard be read or written? */
+export const bindsClipboard = (mode) => mode === SYNC_MODES.LIVE;
+
+/** Does this rung put anything on the wire at all? */
+export const sharesSession = (mode) => mode !== SYNC_MODES.OFF;
 
 /**
  * The project's own addresses: where the code is, and where it asks for help.

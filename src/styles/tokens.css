@@ -95,3 +95,24 @@
     --num:#098658;
   }
 }
+
+/* ---------------------------------------------------------------- peers
+
+   Identity palette. Five colours, hashed from the peer id by
+   ui/features/cursors.js paletteIndex() and worn by everything that represents
+   that same person: their pointer, their "is typing" chip, and the gutter line
+   their caret is on.
+
+   Here rather than in a component sheet because two sheets need it and only one
+   of them is bundled — styles/lazy/cursors.css is fetched on demand, so the
+   editor could not borrow the mapping from it. One person must not be blue in
+   one place and green in another; that reads as two people.
+
+   All five are existing semantic tokens, legible against --editor in both
+   themes. --bad is deliberately absent: red means "something has gone wrong"
+   everywhere else in this app, and another person is not an error. */
+.c0 { --peer:var(--blue); }
+.c1 { --peer:var(--ok); }
+.c2 { --peer:var(--str); }
+.c3 { --peer:var(--num); }
+.c4 { --peer:var(--warn); }
