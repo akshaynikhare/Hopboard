@@ -5,7 +5,7 @@
 
 | Folder | Prerequisite | Suites |
 |---|---|---|
-| `unit/` | nothing | `static-check` `relay-url` `lock` `files` `clipsize` |
+| `unit/` | nothing | `static-check` `relay-url` `lock` `files` `transfer` `clipsize` |
 | `dom/` | jsdom | `dialog` `whatsnew` `tiles` `bundle` (also needs a build) |
 | `live/` | a reachable relay | `e2e` `boot` `fallback` `cli` |
 

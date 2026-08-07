@@ -115,9 +115,8 @@ const CHUNK_HEADER_BYTES = 8;
 
 /**
  * Backpressure. We allow this many chunks to sit in the SCTP send queue before
- * pausing; bufferedAmountLowThreshold is one chunk, so the drain event fires
- * while there is still something to send and the pipe never goes idle.
- * A queue depth, not a product limit.
+ * pausing. A queue depth, not a product limit — the mark we resume at is set
+ * per wait, in untilBuffered().
  */
 const SEND_QUEUE_CHUNKS = 8;
 const SEND_HIGH_WATER = FILES.CHUNK_BYTES * SEND_QUEUE_CHUNKS;
@@ -213,7 +212,7 @@ export const isActive = id => live.has(id);
 function makeTransfer(id, role, peer) {
   const t = {
     id, role, peer,
-    path: null, percent: 0, done: false,
+    path: null, percent: 0, done: false, queued: false,
     pc: null, dc: null, rx: null, meta: null,
     pendingIce: [], remoteReady: false,
     iceTimer: null, deadline: null, idleTimer: null,
@@ -428,7 +427,6 @@ function startIceRace(t) {
   }
   t.dc = dc;
   dc.binaryType = "arraybuffer";
-  dc.bufferedAmountLowThreshold = FILES.CHUNK_BYTES;
 
   dc.onopen = () => {
     if (t.path) return;                            // the timer already won
@@ -439,8 +437,9 @@ function startIceRace(t) {
   };
   dc.onerror = () => { if (!t.path) toRelay(t, "the data channel errored"); };
   dc.onclose = () => {
-    // Closing after we finished is normal; closing mid-transfer is not.
-    if (t.path === PATH.P2P && !t.done) abort(t, "the direct connection dropped");
+    // Closing after we finished is normal; closing mid-transfer is not. Once
+    // everything is queued the receiver may simply have finished first.
+    if (t.path === PATH.P2P && !t.done && !t.queued) abort(t, "the direct connection dropped");
   };
 
   // THE RACE. Corporate networks block the UDP this needs, so assume it loses.
@@ -502,16 +501,25 @@ async function streamOverDataChannel(t) {
     progress(t, ((c.seq + 1) / p.total) * 100);
   }
 
-  if (dc.readyState !== "open") return abort(t, "the direct connection closed");
-  dc.send(JSON.stringify({ fin: 1, id: t.id, digest: t.digest }));
+  // Every chunk is queued. Past this point a close is the peer hanging up
+  // rather than a failure: the receiver completes on the last chunk, not on the
+  // fin marker, so it may already hold the whole file and be tearing down
+  // first. A genuine failure over there arrives as file-error on the relay.
+  t.queued = true;
 
-  // dc.send() only queues, and pc.close() destroys the SCTP association along
-  // with anything still in it. For a file under the high-water mark drain()
-  // never paused once, so that is frequently the whole transfer — and we would
-  // have reported "Sent" on the way out.
-  if (!await flush(t)) return abort(t, "the direct connection dropped before the file finished");
+  if (dc.readyState === "open") {
+    dc.send(JSON.stringify({ fin: 1, id: t.id, digest: t.digest }));
 
-  await closeGracefully(t);
+    // dc.send() only queues, and pc.close() destroys the SCTP association along
+    // with anything still in it. For a file under the high-water mark drain()
+    // never paused once, so that is frequently the whole transfer — and we
+    // would have reported "Sent" on the way out.
+    if (!await flush(t) && dc.readyState === "open") {
+      return abort(t, "the direct connection stalled before the file finished");
+    }
+    await closeGracefully(t);
+  }
+
   if (t.done) return;
   sent(t);
 }
@@ -617,7 +625,7 @@ async function streamOverRelay(t) {
 /** Our side of a successful send. The file stays local; the bar goes away. */
 function sent(t) {
   const name = registry.get(t.id)?.name ?? "file";
-  const via = t.path === PATH.RELAY ? "the relay" : "a direct connection";
+  const via = t.path === PATH.P2P ? "a direct connection" : "the relay";
   finish(t);
   registry.setState(t.id, registry.STATE.IDLE);
   registry.setProgress(t.id, 0);
@@ -693,13 +701,18 @@ async function onRtcOffer(frame) {
     const dc = ev.channel;
     t.dc = dc;
     dc.binaryType = "arraybuffer";
-    dc.onopen = () => {
+    const opened = () => {
       if (t.path === PATH.RELAY) return;
       clearTimeout(t.iceTimer);
       t.iceTimer = null;
       setPath(t, PATH.P2P);
       registry.setState(t.id, registry.STATE.RECEIVING);
     };
+    dc.onopen = opened;
+    // A channel the remote peer announced arrives already open, and engines
+    // differ on whether an open event follows it. Without this the path is
+    // never marked and the timer below tears down a live transfer.
+    if (dc.readyState === "open") opened();
     dc.onmessage = msg => {
       try { onChannelMessage(t, msg.data); }
       catch (err) { abort(t, describe(err)); }
@@ -722,7 +735,7 @@ async function onRtcOffer(frame) {
   clearTimeout(t.iceTimer);
   t.iceTimer = setTimeout(() => {
     t.iceTimer = null;
-    if (t.path) return;
+    if (t.path || t.rx || t.dc?.readyState === "open") return;
     console.info(`[transfer] ${t.id}: no direct connection, expecting relay chunks`);
     closeRtc(t);
   }, iceTimeout);

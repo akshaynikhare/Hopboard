@@ -18,6 +18,7 @@ RELAY_BASE=ws://127.0.0.1:8000 npm test        # or point the whole run at one
 | `lock.mjs` | Locked-session derivation, against golden vectors |
 | `relay-url.mjs` | Relay address resolution and normalisation |
 | `files.mjs` | Adding a file tells the other peers about it |
+| `transfer.mjs` | A direct transfer delivers every byte before the connection is torn down |
 | `clipsize.mjs` | A clip at the limit actually fits through the relay |
 
 ### dom/ — needs jsdom
