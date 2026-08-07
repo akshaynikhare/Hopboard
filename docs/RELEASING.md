@@ -181,6 +181,45 @@ platform, re-run the workflow, and nothing is lost.
 Use `--dry` first if you want to see the commit list and the version it would
 pick without changing anything.
 
+### Step 6 does not work, and you will hit it
+
+The ruleset on `main` (Settings → Rules) requires every change to arrive through
+a pull request, with no bypass actors. `npm run release` makes the version-bump
+commit **on `main`** and pushes it, so it dies at the last step:
+
+```
+Error: Command failed: git push origin main
+```
+
+Everything before that has already happened and is correct — the changelog is
+written, the versions are bumped, the tag exists locally. Only the push was
+refused. Recover by moving the commit onto a branch and landing it the normal
+way:
+
+```bash
+git tag -d v0.3.0                    # the local tag points at a commit main will never have
+git branch release/v0.3.0            # keep the release commit
+git reset --hard origin/main         # put main back
+git switch release/v0.3.0 && git push -u origin release/v0.3.0
+gh pr create --title "chore(release): v0.3.0" --fill
+gh pr merge --squash
+
+git switch main && git pull
+git tag -a v0.3.0 -m "…"             # the changelog section, as release.mjs writes it
+git push origin v0.3.0               # THIS is what starts release.yml
+```
+
+Tags are not covered by the ruleset, which is why the last line works.
+
+**Two ways to stop paying this every release**, and it is worth picking one:
+
+1. Add a bypass actor for **Repository admin** on the ruleset. `npm run release`
+   then works exactly as written above. The protection still applies to
+   everyone else.
+2. Change `tools/release/release.mjs` to push a `release/vX.Y.Z` branch and open
+   the pull request itself, then tag after the merge. More faithful to the
+   policy, and nobody has to remember the recovery above.
+
 ### First release — the one-time manual steps
 
 None of these can be automated, all of them are invisible until they bite, and
