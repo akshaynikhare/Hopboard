@@ -11,12 +11,20 @@ name: Desktop build
 # toolchain was available to check it, so the first green run of this workflow
 # is the first evidence that desktop/ is real rather than plausible.
 
-# Three runners per run, so it is deliberately hard to trigger by accident.
+# Three runners and about four minutes per run, so it is deliberately hard to
+# trigger by accident.
 #
-# `push` is limited to main. On a branch with an open pull request the two
-# triggers both fire on every commit, which is two identical three-platform
-# builds for one push — six runners to answer one question. The pull_request
-# trigger covers branches; this one covers merges.
+# There is NO pull_request trigger, and that is the whole point rather than an
+# oversight. GitHub evaluates a pull_request path filter against the entire
+# diff between base and head — not against the commits just pushed — so on a
+# branch that has touched desktop/ even once, every subsequent push rebuilds
+# all three platforms however unrelated the change. A branch that edits the
+# download page twenty times spends sixty runners proving the same Rust still
+# compiles.
+#
+# So: run it by hand while working on the Rust (`gh workflow run desktop.yml`),
+# and automatically on merge to main, which is the commit that matters. A tag
+# builds everything again in release.yml regardless.
 on:
   workflow_dispatch:
     inputs:
@@ -28,12 +36,10 @@ on:
     branches: [main]
     # Only things that can change what the compiler sees. A README edit is not
     # worth three runners, and neither is editing this file.
-    paths: &code
+    paths:
       - "desktop/**"
       - "!desktop/**/*.md"
       - "tools/build/build.mjs"
-  pull_request:
-    paths: *code
 
 # A second push supersedes the first: nobody needs the compile result for a
 # commit that has already been replaced.
