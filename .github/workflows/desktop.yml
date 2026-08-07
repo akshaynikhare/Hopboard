@@ -11,20 +11,45 @@ name: Desktop build
 # toolchain was available to check it, so the first green run of this workflow
 # is the first evidence that desktop/ is real rather than plausible.
 
+# Three runners and about four minutes per run, so it is deliberately hard to
+# trigger by accident.
+#
+# There is NO pull_request trigger, and that is the whole point rather than an
+# oversight. GitHub evaluates a pull_request path filter against the entire
+# diff between base and head — not against the commits just pushed — so on a
+# branch that has touched desktop/ even once, every subsequent push rebuilds
+# all three platforms however unrelated the change. A branch that edits the
+# download page twenty times spends sixty runners proving the same Rust still
+# compiles.
+#
+# So: run it by hand while working on the Rust (`gh workflow run desktop.yml`),
+# and automatically on merge to main, which is the commit that matters. A tag
+# builds everything again in release.yml regardless.
 on:
   workflow_dispatch:
+    inputs:
+      bundle:
+        description: "Also bundle the installers and upload them (nothing is published)"
+        type: boolean
+        default: false
   push:
+    branches: [main]
+    # Only things that can change what the compiler sees. A README edit is not
+    # worth three runners, and neither is editing this file.
     paths:
       - "desktop/**"
-      - ".github/workflows/desktop.yml"
-  pull_request:
-    paths:
-      - "desktop/**"
+      - "!desktop/**/*.md"
+      - "tools/build/build.mjs"
 
 # A second push supersedes the first: nobody needs the compile result for a
 # commit that has already been replaced.
+#
+# The bundle runs get their own group. They take five times as long as a compile
+# check and are dispatched deliberately to read the artifact names off a real
+# build — having an unrelated push twenty minutes later cancel one is how you
+# lose an afternoon to a workflow doing exactly what it was told.
 concurrency:
-  group: desktop-${{ github.ref }}
+  group: desktop-${{ github.ref }}-${{ inputs.bundle && 'bundle' || 'compile' }}
   cancel-in-progress: true
 
 jobs:
@@ -68,6 +93,44 @@ jobs:
       - name: Compile
         working-directory: desktop/src-tauri
         run: cargo build --locked --verbose
+
+      # ── the dress rehearsal ──────────────────────────────────────────────
+      # Everything downstream of a release — the URLs on /download/, the
+      # Homebrew cask, the winget manifest — is a filename, and Tauri's naming
+      # differs per target and has changed between versions. tools/release/
+      # manifest.mjs says so itself: its asset table is "guesses until the
+      # first real release, and the most likely thing here to be wrong".
+      #
+      # This turns the guess into a listing, on demand, without publishing
+      # anything. Run it before a tag, not after: the alternative is that the
+      # first tag is also the first time anyone sees a real filename.
+      # tauri.conf.json's beforeBuildCommand runs tools/build/build.mjs, which
+      # imports esbuild — so the frontend's devDependencies have to be here
+      # before `tauri build` starts, or it fails inside the bundler with
+      # "Cannot find package 'esbuild'".
+      - name: Node, for the frontend build
+        if: inputs.bundle
+        uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+
+      - name: Install frontend devDependencies
+        if: inputs.bundle
+        run: npm ci
+
+      - name: Bundle the installers
+        if: inputs.bundle
+        working-directory: desktop/src-tauri
+        run: npx --yes @tauri-apps/cli@2 build
+
+      - name: Upload them
+        if: inputs.bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.label }}
+          path: |
+            desktop/src-tauri/target/release/bundle/**/*
+          if-no-files-found: error
+          retention-days: 7
 
       # Warnings are not failures here. The scaffold is new and a pedantic gate
       # on day one would mean fixing style before it has ever run.

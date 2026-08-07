@@ -53,7 +53,24 @@ export const EV = {
 
   // session
   KEY_CHANGED:     "session:key",      // {key, locked}
-  LOCK_STATE:      "session:lock",     // {locked, verified} — see core/crypto.js
+  /**
+   * {locked, verified} — see core/crypto.js.
+   *
+   * "lockstate", not "lock", and the extra syllable is load-bearing. The name
+   * used to be "session:lock", which is ALSO the imperative the UI emits to
+   * mean "lock this session" (main.js). One name, two opposite meanings: a
+   * report and an order. So every state.setKey() — one per session, on every
+   * single boot — delivered a report to the handler that acts on the order,
+   * and the app opened the "Lock this session" PIN dialog by itself the moment
+   * it started. Nothing failed, nothing was logged, and the dialog looked
+   * exactly like a feature.
+   *
+   * Announcements are past tense here (`session:key`, `peers:changed`) and
+   * commands are bare verbs (`session:lock`, `session:leave`). Keep it that
+   * way; the bus does no namespacing of its own and a collision is silent.
+   */
+  LOCK_STATE:      "session:lockstate",
+  FOUNDER:         "session:founder",  // {founder} — first into this room? null = not yet known
 
   // files
   FILES_CHANGED:   "files:changed",    // full list

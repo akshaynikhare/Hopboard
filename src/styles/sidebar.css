@@ -61,7 +61,23 @@
 .paneh .spacer { flex:1; }
 .paneh .soft { font-weight:400; text-transform:none; letter-spacing:0; color:var(--dim); }
 
-.chev { transition:transform .12s; font-size:10px; opacity:.9; }
+/* The disclosure chevron.
+   Drawn, not typed. It was a ⌄ (U+2304) text glyph, and the Windows fallback
+   fonts that pick it up render a hairline caret sitting above the baseline —
+   nothing like the 1.5px stroked icons in the same header, and different again
+   in the two panes. The path is centred in its own viewBox so the -90° rotation
+   below turns about the mark rather than swinging it off-centre. */
+.chev {
+  display:inline-flex;
+  flex:none;
+  opacity:.7;
+  transition:transform .12s;
+}
+.chev svg {
+  width:12px; height:12px;
+  fill:none; stroke:currentColor; stroke-width:2.2;
+  stroke-linecap:round; stroke-linejoin:round;
+}
 
 .paneb { flex:1; overflow:auto; min-height:0; padding:4px 0 8px; }
 

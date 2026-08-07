@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+
+<title>Run your own RealtimeClipboard relay with Docker</title>
+<meta name="description" content="One container, no database. Run the relay yourself, verify /health, point the app at it, and put TLS in front of it with the supplied compose file.">
+<link rel="canonical" href="https://realtimeclipboard.com/help/install/relay/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="RealtimeClipboard">
+<meta property="og:title" content="Run your own RealtimeClipboard relay">
+<meta property="og:description" content="One Python file, no database, no state. Docker, docker compose with automatic TLS, or a Helm chart.">
+<meta property="og:url" content="https://realtimeclipboard.com/help/install/relay/">
+<meta property="og:image" content="https://realtimeclipboard.com/assets/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://realtimeclipboard.com/help/install/relay/#article",
+      "headline": "Run your own RealtimeClipboard relay with Docker",
+      "description": "One container, no database. Run the relay yourself, verify /health, point the app at it, and put TLS in front of it with the supplied compose file.",
+      "isPartOf": { "@id": "https://realtimeclipboard.com/#website" },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "RealtimeClipboard", "item": "https://realtimeclipboard.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Help", "item": "https://realtimeclipboard.com/help/" },
+        { "@type": "ListItem", "position": 3, "name": "Installing", "item": "https://realtimeclipboard.com/help/install/" },
+        { "@type": "ListItem", "position": 4, "name": "Your own relay" }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/src/landing/landing.css">
+<script type="module" src="/src/landing/copy.js"></script>
+</head>
+<body>
+
+<!-- Platform mark, sized and coloured by .brandmark in landing.css. Path data
+     from Simple Icons (CC0-1.0) except the Windows pane, which is drawn here —
+     Simple Icons carries no Microsoft mark. The marks are trademarks of their
+     owners and identify the platform only. -->
+<svg class="icons" aria-hidden="true">
+  <symbol id="i-docker" viewBox="0 0 24 24"><path d="M13.983 11.078h2.119a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.119a.185.185 0 00-.185.185v1.888c0 .102.083.185.185.185m-2.954-5.43h2.118a.186.186 0 00.186-.186V3.574a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m0 2.716h2.118a.187.187 0 00.186-.186V6.29a.186.186 0 00-.186-.185h-2.118a.185.185 0 00-.185.185v1.887c0 .102.082.185.185.186m-2.93 0h2.12a.186.186 0 00.184-.186V6.29a.185.185 0 00-.185-.185H8.1a.185.185 0 00-.185.185v1.887c0 .102.083.185.185.186m-2.964 0h2.119a.186.186 0 00.185-.186V6.29a.185.185 0 00-.185-.185H5.136a.186.186 0 00-.186.185v1.887c0 .102.084.185.186.186m5.893 2.715h2.118a.186.186 0 00.186-.185V9.006a.186.186 0 00-.186-.186h-2.118a.185.185 0 00-.185.185v1.888c0 .102.082.185.185.185m-2.93 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.083.185.185.185m-2.964 0h2.119a.185.185 0 00.185-.185V9.006a.185.185 0 00-.184-.186h-2.12a.186.186 0 00-.186.186v1.887c0 .102.084.185.186.185m-2.92 0h2.12a.185.185 0 00.184-.185V9.006a.185.185 0 00-.184-.186h-2.12a.185.185 0 00-.184.185v1.888c0 .102.082.185.185.185M23.763 9.89c-.065-.051-.672-.51-1.954-.51-.338.001-.676.03-1.01.087-.248-1.7-1.653-2.53-1.716-2.566l-.344-.199-.226.327c-.284.438-.49.922-.612 1.43-.23.97-.09 1.882.403 2.661-.595.332-1.55.413-1.744.42H.751a.751.751 0 00-.75.748 11.376 11.376 0 00.692 4.062c.545 1.428 1.355 2.48 2.41 3.124 1.18.723 3.1 1.137 5.275 1.137.983.003 1.963-.086 2.93-.266a12.248 12.248 0 003.823-1.389c.98-.567 1.86-1.288 2.61-2.136 1.252-1.418 1.998-2.997 2.553-4.4h.221c1.372 0 2.215-.549 2.68-1.009.309-.293.55-.65.707-1.046l.098-.288Z"/></symbol>
+</svg>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="/">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <rect x="8" y="3" width="8" height="4" rx="1"/>
+          <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
+          <path d="M9 13l2 2 4-4"/>
+        </svg>
+        <b>RealtimeClipboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="/download/">Download</a>
+      <a class="tlink" href="/help/">Help</a>
+      <a class="tlink" href="/blog/">Blog</a>
+      <a class="tlink strong" href="/app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="sec">
+    <div class="in doc">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">RealtimeClipboard</a> <span aria-hidden="true">/</span>
+        <a href="/help/">Help</a> <span aria-hidden="true">/</span>
+        <a href="/help/install/">Installing</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">Your own relay</span>
+      </nav>
+
+      <header class="pagehead">
+        <h1><svg class="brandmark" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-docker"/></svg> Running your own relay</h1>
+        <p class="lede">
+          The relay carries encrypted clips between your devices. It never sees
+          anything but a room hash and ciphertext, and it stores nothing — but
+          you do not have to take that on trust, because you can run it
+          yourself. It is one Python file with no database.
+        </p>
+      </header>
+
+      <div class="article">
+
+        <p class="honest">
+          <b>The published image is waiting on the first release.</b> The
+          <code>docker run</code> line below is what the release pipeline pushes
+          to GHCR; until it has run against a tag, use the from-source path in
+          the next section, which works today.
+        </p>
+
+        <h2 id="install">Run it</h2>
+        <pre><code>docker run -p 8000:8000 ghcr.io/akshaynikhare/realtimeclipboard-relay</code></pre>
+        <p>Or from a clone, with no container at all:</p>
+        <pre><code>pip install -r backend/requirements.txt
+python -m uvicorn main:app --app-dir backend --port 8000</code></pre>
+        <p>
+          That is the whole relay. No database, no volume, no migration step, and
+          nothing to back up — every session lives in memory and is gone when the
+          process exits, which is the design rather than a limitation.
+        </p>
+
+        <h2 id="check">Check it worked</h2>
+        <pre><code>curl http://localhost:8000/health</code></pre>
+        <p>
+          It answers with the instance's identifier. That field is not
+          decoration: it is how a client can tell it has been load-balanced onto
+          a different replica mid-session, which is the failure this design has
+          to be careful about — see the replicas section below.
+        </p>
+
+        <h2 id="first">Point the app at it</h2>
+        <ol class="steps">
+          <li>Open <a href="/app.html">the app</a> and go to
+            <b>Settings → Relay</b>.</li>
+          <li>Enter your relay's URL — <code>ws://localhost:8000</code> for a
+            local test, <code>wss://clip.example.com</code> for a real one.</li>
+          <li>The status bar reads <b>Connected</b> once it answers. Do the same
+            on a second device and sync a clip between them; nothing has touched
+            the public relay.</li>
+        </ol>
+        <p>
+          The command-line client takes <code>--relay</code> or
+          <code>REALTIMECLIPBOARD_RELAY</code> for the same purpose.
+        </p>
+
+        <h2 id="tls">TLS and a real hostname</h2>
+        <pre><code>cd deploy
+REALTIMECLIPBOARD_DOMAIN=clip.example.com docker compose up -d</code></pre>
+        <p>
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/tree/main/deploy">The deploy directory</a>
+          has a compose file that puts Caddy in front of the relay and obtains a
+          certificate automatically, and a Helm chart beside it for Kubernetes.
+        </p>
+        <p class="honest">
+          <b>TLS is not optional in practice.</b> Browsers only expose
+          <code>crypto.subtle</code> in a secure context, so a page served over
+          plain HTTP on a LAN address cannot derive a key at all — the app cannot
+          work there regardless of what the relay does.
+        </p>
+
+        <h2 id="replicas">Before you scale it out</h2>
+        <p>
+          <b>Pin replicas to one, or give it Redis.</b> A room is held in the
+          memory of the process serving it, so two replicas behind a round-robin
+          load balancer put the two halves of a session on different machines and
+          neither sees the other. It presents as clips silently not arriving,
+          which looks like a client bug and is not one. The Helm chart refuses
+          <code>replicaCount &gt; 1</code> without Redis for exactly this reason.
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/blob/main/docs/SELF-HOSTING.md">The self-hosting notes</a>
+          cover the environment variables and the HA path in full.
+        </p>
+
+        <h2 id="trouble">When it does not work</h2>
+
+        <h3>Connected, but clips never arrive</h3>
+        <p>
+          Almost always more than one replica without shared state — see above.
+          Compare the <code>/health</code> identifier from each device: if they
+          differ, that is the whole answer.
+        </p>
+
+        <h3>The app cannot reach it at all</h3>
+        <p>
+          Two candidates. The page's own Content-Security-Policy lists the relay
+          origins it may connect to, so a self-hosted copy of the static site
+          needs <code>connect-src</code> updated in <code>index.html</code>,
+          <code>app.html</code> and each page under <code>src/pages/</code>. And
+          if you are using the hosted site with your own relay, the hosted
+          policy will not permit it — self-host both halves.
+        </p>
+
+        <h3>It connects then drops, repeatedly</h3>
+        <p>
+          A reverse proxy that is not forwarding WebSocket upgrades. The client
+          then falls back to server-sent events plus POST and keeps working, more
+          slowly, which is why this shows up as sluggishness rather than
+          failure. Forward <code>Upgrade</code> and <code>Connection</code>.
+        </p>
+
+        <h3>An idle session disappears</h3>
+        <p>
+          Rooms are reaped when empty. That is deliberate — a relay that keeps
+          nothing has nothing to leak.
+        </p>
+
+        <h2 id="remove">Shutting it down</h2>
+        <pre><code>docker compose down            # or: docker rm -f &lt;container&gt;</code></pre>
+        <p>
+          There is no data to delete. Everything the relay held was in memory,
+          and it was ciphertext.
+        </p>
+
+        <p class="hint">
+          The full operational notes, including the environment-variable table
+          and the high-availability path:
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/blob/main/docs/SELF-HOSTING.md">docs/SELF-HOSTING.md</a>.
+          Every platform: <a href="/help/install/">the installation guide</a>.
+          Something wrong or out of date here?
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/issues">Open an issue</a>.
+        </p>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <p><a href="/">Home</a> · <a href="/download/">Download</a> · <a href="/help/">Help</a> · <a href="/blog/">Blog</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

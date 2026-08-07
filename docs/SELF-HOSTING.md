@@ -75,12 +75,25 @@ Three ways, in the order the app resolves them:
 > **You must also edit the Content-Security-Policy.** Every page pins
 > `connect-src` to the relay it was built against, so a client pointed at a
 > different one will load and then refuse every connection. Change the
-> `connect-src` origins in `index.html`, `app.html` and the pages under `help/`
-> and `blog/` to match. `tests/static-check.mjs` asserts they agree with
+> `connect-src` origins in `index.html`, `app.html` and every page under
+> `src/pages/` to match. `tests/unit/static-check.mjs` asserts they agree with
 > `config.js`, so you will be told if you miss one.
 >
 > This is deliberate, not friction for its own sake. A build that can physically
 > reach only your relay is a property worth having.
+
+## Serve it from an origin root, not a subpath
+
+`https://clip.example.com/` works. `https://example.com/clip/` does not.
+
+The pages under `src/pages/` are published one level above where they sit on disk, so every link
+in them is root-absolute — and a root-absolute link cannot be correct under a path prefix.
+`src/core/paths.js` resolves the app root the same way, and `sw.js` has to stay at the root or its
+scope shrinks to a subdirectory and offline support disappears with nothing throwing.
+
+This used to work, on GitHub Pages at `user.github.io/RealtimeClipboard/`. If you need it back, the
+change is `new URL("/", …)` → `new URL(".", …)` in `paths.js` plus converting `src/pages/` back to
+relative links — but the two link styles cannot coexist, which is why only one is supported.
 
 ---
 

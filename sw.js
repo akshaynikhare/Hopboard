@@ -1,11 +1,16 @@
 /**
  * RealtimeClipboard service worker — app-shell cache (PRD FR-4.2).
  *
- * Scope note (PRD OI-9). The site is served from a GitHub Pages *subpath*,
- * https://<user>.github.io/RealtimeClipboard/, so nothing in this file may start with a
- * leading "/". Every URL below is relative to this script, which the browser
- * resolves against /RealtimeClipboard/sw.js — and a worker's default scope is its own
- * directory, so the registration covers exactly the app and nothing else.
+ * Scope note (PRD OI-9). This file must stay AT the site root, whatever else
+ * moves. A worker's default scope is its own directory, so `/sw.js` controls
+ * `/` — one directory down and it would control that directory alone, and the
+ * app would silently lose offline support and PWA installability with nothing
+ * throwing.
+ *
+ * The paths below stay relative to this script even though subpath hosting is
+ * no longer supported (src/core/paths.js). At the root the two forms are
+ * identical, and relative costs nothing — whereas a leading "/" here would be a
+ * second place the origin is assumed, for no gain.
  *
  * What is NOT cached, ever:
  *   - the relay (realtimeclipboard.fastapicloud.dev) and any ws:/wss: traffic. Clipboard
@@ -14,7 +19,7 @@
  *   - cross-origin requests of any kind.
  *   - anything that is not a GET.
  *
- * VERSION and SHELL below are both REWRITTEN AT DEPLOY by tools/build.mjs —
+ * VERSION and SHELL below are both REWRITTEN AT DEPLOY by tools/build/build.mjs —
  * VERSION from the release tag, SHELL from the files the bundle actually
  * produced. The values committed here are the ones development uses, where the
  * unbundled module tree is what gets served. Editing them by hand for a deploy
@@ -38,7 +43,7 @@
 
 const KILL = false;
 
-const VERSION = "v4";
+const VERSION = "v5";
 const CACHE = `realtimeclipboard-shell-${VERSION}`;
 
 /** Hosts this worker must never touch, whatever the request looks like. */
@@ -51,8 +56,8 @@ const ROOT = new URL("./", self.location).pathname;
  * The app shell, enumerated by hand.
  *
  * This literal list is the DEVELOPMENT shell: the module tree as served by
- * `npm run serve`, with a line per module. tests/static-check.mjs keeps it
- * honest against disk. tools/build.mjs REPLACES it wholesale at deploy with the
+ * `npm run serve`, with a line per module. tests/unit/static-check.mjs keeps it
+ * honest against disk. tools/build/build.mjs REPLACES it wholesale at deploy with the
  * bundled output, because the paths below do not exist there.
  *
  * Neither kind of drift is fatal. A missing entry still gets cached the first
@@ -80,53 +85,29 @@ const SHELL = [
   "./src/files/registry.js",
   "./src/files/thumbs.js",
   "./src/files/transfer.js",
+  "./src/landing/copy.js",
+  "./src/landing/download.js",
   "./src/landing/faq.js",
   "./src/landing/globe.js",
   "./src/landing/land.js",
-  "./src/landing/landing.js",
-  "./src/main.js",
-  "./src/transport/protocol.js",
-  "./src/transport/relay.js",
-  "./src/transport/sse.js",
-  "./src/transport/ws.js",
-  "./src/ui/ads.js",
-  "./src/ui/appLinks.js",
-  "./src/ui/banners.js",
-  "./src/ui/cursors.js",
-  "./src/ui/dom.js",
-  "./src/ui/editor.js",
-  "./src/ui/filesPanel.js",
-  "./src/ui/hints.js",
-  "./src/ui/historyPanel.js",
-  "./src/ui/install.js",
-  "./src/ui/lockDialog.js",
-  "./src/ui/mobileNav.js",
-  "./src/ui/modal.js",
-  "./src/ui/panes.js",
-  "./src/ui/qr.js",
-  "./src/ui/resizer.js",
-  "./src/ui/sessionPanel.js",
-  "./src/ui/statusMenu.js",
-  "./src/ui/statusbar.js",
-  "./src/ui/syncMode.js",
-  "./src/ui/toast.js",
-  "./src/ui/whatsNew.js",
-  "./src/landing/download.js",
   "./src/landing/landing.css",
+  "./src/landing/landing.js",
   "./src/landing/redirect.js",
+  "./src/main.js",
   "./src/styles/ads.css",
   "./src/styles/appbar.css",
   "./src/styles/banners.css",
   "./src/styles/base.css",
   "./src/styles/components.css",
-  "./src/styles/cursors.css",
   "./src/styles/editor.css",
   "./src/styles/files.css",
   "./src/styles/hints.css",
   "./src/styles/history.css",
-  "./src/styles/install.css",
   "./src/styles/layout.css",
-  "./src/styles/lock.css",
+  "./src/styles/lazy/cursors.css",
+  "./src/styles/lazy/install.css",
+  "./src/styles/lazy/lock.css",
+  "./src/styles/lazy/whatsnew.css",
   "./src/styles/main.css",
   "./src/styles/mobile.css",
   "./src/styles/qr.css",
@@ -134,12 +115,38 @@ const SHELL = [
   "./src/styles/sidebar.css",
   "./src/styles/statusbar.css",
   "./src/styles/tokens.css",
-  "./src/styles/whatsnew.css",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/icon.svg",
-  "./icons/maskable-192.png",
-  "./icons/maskable-512.png",
+  "./src/transport/protocol.js",
+  "./src/transport/relay.js",
+  "./src/transport/sse.js",
+  "./src/transport/ws.js",
+  "./src/ui/features/ads.js",
+  "./src/ui/features/appLinks.js",
+  "./src/ui/features/cursors.js",
+  "./src/ui/features/hints.js",
+  "./src/ui/features/install.js",
+  "./src/ui/features/lockButton.js",
+  "./src/ui/features/lockDialog.js",
+  "./src/ui/features/qr.js",
+  "./src/ui/features/syncMode.js",
+  "./src/ui/features/whatsNew.js",
+  "./src/ui/panels/editor.js",
+  "./src/ui/panels/filesPanel.js",
+  "./src/ui/panels/historyPanel.js",
+  "./src/ui/panels/sessionPanel.js",
+  "./src/ui/primitives/dom.js",
+  "./src/ui/primitives/modal.js",
+  "./src/ui/primitives/statusMenu.js",
+  "./src/ui/shell/banners.js",
+  "./src/ui/shell/mobileNav.js",
+  "./src/ui/shell/panes.js",
+  "./src/ui/shell/resizer.js",
+  "./src/ui/shell/statusbar.js",
+  "./src/ui/shell/toast.js",
+  "./assets/icons/icon-192.png",
+  "./assets/icons/icon-512.png",
+  "./assets/icons/icon.svg",
+  "./assets/icons/maskable-192.png",
+  "./assets/icons/maskable-512.png",
 ];
 
 /* ---------------- lifecycle ---------------- */

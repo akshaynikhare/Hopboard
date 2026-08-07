@@ -24,6 +24,18 @@ const state = {
    */
   locked: false,
   verified: false,
+  /**
+   * Were we the first device into this room?
+   *
+   * `null` until the relay's `welcome` answers it — "not yet known" is a third
+   * state and must not be spelled `false`, or the lock button would be refused
+   * for the fraction of a second before the room reports itself and refused
+   * again for the whole of an offline session.
+   *
+   * Only locking reads it (see canLock). The relay's `existing` count is the
+   * source: it is the peers already present at the moment we joined.
+   */
+  founder: null,
   authToken: null,           // proves PIN knowledge to the relay; not a secret
   originId: crypto.randomUUID().slice(0, 8),   // this tab, for loop suppression
   peerId: null,              // assigned by the relay in `welcome.you`
@@ -56,8 +68,49 @@ export function setKey({ key, roomHash, aesKey, locked = false, authToken = null
   // A new key is a new room: whatever we had proved about the old one does not
   // carry over, and claiming otherwise would leave a stale padlock on screen.
   state.verified = false;
+  // Likewise "we were first" — asked and answered per room. Left standing, the
+  // founder of one session would carry the right to lock into the next one it
+  // walked into, which is precisely the device that must not have it.
+  state.founder = null;
   emit(EV.KEY_CHANGED, { key, locked });
   emit(EV.LOCK_STATE, { locked, verified: false });
+  emit(EV.FOUNDER, { founder: null });
+}
+
+/**
+ * Record whether this device was the first one into the room.
+ *
+ * Fed from `welcome.existing` in main.js. Re-answered on every welcome, so a
+ * relay restart — which empties every room (OI-13) — hands the title to
+ * whoever reconnects into the empty room first, rather than to whoever held it
+ * before the room stopped existing.
+ */
+export function setFounder(first) {
+  const next = first === null ? null : !!first;
+  if (state.founder === next) return;
+  state.founder = next;
+  emit(EV.FOUNDER, { founder: next });
+}
+
+/**
+ * May THIS device lock the session?
+ *
+ * Alone, anyone may: there is nobody to be thrown out. With company, only the
+ * device that opened the room, because locking is not a setting — it moves the
+ * session to a different room and removes everybody else from it (see
+ * LOCK.EVICT). A control that lets any arrival do that to the rest is a control
+ * for taking a session over, and the person who started it is the one who
+ * chose to share the key in the first place.
+ *
+ * A rule the UI keeps, not one the relay enforces: every device in the room
+ * already holds the key, so a modified client could send the goodbye itself.
+ * That is not a new power — it could equally read every clip — and the honest
+ * description of this is "the app will not help you do it", not "you cannot".
+ */
+export function canLock() {
+  if (state.locked) return false;
+  if (state.peers <= 1) return true;
+  return state.founder === true;
 }
 
 /**

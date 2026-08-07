@@ -1,7 +1,7 @@
 /**
  * RealtimeClipboard — the land mask the globe draws its continents from.
  *
- * GENERATED FILE. Do not hand-edit: run `node tools/build-land-mask.mjs`
+ * GENERATED FILE. Do not hand-edit: run `node tools/build/build-land-mask.mjs`
  * against Natural Earth's 1:110m land polygons and commit what comes out. The
  * generator is not part of any build — this file ships as source, like
  * everything else here.

@@ -58,11 +58,106 @@ cargo tauri build --config desktop/src-tauri/tauri.conf.json
 
 Artifacts land in `desktop/src-tauri/target/release/bundle/`.
 
+### The icons
+
+`src-tauri/icons/` is generated and committed. It is not decoration: `build.rs`
+runs `tauri-build`, which compiles the first `.ico` into the Windows resource, so
+a missing icon set fails `cargo build` on Windows — not just `tauri build`. That
+is exactly what it did, silently, through the v0.2.0 and v0.2.1 tags.
+
+Regenerate it only when the logo changes:
+
+```bash
+# assets/icons/icon.svg at 1024, because `tauri icon` wants >=1024 and the
+# committed PNG is 512. Any SVG rasteriser does; headless Chrome is already here.
+chrome --headless=new --disable-gpu --window-size=1024,1024 \
+       --screenshot=icon-1024.png file:///…/icon.svg
+
+npx --yes @tauri-apps/cli@2 icon icon-1024.png -o desktop/src-tauri/icons
+rm -rf desktop/src-tauri/icons/{android,ios}   # no mobile target ships
+```
+
+Transient `npx` rather than a devDependency: this runs when the logo changes, and
+nobody should pay 35 MB of native binaries on every `npm install` for it.
+
 > **Not yet compiled.** This scaffold was written without a Rust toolchain
 > available, so it has never been through `cargo build`. Treat the first build as
 > part of the work: expect plugin API details — particularly the
 > `tauri-plugin-clipboard-manager` v2 trait import in `main.rs` — to need
 > adjusting against the crate versions that actually resolve.
+
+## Why tauri.conf.json looks like that
+
+The file carries no `"//"` comment keys. **It cannot**: `tauri-build` deserializes
+the config with unknown fields denied, so a `"//"` key is not an ignored comment
+but a hard build failure — `unknown field '//version', expected one of …`. The
+config had carried six of them since it was written and nobody found out, because
+the app had never been compiled. The reasoning they held lives here instead.
+
+- **`version: "../../package.json"`** is a path, not a number. Tauri reads the
+  version from the repository's own manifest rather than restating it. A second
+  copy is a copy that drifts, and this one already had: the config said `0.1.0`
+  through both the v0.2.0 and v0.2.1 tags, which would have named every artifact
+  after a version nobody released. `tools/release/release.mjs` bumps the two
+  remaining copies — `Cargo.toml` and `Cargo.lock` — together, because
+  `cargo build --locked` fails outright when they disagree.
+
+- **`frontendDist: "../../_desktop"`**, built by `beforeBuildCommand`, is the
+  same bundle the website ships — not a copy, not a variant. That is the most
+  important property in the file: it is what stops the desktop app becoming a
+  second implementation that drifts. It used to be `"../../"`, the repository
+  itself, which meant `node_modules/` and `docs/` went inside the installer;
+  `tools/build/build.mjs --desktop` exists to make pointing at a real build
+  possible. See the header comment there for why an ignore file was not the fix.
+
+  **The two paths in that line are relative to different directories, and that
+  is not a typo.** `beforeBuildCommand` runs from `desktop/` — the parent of
+  `src-tauri`, not `src-tauri` itself — so the script is `../tools/…`, while
+  `frontendDist` is resolved against `src-tauri/` and is `../../_desktop`.
+  Getting the first one wrong resolves to a path above the repository root and
+  fails with `Cannot find module`.
+
+- **`security.csp`** is the website's policy plus what the shell needs. The
+  webview renders clipboard content arriving from other devices, so it gets the
+  same protection. `tauri:` and `ipc:` are how the frontend reaches the four
+  commands in `main.rs`. The relay origins must match `src/core/config.js` —
+  `tests/unit/static-check.mjs` asserts that for the web pages, and a self-hoster
+  changes both.
+
+- **`security.assetProtocol.enable: false`.** It was `true`, with an empty
+  `scope` — a protocol switched on that was permitted to serve zero files, and
+  which nothing calls: there is no `convertFileSrc` anywhere in `src/`. It also
+  broke the build outright, because enabling it requires the `protocol-asset`
+  feature on the `tauri` dependency, which `Cargo.toml` does not carry. Bundled
+  files are served over `tauri://`, not `asset:` — the latter is for reading
+  arbitrary paths off the disk, which this app has no reason to do. `asset:` is
+  gone from `img-src` for the same reason.
+
+- **`trayIcon.iconAsTemplate: false`**, and it must stay false while the tray
+  icon is `icons/icon.png`. A macOS template image is drawn from its **alpha
+  channel alone**, and that icon is a full-bleed opaque square — as a template it
+  renders as a solid black block in the menu bar rather than a clipboard. Turning
+  it on needs a separate monochrome-on-transparent asset, which would then be
+  invisible on a dark Windows taskbar. Hence one colour icon for all three.
+
+- **`trayIcon.menuOnLeftClick: false`** — left click shows the window. Quit lives
+  in the menu, because an app that watches your clipboard must have a visible way
+  to stop it.
+
+- **`app.windows[0].visible: true`** — started hidden when launched at login
+  (`--hidden`); shown from the tray or the global hotkey.
+
+- **`bundle.targets`** is one list covering every desktop platform; `tauri-action`
+  picks the ones each runner can actually produce.
+
+- **`bundle.linux.deb.depends`** names webkit2gtk **4.1** as the floor, so apt
+  refuses the install on a distribution too old to run it. Without it the package
+  installs cleanly and then fails at launch with a missing symbol, which reads as
+  "the app is broken" rather than "the dependency is wrong".
+
+- **`bundle.windows.certificateThumbprint: null`** and **`macOS.signingIdentity:
+  null`** are empty so a local build still works. See [Signing](#signing) for what
+  CI does when the secrets exist, and what users see when they do not.
 
 ## The thing to get right
 
@@ -81,16 +176,61 @@ clip crosses exactly once each way and then stops — for five minutes.
 
 ## Signing
 
-Not optional for this app in particular. SmartScreen and most antivirus treat an
-unsigned binary that reads the clipboard and opens outbound TLS connections as
-suspicious, which is a fair description of what this does.
+Matters more for this app than for most. SmartScreen and a lot of antivirus
+treat an unsigned binary that reads the clipboard and opens outbound TLS
+connections as suspicious, which is a fair description of what this does.
 
-- **Windows** — Azure Trusted Signing (~$10/month) or an EV certificate
-  ($300–600/year). CI reads `WINDOWS_CERTIFICATE` / `WINDOWS_CERTIFICATE_PASSWORD`.
-- **macOS** — Apple Developer Program ($99/year). **Notarization is mandatory**:
-  without it Gatekeeper refuses the download rather than warning about it. CI
-  reads `APPLE_CERTIFICATE`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`.
-- **Linux** — nothing to sign.
+**Today it ships unsigned**, and `release.yml` is wired so that adding the
+secrets is the only step needed to change that — no workflow edit. What users
+see meanwhile is written on `/download/` rather than left for them to discover:
+
+| | Unsigned | What the user does |
+|---|---|---|
+| Windows | SmartScreen: "Windows protected your PC" | **More info → Run anyway** |
+| macOS | Gatekeeper refuses: "Apple cannot check it for malicious software" | **System Settings → Privacy & Security → Open Anyway** |
+| Linux | nothing to sign | AppImage needs `chmod +x` |
+
+macOS gets an **ad-hoc signature** (`APPLE_SIGNING_IDENTITY` falls back to `-`)
+even with no certificate. That does not satisfy Gatekeeper, but it is the
+difference between "unidentified developer", which is a warning, and "the app is
+damaged", which reads as a corrupt download and gets the file deleted.
+
+### Getting a Windows certificate
+
+Since June 2023 every code-signing key must live on FIPS 140-2 hardware, so a
+`.pfx` you can simply buy and copy into a secret no longer exists.
+
+- **Azure Trusted Signing — about $10/month.** Cheapest by an order of
+  magnitude, no hardware, built for CI. Individual identity validation exists but
+  wants roughly three years of verifiable history. **Start here.**
+- **OV certificate — $200–400/year** (Sectigo, SSL.com, DigiCert). Ships a USB
+  token, or uses a cloud HSM. SmartScreen reputation still has to accumulate
+  over downloads, so the first few users are warned anyway.
+- **EV certificate — $400+/year**, hardware token. The only option that gives
+  **immediate** SmartScreen reputation, i.e. a clean first download.
+
+Then set `WINDOWS_CERTIFICATE` (base64 of the `.pfx`) and
+`WINDOWS_CERTIFICATE_PASSWORD`. `release.yml` imports it and writes the
+thumbprint into the config at build time; the committed `certificateThumbprint`
+stays `null` so local builds keep working.
+
+### Getting an Apple certificate
+
+About $99/year, and worth it — the unsigned macOS experience is the worst of the
+three by a distance.
+
+1. Join the **Apple Developer Program** (individual, or an organization with a
+   D-U-N-S number).
+2. Create a **Developer ID Application** certificate — the one for distribution
+   *outside* the Mac App Store. Export it as a `.p12`.
+3. Create an app-specific password for notarization, or an App Store Connect API
+   key.
+4. Set `APPLE_CERTIFICATE` (base64 `.p12`), `APPLE_CERTIFICATE_PASSWORD`,
+   `APPLE_SIGNING_IDENTITY` (`Developer ID Application: Name (TEAMID)`),
+   `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`.
+
+`release.yml` already reads all six, so signing and notarization turn on the
+moment they exist. Notarization is what removes the Gatekeeper dialog entirely.
 
 ## Defaults worth knowing
 

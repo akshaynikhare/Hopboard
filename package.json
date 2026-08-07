@@ -34,32 +34,33 @@
     "node": ">=22"
   },
   "scripts": {
-    "verify": "node tests/static-check.mjs && node tests/relay-url.mjs && node tests/lock.mjs && node tests/dialog.mjs && node tests/whatsnew.mjs && node tests/files.mjs && node tests/clipsize.mjs",
-    "test": "npm run verify && node tests/bundle.mjs && node tests/e2e.mjs && node tests/boot.mjs && node tests/boot.mjs --locked && node tests/fallback.mjs",
-    "test:static": "node tests/static-check.mjs",
-    "test:lock": "node tests/lock.mjs && node tests/dialog.mjs",
-    "test:e2e": "node tests/e2e.mjs",
-    "test:boot": "node tests/boot.mjs && node tests/boot.mjs --locked",
-    "test:bundle": "node tests/bundle.mjs",
-    "test:fallback": "node tests/fallback.mjs",
-    "build": "node tools/build.mjs",
-    "build:site": "node tools/build.mjs _site && node tools/site-check.mjs _site",
-    "build:og": "python tools/build-og-card.py",
-    "check:og": "python tools/build-og-card.py --check",
-    "check:csp": "node tools/build.mjs _site && node tools/csp-check.mjs",
+    "verify": "node tests/unit/static-check.mjs && node tests/unit/relay-url.mjs && node tests/unit/lock.mjs && node tests/unit/files.mjs && node tests/unit/transfer.mjs && node tests/unit/clipsize.mjs && node tests/dom/dialog.mjs && node tests/dom/whatsnew.mjs && node tests/dom/tiles.mjs",
+    "test": "npm run verify && node tests/dom/bundle.mjs && node tests/live/e2e.mjs && node tests/live/boot.mjs && node tests/live/boot.mjs --locked && node tests/live/fallback.mjs",
+    "test:static": "node tests/unit/static-check.mjs",
+    "test:lock": "node tests/unit/lock.mjs && node tests/dom/dialog.mjs",
+    "test:e2e": "node tests/live/e2e.mjs",
+    "test:boot": "node tests/live/boot.mjs && node tests/live/boot.mjs --locked",
+    "test:bundle": "node tests/dom/bundle.mjs",
+    "test:tiles": "node tests/dom/tiles.mjs",
+    "test:fallback": "node tests/live/fallback.mjs",
+    "test:cli": "node tests/live/cli.mjs",
+    "build": "node tools/build/build.mjs",
+    "build:site": "node tools/build/build.mjs _site && node tools/check/site-check.mjs _site",
+    "build:og": "python tools/build/build-og-card.py",
+    "check:og": "python tools/build/build-og-card.py --check",
+    "check:csp": "node tools/build/build.mjs _site && node tools/check/csp-check.mjs",
     "relay": "python -m uvicorn main:app --app-dir backend --port 8000",
-    "relay:up": "node tools/relay-up.mjs",
-    "changelog": "node tools/changelog.mjs",
-    "release": "node tools/release.mjs",
+    "relay:up": "node tools/release/relay-up.mjs",
+    "changelog": "node tools/release/changelog.mjs",
+    "release": "node tools/release/release.mjs",
     "serve": "python -m http.server 8080",
     "prepare": "husky",
-    "test:cli": "node tests/cli.mjs",
-    "prepublishOnly": "npm run verify && node tests/cli.mjs"
+    "prepublishOnly": "npm run verify && node tests/live/cli.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.1",
     "husky": "^9.1.7",
     "jsdom": "^26.1.0"
   },
-  "comment": "esbuild is used ONLY by tools/build.mjs, which assembles the deploy — src/ stays plain ES modules on disk, so `npm run serve` still needs no build and the .husky checks still run against real modules. jsdom is needed by tests/boot.mjs and tests/bundle.mjs, which skip cleanly when it is absent. tests/fallback.mjs needs a relay on 127.0.0.1:8000 and skips cleanly without one. The app itself still ships with zero RUNTIME dependencies."
+  "comment": "esbuild is used ONLY by tools/build/build.mjs, which assembles the deploy — src/ stays plain ES modules on disk, so `npm run serve` still needs no build and the .husky checks still run against real modules. Tests are filed by what they need to run: tests/unit needs nothing, tests/dom needs jsdom, tests/live needs a relay. `verify` is all of unit plus the three dom suites that need no build, which is what a pre-commit hook can afford; `test` adds dom/bundle.mjs and everything under live. Every suite skips cleanly when its prerequisite is absent. The app itself still ships with zero RUNTIME dependencies."
 }

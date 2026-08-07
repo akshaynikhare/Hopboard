@@ -19,9 +19,15 @@
 # of them produces a policy that no single file in the repo describes, and the
 # violation shows up in a browser rather than in a check. tools/site-check.mjs
 # asserts the two agree. !!
+#
+# `https://api.github.com` in connect-src is there for one page: /download/ asks
+# the releases API for the current installer URLs and their sizes. It cannot be
+# scoped to that path — Pages matches paths, and two CSPs INTERSECT rather than
+# the more specific one winning, so a /download/* rule could only ever tighten
+# this one. The app never calls it; the policy simply no longer forbids it.
 
 /*
-  Content-Security-Policy: default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types realtimeclipboard
+  Content-Security-Policy: default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

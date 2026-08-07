@@ -37,7 +37,7 @@ Three rules follow from that diagram, and each is enforced rather than trusted:
 | No commits directly on `main` | `.husky/pre-commit` |
 | Tests pass before a commit exists | `.husky/pre-commit` → `npm run verify` |
 | A commit says what kind of change it is | `.husky/commit-msg` |
-| A broken site is never promoted | `tools/site-check.mjs`, in the Cloudflare build |
+| A broken site is never promoted | `tools/check/site-check.mjs`, in the Cloudflare build |
 | Only a tag ships CLI/desktop/relay | `.github/workflows/release.yml` |
 
 ---
@@ -55,7 +55,7 @@ dashboard rather than in this repo, so they are recorded here:
 | Root directory | `/` |
 | `NODE_VERSION` | `22` |
 
-`npm run build:site` is `tools/build.mjs` followed by `tools/site-check.mjs`. The
+`npm run build:site` is `tools/build/build.mjs` followed by `tools/check/site-check.mjs`. The
 second half is the gate: it asserts the required files exist, that the sitemap
 and `robots.txt` name the canonical origin, that `app.html` still carries its
 `noindex`, that the manifest has no SVG icon, and that the `_headers` CSP and the
@@ -152,16 +152,83 @@ relay image. **It does not deploy the site**; step 6's push to `main` already
 did, a minute earlier, via Cloudflare Pages. So by the time the tag artifacts
 finish building, the web app has been live for a while. That ordering is fine —
 the site is versionless and the artifacts are not — but it does mean a release
-is not a single atomic moment, and a download page can briefly advertise a
-version whose binaries are still compiling.
+is not a single atomic moment.
+
+The download page is built for that gap rather than damaged by it. It asks the
+releases API for the current assets at load time instead of being told them at
+build time, and `release.yml` keeps the GitHub release a **draft** until all
+three desktop builds have passed. `/releases/latest` skips drafts, so during
+those twenty-odd minutes the page simply keeps offering the generic releases
+link it shipped with. Nothing points at a file that does not exist, and nothing
+has to be re-deployed when the binaries land.
+
+### What the jobs do, and what stops
+
+```
+verify ──┬── desktop  (windows / macos / ubuntu-22.04)  ─┬── publish-release ── manifests
+         ├── npm                                        ─┘
+         └── relay-image
+```
+
+`publish-release` is the job that makes the release public, and it needs **all
+three** desktop legs. A partial build therefore leaves a draft nobody can
+download, which is the intended failure mode: better no installers than a
+release page advertising a `.dmg` that failed to compile.
+
+If it stops there, the artifacts are still on the draft — fix the failing
+platform, re-run the workflow, and nothing is lost.
 
 Use `--dry` first if you want to see the commit list and the version it would
 pick without changing anything.
 
+### First release — the one-time manual steps
+
+None of these can be automated, all of them are invisible until they bite, and
+each one silently breaks something the download page promises. They are done
+once, ever.
+
+**1. `NPM_TOKEN`.** The `npm` job skips itself when this is missing, so the
+release still produces installers — it just never publishes the CLI, and every
+`npx realtimeclipboard` example on the site keeps failing.
+
+```bash
+# an AUTOMATION token, not a Classic Publish token: 2FA blocks the latter in CI
+gh secret set NPM_TOKEN
+```
+
+**2. Make the relay image public.** A package pushed by `GITHUB_TOKEN` is
+created **private**, and linking it to the repository does not grant public
+read. Until this is done, the `docker run ghcr.io/…` line on `/download/` and in
+`docs/SELF-HOSTING.md` fails with an authentication error for everybody, for
+ever — and nothing anywhere reports that it is happening.
+
+Only possible after the first `release.yml` run has created the package:
+
+1. GitHub → your profile → **Packages** → `realtimeclipboard-relay`
+2. **Package settings → Manage Actions access** → add the repository with
+   **Write**, or the next tag's push gets a 403 now that the package exists
+3. **Danger Zone → Change visibility → Public**
+
+**3. The Homebrew tap.** `manifest.mjs` generates the cask and the CLI formula,
+but they land in `dist/manifests/` on the runner and are uploaded as an
+artifact. They have to be committed to `akshaynikhare/homebrew-tap`, which has
+to exist first. Until it does, the `brew install --cask` line stays tagged *not
+published yet* on the page.
+
+**4. The winget manifest.** Generated the same way and submitted to
+`microsoft/winget-pkgs`, where people who do not work on this project review it.
+Expect days, not minutes — which is why the page tags it rather than claiming it
+works.
+
+**Nothing on the site claims any of these before they are true.** If you turn
+one on, remove its *not published yet* tag on `/download/` **and** in the
+matching `src/pages/help/install/` guide in the same commit; they duplicate each
+other, and a half-update leaves the site contradicting itself.
+
 ### The one place `--no-verify` is used on purpose
 
 The release commit is made on `main`, which the pre-commit hook exists to
-prevent. `tools/release.mjs` passes `--no-verify` for that one commit, having
+prevent. `tools/release/release.mjs` passes `--no-verify` for that one commit, having
 already run the checks itself a moment earlier. It is the only automated bypass
 in the repository.
 
@@ -169,7 +236,7 @@ in the repository.
 
 ## The changelog
 
-`tools/changelog.mjs` reads the git history and writes two files from one pass:
+`tools/release/changelog.mjs` reads the git history and writes two files from one pass:
 
 - **`CHANGELOG.md`** — every release, in full, for the repository
 - **`changelog.json`** — the last few releases, capped, shipped with the app
@@ -188,7 +255,7 @@ npm run changelog -- --check  # exit 1 if they are stale
 
 ### In the app
 
-`src/ui/whatsNew.js` fetches `changelog.json` and shows a dismissible banner
+`src/ui/features/whatsNew.js` fetches `changelog.json` and shows a dismissible banner
 when the running version differs from the last one this browser saw. Two rules:
 
 - **It never interrupts.** Arrival is a banner; the dialog only opens if asked.
@@ -202,7 +269,7 @@ A missing or malformed `changelog.json` produces silence, not an error.
 
 ### One version, one identity
 
-`tools/build.mjs` stamps `sw.js`'s `VERSION` as **`<package.json version>+<short
+`tools/build/build.mjs` stamps `sw.js`'s `VERSION` as **`<package.json version>+<short
 commit sha>`** — `0.3.1+9f2c4ab10e77`. The leading half is the same string that
 heads `CHANGELOG.md` and appears in "What's new", so a cache name still reads as
 a release rather than as an opaque hash.
@@ -241,7 +308,7 @@ one-second reachability check the pre-push hook uses.
 
 ## If the deploy fails
 
-Read the Cloudflare build log. A failure is almost always `tools/site-check.mjs`
+Read the Cloudflare build log. A failure is almost always `tools/check/site-check.mjs`
 catching something real — a file that moved, a missing `noindex` on `app.html`,
 an SVG that crept back into the manifest's `icons[]`, a canonical URL still
 naming the old origin. Each check prints what it was protecting.

@@ -42,7 +42,7 @@ local one with `npm run relay`.
 ## Commit messages
 
 [Conventional Commits](https://www.conventionalcommits.org), enforced by the
-`commit-msg` hook, because `tools/changelog.mjs` generates the changelog from
+`commit-msg` hook, because `tools/release/changelog.mjs` generates the changelog from
 them:
 
 ```
@@ -63,7 +63,7 @@ The repository has boundaries that the static checks enforce, and they will fail
 the commit rather than the review:
 
 - `navigator.clipboard` is confined to `src/clipboard/`.
-- `innerHTML` is written only in `src/ui/dom.js`. Everything else uses `esc()`
+- `innerHTML` is written only in `src/ui/primitives/dom.js`. Everything else uses `esc()`
   and `setHTML()`.
 - No UI, files, or clipboard module imports a transport channel directly.
 - No module resolves a path from `import.meta.url` — see `src/core/paths.js`
@@ -82,7 +82,7 @@ get a question back.
   issue. Tests use throwaway keys like `D75LV`.
 - **The key derivation is a wire format.** Changing the salts, the iteration
   counts, or the domain-separation strings in `src/core/config.js` strands every
-  link in existence. `tests/lock.mjs` holds golden vectors that will fail if you
+  link in existence. `tests/unit/lock.mjs` holds golden vectors that will fail if you
   do; that failure is the feature. If a change there is genuinely intended, say
   so explicitly in the commit body.
 - **Storage keys are compatibility too.** `STORAGE_PREFIX` changes orphan

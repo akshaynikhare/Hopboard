@@ -40,7 +40,7 @@
      pinned here is deliberate — a corporate build that can physically reach
      only its own relay is a feature, not an oversight. tests/static-check.mjs
      asserts this list agrees with RELAY_URL in src/core/config.js. !! -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
 
 <title>RealtimeClipboard</title>
 <meta name="theme-color" content="#007acc">
@@ -112,6 +112,12 @@
          the project links took that corner, and the switch is the one control
          here you press rather than read, so it keeps the roomier spot. -->
     <div id="mount-mode"></div>
+
+    <!-- Lock this session. Built by ui/lockButton.js, which also decides
+         whether this device is allowed to press it — locking removes everyone
+         else from the room, so only the device that opened it may, once there
+         is anyone else here. It opens a dialog when pressed and never before. -->
+    <div id="mount-lock"></div>
 
     <!-- Report / sponsor. Built by ui/appLinks.js so the URLs come
          from core/config.js REPO and exist once — a rename or a fork is then
@@ -190,7 +196,7 @@
       <!-- PANEL 2 — files -->
       <section class="pane grow" id="paneFiles">
         <div class="paneh" data-toggle>
-          <span class="chev">⌄</span> Files &amp; Images
+          <span class="chev"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8L12 16L20 8"/></svg></span> Files &amp; Images
           <span class="spacer"></span>
           <span class="soft" id="fileN">0</span>
           <button class="ibtn" id="bAdd" title="Add files">

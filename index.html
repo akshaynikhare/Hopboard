@@ -9,7 +9,7 @@
      actually needs them; repeating the argument on five pages would guarantee
      five versions of it. The landing page needs connect-src for the relay too —
      src/landing/globe.js fetches /stats. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
 
 <!--
   Title and description target "online clipboard" and "clipboard sync", which is
@@ -22,14 +22,14 @@
 <link rel="canonical" href="https://realtimeclipboard.com/">
 <meta name="theme-color" content="#007acc">
 <link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="./assets/icons/icon.svg" type="image/svg+xml">
 
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="RealtimeClipboard">
 <meta property="og:title" content="Online Clipboard — Sync Text Between Devices, No Login">
 <meta property="og:description" content="Copy on one machine, paste on another. A five-character key, no account, end-to-end encrypted. Works across different networks, not just the same Wi-Fi.">
 <meta property="og:url" content="https://realtimeclipboard.com/">
-<meta property="og:image" content="https://realtimeclipboard.com/social/og-card.png">
+<meta property="og:image" content="https://realtimeclipboard.com/assets/social/og-card.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="RealtimeClipboard — an online clipboard shared between a laptop and a phone with a five-character key.">
@@ -51,7 +51,7 @@
       "@id": "https://realtimeclipboard.com/#org",
       "name": "RealtimeClipboard",
       "url": "https://realtimeclipboard.com/",
-      "logo": "https://realtimeclipboard.com/icons/icon-512.png",
+      "logo": "https://realtimeclipboard.com/assets/icons/icon-512.png",
       "description": "RealtimeClipboard builds a free, end-to-end encrypted online clipboard that syncs text between devices and sends files peer-to-peer.",
       "sameAs": [
         "https://github.com/akshaynikhare/RealtimeClipboard"

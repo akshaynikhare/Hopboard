@@ -1,0 +1,273 @@
+/*
+ * The download page's own layout. Everything else comes from
+ * ../src/landing/landing.css, and every colour here is a token from it — a hex
+ * literal in this file would be a bug for the same reason it is one in
+ * src/styles/ (docs/ARCHITECTURE.md §3).
+ */
+
+.pick {
+  margin: 24px 0 8px;
+}
+
+.pickcard {
+  border: 1px solid var(--rule2);
+  border-left: 3px solid var(--link);
+  border-radius: 8px;
+  padding: 18px 20px;
+  background: var(--panel);
+}
+
+.pickhead {
+  margin: 0 0 4px;
+  font-weight: 600;
+  color: var(--bright);
+}
+
+.pickcard p { margin: 0 0 10px; }
+.pickcard .btn { margin-top: 4px; }
+
+/*
+ * The two tiers.
+ *
+ * The split is stated four ways, in this order: the eyebrow names it, the
+ * heading names it again, the CARD SHAPES differ — a one-click card is a panel
+ * with a button, an advanced card is a heading over a command block and has no
+ * button at all — and only then is there a tint. Colour is the last signal and
+ * the only removable one, which is the order .cap already uses.
+ */
+.tier {
+  /* Gutter off this block and onto its children, the trade `.doc > .article`
+     makes: the tier's rule then spans the full column while its type stays
+     inset. Restating the two `.doc > p` widths is the cost — the wrapper stops
+     those selectors reaching the paragraphs inside it. */
+  padding-left: 0;
+  padding-right: 0;
+  border-top: 1px solid var(--rule);
+  padding-bottom: clamp(28px, 4vw, 44px);
+}
+.tier > * { padding-left: var(--gut); padding-right: var(--gut); }
+/* The reset zeroes every margin and `.doc` never restored one for <p>, so two
+   consecutive paragraphs ran together — visible in the mobile section, which is
+   the only place on the old page that had a pair. */
+.tier > p { max-width: 72ch; margin-bottom: 14px; }
+.tier > p.honest { max-width: none; }
+
+/*
+ * color-mix, not a solid colour, and that is load-bearing. `.rules` is fixed at
+ * z-index 0 with main above it, so an opaque background on a full-span block
+ * paints over the page's vertical hairlines — on the one page whose identity is
+ * that grid. `.card:hover` in landing.css solves it the same way. An engine
+ * without color-mix drops the declaration and gets no band, which is fine: the
+ * band is the fourth of four signals.
+ */
+.tier-adv {
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+  border-top-color: var(--rule2);
+  border-bottom: 1px solid var(--rule2);
+}
+
+.tierhead { padding-top: clamp(26px, 3.4vw, 40px); }
+.tierhead .eyebrow { margin-bottom: 12px; }
+.tierhead h2 { margin-bottom: 10px; }
+.tierhead > p { color: var(--dim); max-width: 62ch; }
+
+.tier h3 {
+  font-size: clamp(17px, 1.8vw, 21px);
+  margin: clamp(26px, 3vw, 38px) 0 8px;
+}
+
+/* The command blocks that sit in a section rather than inside a card. These had
+   no rule at all: browser default, no overflow handling, and body's
+   overflow-x:hidden then clipped the end of a long line. Margin rather than
+   padding, so the border stays off the vertical rules. */
+.tier > pre {
+  margin: 0 var(--gut) 18px;
+  padding: 10px 12px;
+  background: var(--sunk);
+  border: 1px solid var(--rule2);
+  border-radius: 6px;
+}
+.tier > pre code { font-size: 0.86rem; }
+
+.dlgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 20px 0 32px;
+}
+
+.dlcard {
+  border: 1px solid var(--rule2);
+  border-radius: 8px;
+  padding: 18px 20px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  transition: border-color .2s var(--ease), box-shadow .2s var(--ease), transform .2s var(--ease);
+}
+
+.dlcard:hover {
+  border-color: var(--rule2);
+  box-shadow: var(--lift);
+  transform: translateY(-2px);
+}
+
+.dlcard.wide { grid-column: 1 / -1; }
+
+/* The tier heading owns the section, so a card heading sits a level below it —
+   overriding `.tier h3` above, which is sized for the section headings. */
+.dlcard h3 {
+  margin: 0 0 10px;
+  font-size: 1.02rem;
+}
+
+.dlicon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 14px;
+  border: 1px solid var(--rule2);
+  border-radius: 8px;
+  background: var(--sunk);
+  color: var(--text);
+  transition: border-color .2s var(--ease), color .2s var(--ease);
+}
+.dlcard:hover .dlicon { border-color: var(--blue); color: var(--bright); }
+.pickcard .dlicon { margin-bottom: 12px; }
+
+.dlcard .btn { align-self: flex-start; }
+
+.dlcard .hint { margin: 8px 0 4px; }
+
+/* Commands are the one thing on this page a reader will copy. That used to be an
+   argument for scrolling the block rather than wrapping it — a wrapped command
+   reads as two. src/landing/copy.js makes the point moot by putting a button on
+   every block, and the wrapping rule now lives beside it in landing.css, because
+   the help pages carry the same commands and had the same scrollbar. */
+.dlcard pre,
+.cmdcard pre {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--sunk);
+  border: 1px solid var(--rule2);
+}
+
+.dlcard code,
+.cmdcard code { font-size: 0.86rem; }
+
+/*
+ * The advanced tier's cards. Deliberately not a .dlcard: no panel fill, no
+ * button, no lift. A reader scanning for something to press finds nothing here,
+ * which is the point — the command IS the card.
+ */
+.cmdgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 18px 0 8px;
+}
+
+.cmdcard {
+  border: 1px solid var(--rule2);
+  border-radius: 8px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cmdcard.wide { grid-column: 1 / -1; }
+
+.cmdcard h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font: 650 13px/1.3 var(--ui);
+  letter-spacing: -.005em;
+  color: var(--bright);
+}
+
+.cmdcard .tag { align-self: flex-start; margin: 0 0 8px; }
+.cmdcard .hint { margin-top: auto; padding-top: 8px; }
+
+/* The route out of this page. Sits below .cap, which holds margin-top:auto, so
+   the pair bottom-align together and every card's capability line lands on the
+   same baseline however tall its neighbours are. */
+.doclink {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
+  font-size: 13px;
+}
+.doclink a { text-decoration: none; }
+.doclink a:hover { text-decoration: underline; }
+
+.steps-list {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+.steps-list li { margin: 0 0 6px; }
+
+/*
+ * The capability line, which is the most important text on the page.
+ *
+ * Colour-coded, and ALSO prefixed with a word — "yes", "not possible" — because
+ * the distinction it draws is the one users get wrong, and a reader who cannot
+ * tell green from amber must still get the answer. Colour is the decoration
+ * here, never the message (docs/ACCESSIBILITY.md).
+ */
+.cap {
+  margin-top: auto;
+  padding-top: 12px;
+  font-size: 0.88rem;
+  color: var(--dim);
+}
+.cap.yes  b { color: var(--ok); }
+.cap.part b { color: var(--warn); }
+.cap.no   b { color: var(--dim); }
+
+/* The paragraph that says what installing the desktop agent actually means.
+   It sits between the pitch and the buttons on purpose. */
+/*
+ * The gutter is a MARGIN here, not the padding every other block on the grid
+ * uses (landing.css, `.doc > *`). This element needs its own inner padding for
+ * the tinted panel, and one box cannot hold both — the `padding` shorthand
+ * below silently resets the grid inset, which left the callout sitting on the
+ * page's vertical rules while everything above and below it stayed clear.
+ */
+.honest {
+  border-left: 3px solid var(--warn);
+  padding: 12px 16px;
+  margin: 16px var(--gut) 8px;
+  background: var(--panel);
+  border-radius: 0 6px 6px 0;
+}
+
+@media (max-width: 560px) {
+  /*
+   * minmax(0,1fr), not a bare 1fr.
+   *
+   * `1fr` is shorthand for `minmax(auto,1fr)`, so the track's floor is the
+   * card's min-content width — and a card holds a <pre> with an install command
+   * in it. One `winget install RealtimeClipboard.RealtimeClipboard` was enough
+   * to push the track wider than the phone, and because <body> sets
+   * overflow-x:hidden the result was not a scrollbar but the right edge of the
+   * page silently cut off. An explicit 0 floor lets the track shrink and leaves
+   * the command scrolling inside its own <pre>, which is what .dlcard pre's
+   * overflow-x is for.
+   *
+   * The same applies to .cmdgrid, which now holds every install command on the
+   * page — `scoop bucket add realtimeclipboard https://github.com/…` has taken
+   * over as the longest unbreakable string.
+   */
+  .dlgrid, .cmdgrid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* landing.css's block names .btn and .brand svg by hand and cannot reach these.
+   Its `* { transition-duration }` rule removes the animation but not the
+   displaced end state, so the transform has to be cancelled outright. */
+@media (prefers-reduced-motion: reduce) {
+  .dlcard:hover { transform: none; }
+}

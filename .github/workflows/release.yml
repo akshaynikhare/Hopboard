@@ -31,13 +31,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+
+      # workflow_dispatch is allowed here for re-runs, but github.ref_name is a
+      # BRANCH name then, not a tag. Everything downstream builds a version
+      # string out of it, so a dispatch off main would tag the release "main"
+      # and hand the manifests a URL for "vmain".
+      - name: Refuse to run off a tag
+        run: |
+          case "${{ github.ref }}" in
+            refs/tags/v*) echo "releasing ${{ github.ref_name }}" ;;
+            *) echo "::error::${{ github.ref }} is not a v* tag"; exit 1 ;;
+          esac
+
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run verify
-      - run: node tests/bundle.mjs
-      - run: node tests/e2e.mjs
-      - run: node tests/cli.mjs
+      - run: node tests/dom/bundle.mjs
+      - run: node tests/live/e2e.mjs
+      - run: node tests/live/cli.mjs
 
   desktop:
     needs: verify
@@ -65,30 +77,55 @@ jobs:
         with:
           targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
+      # tauri.conf.json's beforeBuildCommand runs tools/build/build.mjs, which
+      # imports esbuild. Without the devDependencies the bundle step fails
+      # inside the frontend build with "Cannot find package 'esbuild'".
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+
       - name: Linux build dependencies
         if: matrix.os == 'ubuntu-22.04'
+        # libssl-dev is here to match .github/workflows/desktop.yml. A compile
+        # that passes the cheap check and then fails here does so on a tag, in
+        # front of users, which is the one place it must not.
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev \
-                                  librsvg2-dev patchelf
+                                  librsvg2-dev patchelf libssl-dev
 
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: desktop/src-tauri
 
+      # Windows signing, only when the certificate exists. The thumbprint is
+      # written into the config here rather than committed, so a local build
+      # and a fork both still work with `certificateThumbprint: null`.
+      - name: Windows signing certificate
+        if: matrix.os == 'windows-latest' && env.WINDOWS_CERTIFICATE != ''
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        shell: pwsh
+        run: |
+          [IO.File]::WriteAllBytes("cert.pfx", [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+          $pw = ConvertTo-SecureString $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+          $c = Import-PfxCertificate -FilePath cert.pfx -CertStoreLocation Cert:\CurrentUser\My -Password $pw
+          Remove-Item cert.pfx
+          node -e "const f='desktop/src-tauri/tauri.conf.json',fs=require('fs');const j=JSON.parse(fs.readFileSync(f));j.bundle.windows.certificateThumbprint=process.argv[1];fs.writeFileSync(f,JSON.stringify(j,null,2))" $c.Thumbprint
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Signing. Absent on a fork, where the build still runs and produces
-          # unsigned artifacts — useful for testing, and clearly labelled as a
-          # draft release rather than published.
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_KEY_PASSWORD }}
-          # macOS: notarization is mandatory, not advisory. Without it Gatekeeper
-          # refuses the download outright rather than warning.
+          # macOS. Notarization needs a paid Developer ID; without the secrets
+          # this falls back to "-", which is Tauri's ad-hoc signature. That does
+          # NOT satisfy Gatekeeper — the user still has to go to Privacy &
+          # Security and click Open Anyway, and /download/ says so — but an
+          # unsigned bundle with no signature at all is reported as "damaged",
+          # which reads as a corrupt download rather than an unsigned one.
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY || '-' }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -103,14 +140,27 @@ jobs:
   npm:
     needs: verify
     runs-on: ubuntu-latest
+    # --provenance mints a signed attestation through OIDC, which needs this
+    # token. Granted to this job alone: desktop and relay-image have no
+    # business minting one.
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v4
-        with: { node-version: 22, registry-url: "https://registry.npmjs.org" }
+        with: { node-version: 22, cache: npm, registry-url: "https://registry.npmjs.org" }
       - run: npm ci
       # `npx realtimeclipboard` installs src/core and src/transport — the same modules the
       # browser runs. There is nothing to build, which is the point.
-      - run: npm publish --provenance --access public
+      #
+      # Skipped rather than failed when NPM_TOKEN is absent, so a fork — and the
+      # first tag cut before the token exists — still produces installers
+      # instead of a red workflow. The `secrets` context is not available in a
+      # job-level `if`, hence the env indirection.
+      - name: Publish
+        if: env.NODE_AUTH_TOKEN != ''
+        run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -137,32 +187,67 @@ jobs:
             ghcr.io/${{ github.repository_owner }}/realtimeclipboard-relay:${{ github.ref_name }}
             ghcr.io/${{ github.repository_owner }}/realtimeclipboard-relay:latest
 
+  # ── publish ──────────────────────────────────────────────────────────────
+  # tauri-action creates the release as a DRAFT and every matrix leg uploads
+  # into it. This is the job that makes it public, and it is deliberately not
+  # `releaseDraft: false` on the action itself: the release is created by
+  # whichever leg wins the race, and fail-fast is off, so a macOS failure would
+  # publish a release advertising a .dmg that does not exist.
+  #
+  # Needing all three legs means a partial build leaves a draft nobody can
+  # download, which is the correct failure mode. It also matters to the page:
+  # /download/ reads the releases API, and /releases/latest skips drafts — so
+  # until this runs, the buttons keep pointing at the generic releases page.
+  publish-release:
+    needs: [desktop, npm]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ github.ref_name }}" --draft=false --latest
+          echo "### Published ${{ github.ref_name }}" >> "$GITHUB_STEP_SUMMARY"
+          gh release view "${{ github.ref_name }}" --json assets \
+            --jq '.assets[] | "- \(.name)  (\(.size) bytes)"' >> "$GITHUB_STEP_SUMMARY"
+
   # ── the manifests ────────────────────────────────────────────────────────
   # Each of these is a version and a checksum. They run after the artifacts
   # exist, and they are the step that would otherwise be done by hand, once,
   # per channel, and then forgotten for one of them.
   manifests:
-    needs: [desktop, npm]
+    # publish-release, NOT desktop — manifest.mjs fetches each asset to hash it,
+    # and a draft release's assets are 404 to an unauthenticated request. This
+    # job could therefore never have succeeded, even on a completely green
+    # build, until the release was public.
+    needs: publish-release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
 
-      - name: Scoop bucket
-        # The easiest Windows channel by a distance: no signing, no review, no
-        # waiting. Shipped before winget for exactly that reason.
-        run: node tools/manifest.mjs scoop ${{ github.ref_name }}
-
+      # Two channels, not five. A Scoop bucket and an AUR package are each a
+      # repository somebody has to keep in step with every release, and one that
+      # has quietly stopped being updated is worse than one that never existed:
+      # it hands people an old build and tells them it is current.
       - name: Homebrew tap
-        run: node tools/manifest.mjs homebrew ${{ github.ref_name }}
+        run: node tools/release/manifest.mjs homebrew ${{ github.ref_name }}
 
-      - name: AUR PKGBUILD
-        run: node tools/manifest.mjs aur ${{ github.ref_name }}
+      - name: winget manifest
+        run: node tools/release/manifest.mjs winget ${{ github.ref_name }}
 
       - name: Open the manifest updates
-        env:
-          GH_TOKEN: ${{ secrets.TAP_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           # Deliberately pull requests rather than direct pushes. These land in
           # repositories other people also touch, and a bot force-pushing a tap
           # is how a tap acquires a reputation.
-          node tools/manifest.mjs publish ${{ github.ref_name }}
+          node tools/release/manifest.mjs publish ${{ github.ref_name }}
+
+      # Without this the generated files are written into a runner that is then
+      # destroyed, and the step above prints instructions for opening PRs from
+      # files nobody can reach.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manifests
+          path: dist/manifests/
+          if-no-files-found: error

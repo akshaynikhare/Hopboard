@@ -257,7 +257,7 @@ export function reset(id) {
  * The frame that says "the file I announced is gone".
  *
  * ⚠️ NOT YET DELIVERABLE END TO END. The outbound half is here and is exercised
- * by tests/files.mjs, but three things outside this module have to land before a
+ * by tests/unit/files.mjs, but three things outside this module have to land before a
  * peer can act on it, and until then nothing is put on the wire at all (no
  * signal sender is installed, so signal() is a no-op rather than a frame the
  * relay answers with UNKNOWN_TYPE):

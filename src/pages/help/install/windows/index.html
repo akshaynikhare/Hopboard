@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+
+<title>Install RealtimeClipboard on Windows 10 and 11</title>
+<meta name="description" content="Run the installer, confirm the tray icon is watching the clipboard, sync your first clip, and fix SmartScreen, work-machine and firewall problems.">
+<link rel="canonical" href="https://realtimeclipboard.com/help/install/windows/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="RealtimeClipboard">
+<meta property="og:title" content="Install RealtimeClipboard on Windows">
+<meta property="og:description" content="The .msi, what a working install looks like, your first sync, and the three things that stop it.">
+<meta property="og:url" content="https://realtimeclipboard.com/help/install/windows/">
+<meta property="og:image" content="https://realtimeclipboard.com/assets/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://realtimeclipboard.com/help/install/windows/#article",
+      "headline": "Install RealtimeClipboard on Windows 10 and 11",
+      "description": "Run the installer, confirm the tray icon is watching the clipboard, sync your first clip, and fix SmartScreen, work-machine and firewall problems.",
+      "isPartOf": { "@id": "https://realtimeclipboard.com/#website" },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "RealtimeClipboard", "item": "https://realtimeclipboard.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Help", "item": "https://realtimeclipboard.com/help/" },
+        { "@type": "ListItem", "position": 3, "name": "Installing", "item": "https://realtimeclipboard.com/help/install/" },
+        { "@type": "ListItem", "position": 4, "name": "Windows" }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/src/landing/landing.css">
+<script type="module" src="/src/landing/copy.js"></script>
+</head>
+<body>
+
+<!-- Platform mark, sized and coloured by .brandmark in landing.css. Path data
+     from Simple Icons (CC0-1.0) except the Windows pane, which is drawn here —
+     Simple Icons carries no Microsoft mark. The marks are trademarks of their
+     owners and identify the platform only. -->
+<svg class="icons" aria-hidden="true">
+  <symbol id="i-windows" viewBox="0 0 24 24"><path d="M3 3h8.2v8.2H3zM12.8 3H21v8.2h-8.2zM3 12.8h8.2V21H3zM12.8 12.8H21V21h-8.2z"/></symbol>
+</svg>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="/">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <rect x="8" y="3" width="8" height="4" rx="1"/>
+          <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
+          <path d="M9 13l2 2 4-4"/>
+        </svg>
+        <b>RealtimeClipboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="/download/">Download</a>
+      <a class="tlink" href="/help/">Help</a>
+      <a class="tlink" href="/blog/">Blog</a>
+      <a class="tlink strong" href="/app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="sec">
+    <div class="in doc">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">RealtimeClipboard</a> <span aria-hidden="true">/</span>
+        <a href="/help/">Help</a> <span aria-hidden="true">/</span>
+        <a href="/help/install/">Installing</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">Windows</span>
+      </nav>
+
+      <header class="pagehead">
+        <h1><svg class="brandmark" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-windows"/></svg> Installing on Windows</h1>
+        <p class="lede">
+          Windows is the platform this app is most worth installing on: it is
+          the one where background clipboard capture works with no caveats and
+          no permission prompt. Copy in any application and it is already on
+          your other devices.
+        </p>
+      </header>
+
+      <div class="article">
+
+        <p class="honest">
+          <b>The first release has not been published yet.</b> The download link
+          below lands on an empty releases page until
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/blob/main/.github/workflows/release.yml">the release pipeline</a>
+          runs against a tag. Everything else on this page — what to expect, how
+          to check it, what breaks — is written against the app as it is built.
+          <a href="/app.html">The browser version</a> needs no install and works now.
+        </p>
+
+        <h2 id="install">Install it</h2>
+        <ol class="steps">
+          <li>Download <code>RealtimeClipboard_&lt;version&gt;_x64_en-US.msi</code> from
+            <a href="https://github.com/akshaynikhare/RealtimeClipboard/releases/latest">the releases page</a>,
+            or use the button on <a href="/download/">the download page</a>, which
+            picks the file for you.</li>
+          <li>Run it. There is no administrator prompt and no options to choose —
+            it installs per machine, registers no service and no driver.</li>
+          <li>The app opens a window and puts an icon in the notification area.</li>
+        </ol>
+        <p>
+          There is also a <code>-setup.exe</code> in the same release. It is an
+          NSIS installer of the identical build; take the <code>.msi</code>
+          unless your deployment tooling wants the other one.
+        </p>
+
+        <h2 id="pkg">Or from a package manager</h2>
+        <pre><code>winget install AkshayNikhare.RealtimeClipboard</code></pre>
+        <p>
+          <b>Not published yet.</b> The manifest is generated from each release
+          and submitted to <code>microsoft/winget-pkgs</code>, where it is
+          reviewed and merged by people who do not work on this project — so
+          there is a gap of days between a release and this command working.
+          It says so above until it does.
+        </p>
+        <p>
+          There is deliberately no <code>scoop</code> line. A Scoop bucket is a
+          repository somebody has to keep in step with every release, and one
+          Windows channel that is genuinely maintained beats two that drift
+          apart. The <code>.msi</code> above is the same build either way.
+        </p>
+
+        <h2 id="check">Check it worked</h2>
+        <p>
+          The app is a window around the same page the website serves, so most
+          of what you see is the web app. Two things tell you the <i>native</i>
+          half is running:
+        </p>
+        <ul class="sq-list">
+          <li><b>A tray icon.</b> Click it to bring the window back. Quit lives
+            in its menu, on purpose — an app that watches your clipboard has to
+            have a visible way to stop it.</li>
+          <li><b>The status bar reads <code>T0 · watching the system clipboard</code></b>,
+            bottom right. That string is the whole difference between the desktop
+            app and a browser tab. In a browser the same field reads
+            <code>T3 · auto-capture</code> at best, and
+            <code>T1 · paste only</code> at worst.</li>
+        </ul>
+        <p>
+          Left of it, the connection state reads <b>Connected</b> once the relay
+          has answered. <b>Connecting…</b> that never settles is a network
+          problem, not an install problem — see below.
+        </p>
+
+        <h2 id="first">Your first sync</h2>
+        <ol class="steps">
+          <li>In the app, note the five-character key at the top, or type one of
+            your own.</li>
+          <li>On a second device — a phone browser will do — open
+            <a href="/app.html">the app</a> and enter the same key.</li>
+          <li>Copy something on Windows. Do not switch to RealtimeClipboard: the point is
+            that you do not have to. It appears on the other device.</li>
+        </ol>
+        <p class="honest">
+          If it did not appear, check the mode. The desktop app ships set to
+          <b>Manual</b>, because it reads every copy you make while it runs —
+          including passwords you copied for unrelated reasons — and that is a
+          real thing to agree to rather than a default to inherit. Switch it to
+          <b>Live</b> when you want the automatic behaviour.
+        </p>
+
+        <h2 id="trouble">When it does not work</h2>
+
+        <h3>SmartScreen warns about the installer</h3>
+        <p>
+          Expected on a new publisher, and worth taking seriously in general
+          rather than clicking through by habit. Check that you got the file from
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/releases/latest">the official releases page</a>
+          and that the publisher matches. The warning goes away as the
+          certificate accrues reputation, not because anything about the build
+          changed.
+        </p>
+
+        <h3>It is a work machine</h3>
+        <p>
+          The app needs no administrator rights and installs no driver or
+          service. It makes outbound connections on 443 to a single hostname,
+          which is the shape IT departments allowlist. If yours blocks it, the
+          browser version needs nothing at all — and if the browser version is
+          blocked too, that is a policy decision and not something to work
+          around.
+        </p>
+
+        <h3>Windows has its own “Sync across your devices”, and it is greyed out</h3>
+        <p>
+          That is a different feature belonging to Windows, not to this app, and
+          its own set of reasons for being unavailable.
+          <a href="/help/clipboard-sync-not-working/">That page is here</a>.
+          Nothing about it affects RealtimeClipboard, which does not use it.
+        </p>
+
+        <h3>Stuck on “Connecting…”</h3>
+        <p>
+          The app opens a WebSocket first and falls back to server-sent events
+          plus POST when that is blocked, so a proxy that forbids upgrades still
+          works — slower. If neither connects, the relay hostname is being
+          blocked outright. You can point the app at your own relay under
+          <b>Settings → Relay</b>; <a href="/help/install/relay/">running one is
+          one container</a>.
+        </p>
+
+        <h2 id="remove">Uninstalling</h2>
+        <p>
+          Settings → Apps → Installed apps → RealtimeClipboard → Uninstall, or
+          <code>winget uninstall AkshayNikhare.RealtimeClipboard</code> if that
+          is how it arrived.
+        </p>
+        <p>
+          There is nothing to clean up afterwards. No clipboard content is ever
+          written to disk by either the app or the relay, so an uninstall leaves
+          behind only your settings and clip history, which live in the browser
+          storage of the app itself and go with it.
+        </p>
+
+        <p class="hint">
+          Ready to install: <a href="/download/">the download page</a>. Every
+          other platform: <a href="/help/install/">the installation guide</a>.
+          Something wrong or out of date here?
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/issues">Open an issue</a>.
+        </p>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <p><a href="/">Home</a> · <a href="/download/">Download</a> · <a href="/help/">Help</a> · <a href="/blog/">Blog</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+
+<title>Add RealtimeClipboard to your iPhone or iPad home screen</title>
+<meta name="description" content="Add it from Safari's Share menu — Chrome and Firefox on iOS cannot. Why iOS never allowed background pasteboard reads, and what the paste banner is.">
+<link rel="canonical" href="https://realtimeclipboard.com/help/install/iphone/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="RealtimeClipboard">
+<meta property="og:title" content="RealtimeClipboard on iPhone and iPad">
+<meta property="og:description" content="Safari's Share menu is the whole mechanism. Why there is no App Store app and no install prompt to wait for.">
+<meta property="og:url" content="https://realtimeclipboard.com/help/install/iphone/">
+<meta property="og:image" content="https://realtimeclipboard.com/assets/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://realtimeclipboard.com/help/install/iphone/#article",
+      "headline": "Add RealtimeClipboard to your iPhone or iPad home screen",
+      "description": "Add it from Safari's Share menu — Chrome and Firefox on iOS cannot. Why iOS never allowed background pasteboard reads, and what the paste banner is.",
+      "isPartOf": { "@id": "https://realtimeclipboard.com/#website" },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "RealtimeClipboard", "item": "https://realtimeclipboard.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Help", "item": "https://realtimeclipboard.com/help/" },
+        { "@type": "ListItem", "position": 3, "name": "Installing", "item": "https://realtimeclipboard.com/help/install/" },
+        { "@type": "ListItem", "position": 4, "name": "iPhone" }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/src/landing/landing.css">
+<script type="module" src="/src/landing/copy.js"></script>
+</head>
+<body>
+
+<!-- Platform mark, sized and coloured by .brandmark in landing.css. Path data
+     from Simple Icons (CC0-1.0) except the Windows pane, which is drawn here —
+     Simple Icons carries no Microsoft mark. The marks are trademarks of their
+     owners and identify the platform only. -->
+<svg class="icons" aria-hidden="true">
+  <symbol id="i-apple" viewBox="0 0 24 24"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></symbol>
+</svg>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="/">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <rect x="8" y="3" width="8" height="4" rx="1"/>
+          <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
+          <path d="M9 13l2 2 4-4"/>
+        </svg>
+        <b>RealtimeClipboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="/download/">Download</a>
+      <a class="tlink" href="/help/">Help</a>
+      <a class="tlink" href="/blog/">Blog</a>
+      <a class="tlink strong" href="/app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="sec">
+    <div class="in doc">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">RealtimeClipboard</a> <span aria-hidden="true">/</span>
+        <a href="/help/">Help</a> <span aria-hidden="true">/</span>
+        <a href="/help/install/">Installing</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">iPhone</span>
+      </nav>
+
+      <header class="pagehead">
+        <h1><svg class="brandmark" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-apple"/></svg> Installing on iPhone and iPad</h1>
+        <p class="lede">
+          Nothing to download, and one detail that catches almost everybody: it
+          has to be Safari, and the Share menu is the entire mechanism. No
+          prompt will appear, however long you wait.
+        </p>
+      </header>
+
+      <div class="article">
+
+        <h2 id="install">Install it</h2>
+        <ol class="steps">
+          <li>Open <a href="/app.html">the app</a> in <b>Safari</b>.</li>
+          <li>Tap <b>Share</b> <span aria-hidden="true">↑</span> in the toolbar.</li>
+          <li>Scroll down and tap <b>Add to Home Screen</b>, then <b>Add</b>.</li>
+        </ol>
+        <p class="honest">
+          <b>Chrome and Firefox on iOS cannot install a web app.</b> Both are
+          Safari's engine in a different wrapper, and Apple does not expose
+          home-screen installation to them. If <b>Add to Home Screen</b> is
+          missing from your Share sheet, that is which browser you are in — not a
+          setting, and not something the page can change.
+        </p>
+
+        <h2 id="why">Why there is no App Store app</h2>
+        <p>
+          <b>iOS has never permitted an app to read the pasteboard in the
+          background</b>, and since iOS 16 it shows a banner every time any app
+          reads the clipboard at all. Both are Apple's decisions, they apply to
+          every app on the platform, and no entitlement turns them off.
+        </p>
+        <p>
+          A native RealtimeClipboard app could therefore add a share-sheet button and a
+          store listing to what the installed web app already does, and nothing
+          more. That is not enough to justify asking you to trust a second
+          binary.
+        </p>
+        <p>
+          The paste banner you will see — “RealtimeClipboard pasted from…” — is iOS
+          telling you the truth about what just happened. It appears because you
+          asked the app to read the clipboard, and no application can suppress
+          it.
+        </p>
+
+        <h2 id="check">Check it worked</h2>
+        <ul class="sq-list">
+          <li><b>It opens with no Safari toolbar</b> — full screen, its own
+            window in the app switcher.</li>
+          <li><b>The status bar reads <code>T1 · paste only</code></b>, which is
+            correct on iOS and is the ceiling for any app.</li>
+          <li>It opens with no network connection, showing your existing
+            history.</li>
+        </ul>
+
+        <h2 id="first">Your first sync</h2>
+        <ol class="steps">
+          <li>Open the app on your computer and note the five-character key.</li>
+          <li>Enter the same key on the iPhone.</li>
+          <li>Copy something on the computer. It appears on the phone with no
+            further action.</li>
+          <li>Going the other way: copy on the phone, open RealtimeClipboard, tap the
+            editor and choose <b>Paste</b>. iOS will show its banner; that is
+            expected.</li>
+        </ol>
+
+        <h2 id="trouble">When it does not work</h2>
+
+        <h3>“Add to Home Screen” is not in the Share sheet</h3>
+        <p>
+          Either you are not in Safari, or the item is further down the list than
+          it looks — scroll the lower section. You can also add it via
+          <b>Edit Actions</b> if it has been hidden.
+        </p>
+
+        <h3>No install prompt appeared</h3>
+        <p>
+          There is not one. iOS shows no install prompt for any web app, ever.
+          If you are waiting for one, the Share menu is what you are waiting
+          for.
+        </p>
+
+        <h3>It keeps showing a paste banner</h3>
+        <p>
+          That is iOS 16 and later reporting every clipboard read, by any app.
+          It cannot be turned off from inside an app, and its appearance means
+          the read worked.
+        </p>
+
+        <h3>Clips do not arrive when the app is closed</h3>
+        <p>
+          A web app is not running when you are not looking at it. It collects
+          what is waiting when you open it; nothing is lost.
+        </p>
+
+        <h2 id="remove">Uninstalling</h2>
+        <p>
+          Long-press the icon and delete it. Its storage goes with it. Safari's
+          own copy of the site data can be cleared under
+          <b>Settings → Safari → Advanced → Website Data</b>.
+        </p>
+
+        <p class="hint">
+          Every other platform: <a href="/help/install/">the installation
+          guide</a>. If iPhone-to-Mac clipboard sync is what you were actually
+          looking for, <a href="/help/clipboard-sync-not-working/">that is a
+          different feature and it is here</a>. Something wrong or out of date?
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/issues">Open an issue</a>.
+        </p>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <p><a href="/">Home</a> · <a href="/download/">Download</a> · <a href="/help/">Help</a> · <a href="/blog/">Blog</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
