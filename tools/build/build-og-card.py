@@ -73,8 +73,8 @@ MONO = FONTS / "consola.ttf"
 
 HEADLINE = ["An online clipboard for", "every machine you own."]
 SUBTITLE = [
-    "Copy on your laptop, paste on your phone. Type one five-character",
-    "key on each device — no account, no install, end-to-end encrypted.",
+    "Copy on your laptop, paste on your phone. Type one short key on",
+    "each device — no account, no install, end-to-end encrypted.",
 ]
 FEATURES = ["No account", "Works across networks", "Files peer-to-peer", "Open source"]
 BADGE = "PRE-ALPHA"

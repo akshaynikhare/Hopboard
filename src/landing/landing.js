@@ -15,7 +15,7 @@
  * keys from the wrong alphabet is the kind of bug nobody notices for months.
  */
 
-import { generate, parseFragment, fragment } from "../core/keys.js";
+import { generate, parseFragment, fragment, LENGTHS } from "../core/keys.js";
 
 const byId = id => document.getElementById(id);
 const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -65,7 +65,10 @@ start("key", function key() {
   };
 
   const fresh = (announce) => {
-    const k = generate();
+    // Explicitly the short key, not keys.nextLength(): this page is the web by
+    // definition, its visitor is about to type this into another device, and
+    // there are no settings here for a length preference to have come from.
+    const k = generate(LENGTHS.NORMAL);
     input.value = k;
     sync();
     // The value of an <input> changing is silent to a screen reader, and the

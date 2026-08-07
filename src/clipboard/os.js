@@ -5,6 +5,7 @@
 
 import { emit, EV } from "../core/bus.js";
 import { IMAGES } from "../core/config.js";
+import * as native from "../core/native.js";
 
 /**
  * Requires document focus in a browser. Needs no permission.
@@ -20,17 +21,10 @@ import { IMAGES } from "../core/config.js";
  * echo instead of broadcasting it back (docs/CLIPBOARD-FLOW.md §6).
  */
 export async function write(text) {
-  const invoke = globalThis.__TAURI__?.core?.invoke;
-  if (invoke) {
-    try {
-      await invoke("set_clipboard", { text });
-      return true;
-    } catch (err) {
-      // Fall through to the web path rather than failing: a shell too old to
-      // know this command should degrade to the browser behaviour, not lose
-      // the clip.
-      console.warn("[realtimeclipboard] native clipboard write failed:", err);
-    }
+  // Falls through to the web path rather than failing: a shell too old to know
+  // this command should degrade to the browser behaviour, not lose the clip.
+  if (native.IS_DESKTOP && await native.invoke("set_clipboard", { text }) !== null) {
+    return true;
   }
 
   try {

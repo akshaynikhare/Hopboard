@@ -1,6 +1,7 @@
 /** Share-key generation and normalisation. */
 
 import { KEY, LOCK } from "./config.js";
+import * as state from "./state.js";
 
 /**
  * Cryptographically random key from the unambiguous alphabet.
@@ -31,6 +32,17 @@ export function entropyBits(length) {
 }
 
 export const LENGTHS = { NORMAL: KEY.LENGTH, LONG: KEY.LONG_LENGTH };
+
+/**
+ * How long the NEXT key should be.
+ *
+ * One implementation, because there were three and two of them ignored the
+ * setting entirely: the first-run key and the collision retry both emitted six
+ * characters however the app was configured — which is precisely the two places
+ * a key is generated FOR the user rather than at their request.
+ */
+export const nextLength = () =>
+  state.get().settings.longKeys ? LENGTHS.LONG : LENGTHS.NORMAL;
 
 /**
  * Normalise before ANY use — hashing, comparison, display.

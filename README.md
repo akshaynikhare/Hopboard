@@ -1,7 +1,7 @@
 # RealtimeClipboard — an end-to-end encrypted online clipboard that syncs text between devices
 
 RealtimeClipboard is a free, open-source online clipboard: open it on two devices, type the
-same five-character key, and whatever you copy on one is ready to paste on the
+same short key, and whatever you copy on one is ready to paste on the
 other. No account, no install, no database. Files travel peer-to-peer and never
 touch the server.
 
@@ -28,7 +28,8 @@ is proven, and [Known limitations](#known-limitations) for what is not.
 
 - **Sync clipboard text between devices** — Windows, macOS, Android, ChromeOS and Linux
 - **Works across different networks**, not just the same Wi-Fi, and not just the same LAN
-- **No account, no sign-up, no email** — a five-character key is the whole identity of a session
+- **No account, no sign-up, no email** — a short key is the whole identity of a session
+  (six characters on the web, ten in the installed apps, and either works on both)
 - **End-to-end encrypted** in the browser with AES-GCM; `PBKDF2` derives the key, `SHA-256` routes the room
 - **Peer-to-peer file transfer** over a WebRTC data channel, 5 MB per file
 - **Copy and paste images** — a screenshot copied on one machine previews on the other
@@ -40,7 +41,7 @@ is proven, and [Known limitations](#known-limitations) for what is not.
 
 Moving a snippet between a work laptop, a desktop and a phone is
 disproportionately annoying. The alternatives want an account, an install with
-admin rights, or an email to yourself. This wants a five-character key.
+admin rights, or an email to yourself. This wants a short key.
 
 ## How RealtimeClipboard compares to Snapdrop, PairDrop, LocalSend and AirDrop
 
@@ -85,7 +86,7 @@ with a short key, and share a single clipboard between them.
 
 ### How do I sync my clipboard between my phone and my PC?
 
-Open RealtimeClipboard on both, type the same five-character key on each, and copy
+Open RealtimeClipboard on both, type the same short key on each, and copy
 something. It arrives on the other device ready to paste. Nothing to install, so
 it works on a machine where you do not have admin rights.
 

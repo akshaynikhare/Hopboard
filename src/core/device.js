@@ -18,15 +18,24 @@
 
 import { read, write } from "./storage.js";
 
+/**
+ * Windows | Android | iOS | macOS | Linux | Unknown.
+ *
+ * Exported because the desktop guide describes the tray icon, and the tray
+ * behaves differently enough on each platform that one paragraph covering all
+ * three would be wrong on two of them.
+ */
+export function os() {
+  const ua = globalThis.navigator?.userAgent ?? "";
+  return /Windows/i.test(ua)            ? "Windows" :
+         /Android/i.test(ua)            ? "Android" :
+         /iPhone|iPad|iPod/i.test(ua)   ? "iOS"     :
+         /Mac OS X|Macintosh/i.test(ua) ? "macOS"   :
+         /Linux/i.test(ua)              ? "Linux"   : "Unknown";
+}
+
 function detect() {
   const ua = navigator.userAgent;
-
-  const os =
-    /Windows/i.test(ua)                    ? "Windows" :
-    /Android/i.test(ua)                    ? "Android" :
-    /iPhone|iPad|iPod/i.test(ua)           ? "iOS"     :
-    /Mac OS X|Macintosh/i.test(ua)         ? "macOS"   :
-    /Linux/i.test(ua)                      ? "Linux"   : "Unknown";
 
   // Order matters: Edge and Opera both contain "Chrome", Chrome contains "Safari".
   const browser =
@@ -36,7 +45,7 @@ function detect() {
     /Chrome\//i.test(ua)                   ? "Chrome"  :
     /Safari\//i.test(ua)                   ? "Safari"  : "Browser";
 
-  return `${browser} · ${os}`;
+  return `${browser} · ${os()}`;
 }
 
 /** Persisted so a device keeps its name across reloads, and stays renameable. */

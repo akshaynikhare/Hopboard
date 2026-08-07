@@ -238,7 +238,7 @@ ShortDescription: An end-to-end encrypted clipboard shared between your devices
 Description: >-
   Copy on one machine and paste on another. RealtimeClipboard watches the system
   clipboard and sends what you copy, encrypted in the browser, to the other
-  devices sharing a five-character key. No account, and nothing is written to
+  devices sharing a short key. No account, and nothing is written to
   disk on any machine or on the relay.
 Tags:
   - clipboard

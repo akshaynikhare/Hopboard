@@ -1,0 +1,237 @@
+/*
+ * The two surfaces that exist only in the installed app: the guide
+ * (ui/panels/guidePanel.js) and the close-to-tray dialog
+ * (ui/features/desktopPrefs.js).
+ *
+ * Lazy on both of styles/CLAUDE.md's tests. Genuinely optional — a web visitor
+ * never fetches it, because main.js only loads those two modules when there is
+ * a native shell underneath. And mobile.css names no class in here, so nothing
+ * relies on source order to override it; the narrow-window rules live at the
+ * bottom of this file instead.
+ *
+ * Same z-index band as the other modals: only one can be open at a time
+ * (ui/primitives/modal.js).
+ */
+
+/* ── shared shell ──────────────────────────────────────────────────── */
+
+.guide,
+.deskmodal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.guide-back,
+.deskmodal-back {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .55);
+}
+
+.guide-dlg,
+.deskmodal-dlg {
+  position: relative;
+  background: var(--side);
+  border: 1px solid var(--bd2);
+  border-radius: 4px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, .5);
+}
+
+/* ── the close-to-tray dialog ──────────────────────────────────────── */
+
+.deskmodal-dlg {
+  width: min(420px, 100%);
+  padding: 18px 16px 14px;
+}
+
+.deskh {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bright);
+}
+
+.deskp {
+  margin: 0 0 14px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.deskcheck {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: var(--dim);
+  cursor: pointer;
+}
+
+.deskrow {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ── the guide ─────────────────────────────────────────────────────── */
+
+/*
+ * The sections scroll, not the dialog, so the title and Done stay put. A guide
+ * you have to scroll back up through to dismiss is a small daily insult.
+ */
+.guide-dlg {
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 100%);
+  max-height: min(660px, calc(100vh - 40px));
+  overflow: hidden;
+}
+
+.guideh {
+  flex: none;
+  margin: 0;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--bd);
+  background: var(--title);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--bright);
+}
+
+.guidebody {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.guides { padding: 14px 16px; }
+.guides + .guides { border-top: 1px solid var(--bd); }
+
+.guides h3 {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.guides p {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.guides p:last-child { margin-bottom: 0; }
+.guides b { color: var(--bright); font-weight: 600; }
+.guides a { color: var(--focus); }
+
+.guidestate {
+  padding: 7px 9px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.guidesteps {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, 1fr);
+  margin-bottom: 12px;
+}
+
+.guidestep {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  align-items: flex-start;
+}
+
+.guidestep > b {
+  font-size: 11px;
+  color: var(--bright);
+}
+
+.guidestep > span {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--dim);
+}
+
+/* Sized so a phone camera reads it across a desk. qr.css owns the colours,
+   including the light quiet zone, so this needs no background of its own. */
+.guideqr {
+  width: 100%;
+  max-width: 150px;
+  aspect-ratio: 1;
+}
+
+.guidenoqr {
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/*
+ * The one thing on screen that someone retypes by hand, so it gets the largest
+ * type in the dialog, --str (the colour the header already uses for the key)
+ * and a face where 8 and B cannot be confused.
+ */
+.guidekey {
+  padding: 5px 9px;
+  border: 1px solid var(--bd2);
+  border-radius: 3px;
+  background: var(--editor);
+  color: var(--str);
+  font-family: var(--mono);
+  font-size: 16px;
+  letter-spacing: .08em;
+  user-select: all;
+}
+
+.guidewarn {
+  padding: 8px 10px;
+  border-left: 2px solid var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  font-size: 11px !important;
+}
+
+.guidelist {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.guidelist li { margin-bottom: 5px; }
+.guidelist a { color: var(--focus); }
+
+.guiderow {
+  display: flex;
+  flex: none;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-top: 1px solid var(--bd);
+  background: var(--title);
+}
+
+.guidefoot {
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/*
+ * The window's own minimum is 480px wide (tauri.conf.json), so this is the
+ * narrowest the guide ever has to survive. Three columns of QR do not fit.
+ */
+@media (max-width: 560px) {
+  .guidesteps { grid-template-columns: 1fr; }
+  .guideqr { max-width: 190px; }
+  .guiderow { flex-direction: column; align-items: stretch; }
+}

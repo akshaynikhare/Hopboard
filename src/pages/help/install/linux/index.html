@@ -161,7 +161,11 @@ chmod +x realtimeclipboard_&lt;version&gt;_amd64.AppImage
         <ul class="sq-list">
           <li><b>A tray icon appears</b>, if your desktop shows one — GNOME needs
             an extension for tray icons at all, which is a GNOME decision and
-            unrelated to this app. The window works with or without it.</li>
+            unrelated to this app. <b>Right-click it for the menu</b>: that is
+            the whole interaction on Linux, where a tray icon receives no clicks
+            of its own. <b>Open</b> and <b>Quit</b> are both in there. Closing
+            the window does not quit — the window works with or without a tray
+            icon, and so does <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>.</li>
           <li><b>The status bar, bottom right, is the real answer.</b> It reads
             <code>T0 · watching the system clipboard</code> where background
             capture is available. Where it is not, it says so rather than
@@ -198,7 +202,7 @@ chmod +x realtimeclipboard_&lt;version&gt;_amd64.AppImage
 
         <h2 id="first">Your first sync</h2>
         <ol class="steps">
-          <li>Note the five-character key at the top of the app, or type your own.</li>
+          <li>Note the short key at the top of the app, or type your own.</li>
           <li>Open <a href="/app.html">the app</a> on a second device and enter
             the same key.</li>
           <li>Copy something. If the status bar said <code>T0</code>, you do not
@@ -206,9 +210,11 @@ chmod +x realtimeclipboard_&lt;version&gt;_amd64.AppImage
             once and the clip is picked up as it focuses.</li>
         </ol>
         <p class="honest">
-          The app ships set to <b>Manual</b>: it reads every copy you make while
-          it is running, and that is a thing to agree to rather than inherit.
-          Switch it to <b>Live</b> for the automatic behaviour.
+          The switch at the top of the window is <b>Live</b> by default, so
+          everything you copy is shared. It reads every copy you make while it
+          is running, which is a thing worth knowing rather than inheriting —
+          the app says so on first launch, and <b>Manual</b> stops anything
+          leaving the machine until you paste it in.
         </p>
 
         <h2 id="trouble">When it does not work</h2>
@@ -217,12 +223,17 @@ chmod +x realtimeclipboard_&lt;version&gt;_amd64.AppImage
         <p><code>chmod +x</code> it — see above. Run it from a terminal once and
           you will see the real error rather than silence.</p>
 
-        <h3>A missing libwebkit2gtk error</h3>
+        <h3>A missing library error on install</h3>
         <p>
-          The <code>.deb</code> declares <code>libwebkit2gtk-4.1-0</code> and
-          <code>libgtk-3-0</code>; installing with <code>apt install ./file.deb</code>
-          rather than <code>dpkg -i</code> resolves them for you. On a
-          distribution too old to have 4.1 at all, this is the webkit2gtk floor
+          The <code>.deb</code> declares <code>libwebkit2gtk-4.1-0</code>,
+          <code>libgtk-3-0</code> and
+          <code>libayatana-appindicator3-1 | libappindicator3-1</code>;
+          installing with <code>apt install ./file.deb</code> rather than
+          <code>dpkg -i</code> resolves them for you. The last one is what draws
+          the tray icon, and it is named as an alternation because the plain
+          package is gone from newer Debian while the ayatana one is absent from
+          some older releases — your distribution will have one of the two. On a
+          distribution too old to have webkit2gtk 4.1 at all, this is the floor
           above and there is no workaround.
         </p>
 
