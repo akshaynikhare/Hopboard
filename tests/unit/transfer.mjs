@@ -291,6 +291,20 @@ async function runTransfer(announceOpenEvent) {
     return f?.state === registry.STATE.DONE || f?.state === registry.STATE.ERROR;
   }, 6_000);
 
+  /**
+   * The receiver reaching DONE is the fin marker landing. That is not the
+   * sender finishing: it drains its queue, toasts and tears down over the turns
+   * after, so unsubscribing here made every assertion about the sender a race
+   * that lost roughly two runs in three.
+   *
+   * This cannot weaken the regression it guards. `sentSaw` snapshots `landed`
+   * at the instant the toast fires, so waiting longer to *hear* the claim does
+   * not change what had actually left the queue when it was made — a sender
+   * that toasts over a discarded queue still records 0 of 4. A sender that
+   * never toasts at all still fails, four seconds later.
+   */
+  await waitFor(() => sentSaw !== null && !transfer.isActive(TX) && !transfer.isActive(RX), 4_000);
+
   offToast();
   FakeChannel.tap = null;
   const got = registry.get(RX);
