@@ -291,6 +291,19 @@ async function runTransfer(announceOpenEvent) {
     return f?.state === registry.STATE.DONE || f?.state === registry.STATE.ERROR;
   }, 6_000);
 
+  /**
+   * The receiver finishing is NOT the end of the transfer.
+   *
+   * It completes on the last chunk, while the sender still has to flush the
+   * queue and wait out closeGracefully()'s stream reset — the very ordering
+   * this suite exists to pin down. Half the assertions below are about the
+   * sender, so waiting only on the receiver reads whatever it happens to have
+   * emitted by then. That passed on a developer machine and failed three
+   * assertions on a slower CI runner, which is the worst way for a test to be
+   * wrong: it looks like a regression in the code under test.
+   */
+  await waitFor(() => toasts.some(m => m.startsWith("Sent ")) && !transfer.isActive(TX), 4_000);
+
   offToast();
   FakeChannel.tap = null;
   const got = registry.get(RX);
