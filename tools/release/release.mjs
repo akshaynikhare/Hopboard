@@ -154,8 +154,8 @@ writeFileSync(PKG, JSON.stringify(pkg, null, 2) + "\n");
    Anchored to the first `version =` after the [package] header. A bare
    /^version = / would match `rust-version` on some formatter's output, and a
    global replace would rewrite all 600-odd dependency pins in the lock file. */
-replaceOnce(CARGO_TOML, /(\[package\][\s\S]*?\nversion = )"[^"]+"/, `$1"${version}"`);
-replaceOnce(CARGO_LOCK, /(name = "realtimeclipboard"\nversion = )"[^"]+"/, `$1"${version}"`);
+replaceOnce(CARGO_TOML, /(\[package\][\s\S]*?\r?\nversion = )"[^"]+"/, `$1"${version}"`);
+replaceOnce(CARGO_LOCK, /(name = "realtimeclipboard"\r?\nversion = )"[^"]+"/, `$1"${version}"`);
 
 // --no-verify, and it is not a shortcut: the pre-commit hook refuses commits on
 // main, which is exactly right for hand-written changes and exactly wrong for

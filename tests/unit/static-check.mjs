@@ -507,10 +507,13 @@ ok(`every desktop icon exists (${icons.length} named)`, bad.length === 0, bad.jo
    names every artifact from its copy, so a skew means the URLs in
    tools/release/manifest.mjs point at filenames that were never built. */
 const pkgVersion = JSON.parse(read(join(ROOT, "package.json"))).version;
+/* \r?\n throughout: these two files are checked out with CRLF on Windows, and a
+   bare \n silently matches nothing — which reads as "the version is missing"
+   rather than "the regex is wrong". */
 const cargoVersion = read(join(SRC_TAURI, "Cargo.toml"))
-  .match(/\[package\][\s\S]*?\nversion = "([^"]+)"/)?.[1];
+  .match(/\[package\][\s\S]*?\r?\nversion = "([^"]+)"/)?.[1];
 const lockVersion = read(join(SRC_TAURI, "Cargo.lock"))
-  .match(/name = "realtimeclipboard"\nversion = "([^"]+)"/)?.[1];
+  .match(/name = "realtimeclipboard"\r?\nversion = "([^"]+)"/)?.[1];
 /* The config may either restate the version or point at package.json. Pointing
    is preferred — it is the copy that cannot drift — so both are accepted. */
 const confOk = conf.version === "../../package.json" || conf.version === pkgVersion;
