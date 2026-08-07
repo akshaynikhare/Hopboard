@@ -902,11 +902,22 @@ h1 > .brandmark { vertical-align:-.06em; }
  */
 pre {
   white-space:pre-wrap;
-  /* `anywhere`, not `break-word`: the longest thing on these pages is a bucket
-     URL, and a URL offers no break opportunity at all, so `break-word` leaves it
-     overflowing exactly as before. */
-  overflow-wrap:anywhere;
+  /* `break-word`, not `anywhere`. Both break a URL that cannot fit — the
+     difference is that `anywhere` also lets every other word break, so
+     `realtimeclipboard` split across two lines while there was still room to
+     move it down whole. The containers already carry `min-width:0`, which is the
+     part `anywhere` would otherwise have been doing. */
+  overflow-wrap:break-word;
+  /* Wrapped commands need more room between lines than a single-line block does,
+     or the continuation reads as a second command.
+
+     Restated on the `code` inside, because the `font` shorthand up at `code`
+     carries a `/1` and resets it — the same shorthand trap `.honest` documents
+     for `padding`. The `pre` alone computed correctly and the text inside it
+     still set solid. */
+  line-height:1.55;
 }
+pre code { line-height:1.55; }
 
 .article pre {
   margin:0 var(--gut) 20px;
@@ -920,11 +931,19 @@ pre {
 /*
  * The copy button, top-right inside the block it copies.
  *
- * `pre.has-copy` is set by copy.js, so the padding that reserves room for the
- * button only exists when there is a button — no page ends up with a gap where
- * an unusable control would have been.
+ * `pre.has-copy` is set by copy.js, so the room reserved for the button only
+ * exists when there is a button — no page ends up with a gap where an unusable
+ * control would have been.
+ *
+ * The gutter is padding on the CODE, not on the `pre`. Two sheets style these
+ * blocks and both do it with the `padding` shorthand, at a specificity that
+ * beats a bare `pre.has-copy` — so a `padding-right` here was silently reset and
+ * the button sat on top of the command. Nothing sets padding on `code`, so this
+ * has no such fight, and block padding shortens every wrapped line rather than
+ * just the first.
  */
-pre.has-copy { position:relative; padding-right:74px; }
+pre.has-copy { position:relative; }
+pre.has-copy > code { display:block; padding-right:68px; }
 
 .copybtn {
   position:absolute;

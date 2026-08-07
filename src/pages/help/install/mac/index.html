@@ -175,11 +175,29 @@
 
         <h3>“RealtimeClipboard cannot be opened because the developer cannot be verified”</h3>
         <p>
-          Gatekeeper, on an unnotarised build. Right-click the app in
-          Applications and choose <b>Open</b>, then confirm — that records an
-          exception for this app only, which is a narrower thing to do than
-          turning Gatekeeper down globally. Do it only if you got the file from
-          <a href="https://github.com/akshaynikhare/RealtimeClipboard/releases/latest">the official releases page</a>.
+          Expected, and not a sign the download is broken. The build is signed
+          only ad-hoc, because notarising it needs a paid Apple Developer
+          account this project does not yet have. Gatekeeper refuses anything
+          un-notarised the first time.
+        </p>
+        <ol class="steps-list">
+          <li>Try to open the app once, and let it be refused.</li>
+          <li><b>System Settings → Privacy &amp; Security</b>, scroll down: there
+            is now a line naming RealtimeClipboard, with an <b>Open Anyway</b>
+            button.</li>
+        </ol>
+        <p>
+          On macOS 14 and earlier, right-clicking the app and choosing
+          <b>Open</b> does the same thing in one step. That shortcut was removed
+          in macOS 15, which is why the longer route is written first.
+        </p>
+        <p>
+          Either records an exception for this app alone — a narrower thing than
+          turning Gatekeeper down globally, which you should not do. Only do it
+          for a file you got from
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/releases/latest">the official releases page</a>,
+          and check the SHA256 on the release against the file if you want to be
+          certain.
         </p>
 
         <h3>No permission prompt appeared</h3>

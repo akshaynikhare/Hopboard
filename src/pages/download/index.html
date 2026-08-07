@@ -226,6 +226,22 @@
           </div>
         </div>
 
+        <!-- Said here, before the click, rather than left in the install guides.
+             Somebody who meets SmartScreen with no warning concludes the
+             download is malware — which is the correct instinct, and the wrong
+             conclusion. Delete this only when the certificates in
+             desktop/README.md § Signing actually exist. -->
+        <p class="honest">
+          <b>These builds are not code-signed yet, and your computer will say
+          so.</b> Windows shows “Windows protected your PC” — choose
+          <b>More info → Run anyway</b>. macOS refuses the first launch; open
+          <b>System Settings → Privacy &amp; Security</b> and click
+          <b>Open Anyway</b>. Neither means the file is damaged: a certificate
+          costs money per year and this project has not bought one, so nothing
+          vouches for the binary except the checksum on the release page and the
+          fact that you can read every line that went into it.
+        </p>
+
         <h3 id="mobile">Android, iPhone and iPad</h3>
         <p>
           There is no app to install, and that is a deliberate decision rather than

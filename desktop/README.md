@@ -176,16 +176,61 @@ clip crosses exactly once each way and then stops — for five minutes.
 
 ## Signing
 
-Not optional for this app in particular. SmartScreen and most antivirus treat an
-unsigned binary that reads the clipboard and opens outbound TLS connections as
-suspicious, which is a fair description of what this does.
+Matters more for this app than for most. SmartScreen and a lot of antivirus
+treat an unsigned binary that reads the clipboard and opens outbound TLS
+connections as suspicious, which is a fair description of what this does.
 
-- **Windows** — Azure Trusted Signing (~$10/month) or an EV certificate
-  ($300–600/year). CI reads `WINDOWS_CERTIFICATE` / `WINDOWS_CERTIFICATE_PASSWORD`.
-- **macOS** — Apple Developer Program ($99/year). **Notarization is mandatory**:
-  without it Gatekeeper refuses the download rather than warning about it. CI
-  reads `APPLE_CERTIFICATE`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`.
-- **Linux** — nothing to sign.
+**Today it ships unsigned**, and `release.yml` is wired so that adding the
+secrets is the only step needed to change that — no workflow edit. What users
+see meanwhile is written on `/download/` rather than left for them to discover:
+
+| | Unsigned | What the user does |
+|---|---|---|
+| Windows | SmartScreen: "Windows protected your PC" | **More info → Run anyway** |
+| macOS | Gatekeeper refuses: "Apple cannot check it for malicious software" | **System Settings → Privacy & Security → Open Anyway** |
+| Linux | nothing to sign | AppImage needs `chmod +x` |
+
+macOS gets an **ad-hoc signature** (`APPLE_SIGNING_IDENTITY` falls back to `-`)
+even with no certificate. That does not satisfy Gatekeeper, but it is the
+difference between "unidentified developer", which is a warning, and "the app is
+damaged", which reads as a corrupt download and gets the file deleted.
+
+### Getting a Windows certificate
+
+Since June 2023 every code-signing key must live on FIPS 140-2 hardware, so a
+`.pfx` you can simply buy and copy into a secret no longer exists.
+
+- **Azure Trusted Signing — about $10/month.** Cheapest by an order of
+  magnitude, no hardware, built for CI. Individual identity validation exists but
+  wants roughly three years of verifiable history. **Start here.**
+- **OV certificate — $200–400/year** (Sectigo, SSL.com, DigiCert). Ships a USB
+  token, or uses a cloud HSM. SmartScreen reputation still has to accumulate
+  over downloads, so the first few users are warned anyway.
+- **EV certificate — $400+/year**, hardware token. The only option that gives
+  **immediate** SmartScreen reputation, i.e. a clean first download.
+
+Then set `WINDOWS_CERTIFICATE` (base64 of the `.pfx`) and
+`WINDOWS_CERTIFICATE_PASSWORD`. `release.yml` imports it and writes the
+thumbprint into the config at build time; the committed `certificateThumbprint`
+stays `null` so local builds keep working.
+
+### Getting an Apple certificate
+
+About $99/year, and worth it — the unsigned macOS experience is the worst of the
+three by a distance.
+
+1. Join the **Apple Developer Program** (individual, or an organization with a
+   D-U-N-S number).
+2. Create a **Developer ID Application** certificate — the one for distribution
+   *outside* the Mac App Store. Export it as a `.p12`.
+3. Create an app-specific password for notarization, or an App Store Connect API
+   key.
+4. Set `APPLE_CERTIFICATE` (base64 `.p12`), `APPLE_CERTIFICATE_PASSWORD`,
+   `APPLE_SIGNING_IDENTITY` (`Developer ID Application: Name (TEAMID)`),
+   `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`.
+
+`release.yml` already reads all six, so signing and notarization turn on the
+moment they exist. Notarization is what removes the Gatekeeper dialog entirely.
 
 ## Defaults worth knowing
 

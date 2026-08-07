@@ -152,11 +152,78 @@ relay image. **It does not deploy the site**; step 6's push to `main` already
 did, a minute earlier, via Cloudflare Pages. So by the time the tag artifacts
 finish building, the web app has been live for a while. That ordering is fine —
 the site is versionless and the artifacts are not — but it does mean a release
-is not a single atomic moment, and a download page can briefly advertise a
-version whose binaries are still compiling.
+is not a single atomic moment.
+
+The download page is built for that gap rather than damaged by it. It asks the
+releases API for the current assets at load time instead of being told them at
+build time, and `release.yml` keeps the GitHub release a **draft** until all
+three desktop builds have passed. `/releases/latest` skips drafts, so during
+those twenty-odd minutes the page simply keeps offering the generic releases
+link it shipped with. Nothing points at a file that does not exist, and nothing
+has to be re-deployed when the binaries land.
+
+### What the jobs do, and what stops
+
+```
+verify ──┬── desktop  (windows / macos / ubuntu-22.04)  ─┬── publish-release ── manifests
+         ├── npm                                        ─┘
+         └── relay-image
+```
+
+`publish-release` is the job that makes the release public, and it needs **all
+three** desktop legs. A partial build therefore leaves a draft nobody can
+download, which is the intended failure mode: better no installers than a
+release page advertising a `.dmg` that failed to compile.
+
+If it stops there, the artifacts are still on the draft — fix the failing
+platform, re-run the workflow, and nothing is lost.
 
 Use `--dry` first if you want to see the commit list and the version it would
 pick without changing anything.
+
+### First release — the one-time manual steps
+
+None of these can be automated, all of them are invisible until they bite, and
+each one silently breaks something the download page promises. They are done
+once, ever.
+
+**1. `NPM_TOKEN`.** The `npm` job skips itself when this is missing, so the
+release still produces installers — it just never publishes the CLI, and every
+`npx realtimeclipboard` example on the site keeps failing.
+
+```bash
+# an AUTOMATION token, not a Classic Publish token: 2FA blocks the latter in CI
+gh secret set NPM_TOKEN
+```
+
+**2. Make the relay image public.** A package pushed by `GITHUB_TOKEN` is
+created **private**, and linking it to the repository does not grant public
+read. Until this is done, the `docker run ghcr.io/…` line on `/download/` and in
+`docs/SELF-HOSTING.md` fails with an authentication error for everybody, for
+ever — and nothing anywhere reports that it is happening.
+
+Only possible after the first `release.yml` run has created the package:
+
+1. GitHub → your profile → **Packages** → `realtimeclipboard-relay`
+2. **Package settings → Manage Actions access** → add the repository with
+   **Write**, or the next tag's push gets a 403 now that the package exists
+3. **Danger Zone → Change visibility → Public**
+
+**3. The Homebrew tap.** `manifest.mjs` generates the cask and the CLI formula,
+but they land in `dist/manifests/` on the runner and are uploaded as an
+artifact. They have to be committed to `akshaynikhare/homebrew-tap`, which has
+to exist first. Until it does, the `brew install --cask` line stays tagged *not
+published yet* on the page.
+
+**4. The winget manifest.** Generated the same way and submitted to
+`microsoft/winget-pkgs`, where people who do not work on this project review it.
+Expect days, not minutes — which is why the page tags it rather than claiming it
+works.
+
+**Nothing on the site claims any of these before they are true.** If you turn
+one on, remove its *not published yet* tag on `/download/` **and** in the
+matching `src/pages/help/install/` guide in the same commit; they duplicate each
+other, and a half-update leaves the site contradicting itself.
 
 ### The one place `--no-verify` is used on purpose
 
