@@ -458,6 +458,53 @@ bad = DOCUMENTED.flatMap(d => ["CLAUDE.md", "README.md"]
 ok(`every code directory has CLAUDE.md and README.md (${DOCUMENTED.length} dirs)`,
    bad.length === 0, bad.join(", "));
 
+/* ---------- 21-23. the desktop build can actually start ----------
+   Every one of these was true in a committed tauri.conf.json, through two tags,
+   because nothing here ever read that file. The desktop app is built by CI on
+   three runners; the cheapest of these checks is three minutes faster than
+   finding out there. */
+const TAURI_CONF = join(ROOT, "desktop/src-tauri/tauri.conf.json");
+const SRC_TAURI = dirname(TAURI_CONF);
+const conf = JSON.parse(read(TAURI_CONF));
+
+/* A "//" key is not a comment. tauri-build deserializes this file with unknown
+   fields DENIED, so one is a hard build failure — `unknown field '//version'` —
+   not an ignored annotation. The reasoning lives in desktop/README.md instead. */
+const commentKeys = [];
+(function scan(node, path) {
+  if (!node || typeof node !== "object") return;
+  for (const [k, v] of Object.entries(node)) {
+    if (k.startsWith("//")) commentKeys.push(`${path}${k}`);
+    scan(v, `${path}${k}.`);
+  }
+})(conf, "");
+ok('no "//" comment keys in tauri.conf.json', commentKeys.length === 0,
+   commentKeys.length
+     ? `${commentKeys.join(", ")} — tauri-build denies unknown fields; the reasoning goes in desktop/README.md`
+     : "");
+
+/* bundle.icon named five files that were not in the repo. That is not only a
+   bundling problem: build.rs runs tauri-build, which compiles the first .ico
+   into the Windows resource, so a missing icon fails `cargo build` as well. */
+const icons = [...(conf.bundle?.icon ?? []), conf.app?.trayIcon?.iconPath].filter(Boolean);
+bad = icons.filter(p => !existsSync(join(SRC_TAURI, p)));
+ok(`every desktop icon exists (${icons.length} named)`, bad.length === 0, bad.join(", "));
+
+/* The version is written in three files and was different in all three. Tauri
+   names every artifact from its copy, so a skew means the URLs in
+   tools/release/manifest.mjs point at filenames that were never built. */
+const pkgVersion = JSON.parse(read(join(ROOT, "package.json"))).version;
+const cargoVersion = read(join(SRC_TAURI, "Cargo.toml"))
+  .match(/\[package\][\s\S]*?\nversion = "([^"]+)"/)?.[1];
+const lockVersion = read(join(SRC_TAURI, "Cargo.lock"))
+  .match(/name = "realtimeclipboard"\nversion = "([^"]+)"/)?.[1];
+/* The config may either restate the version or point at package.json. Pointing
+   is preferred — it is the copy that cannot drift — so both are accepted. */
+const confOk = conf.version === "../../package.json" || conf.version === pkgVersion;
+ok(`desktop and package.json versions agree (${pkgVersion})`,
+   confOk && cargoVersion === pkgVersion && lockVersion === pkgVersion,
+   `package.json ${pkgVersion}, Cargo.toml ${cargoVersion}, Cargo.lock ${lockVersion}, tauri.conf ${conf.version}`);
+
 console.log("\n" + "=".repeat(56));
 console.log(`STATIC: ${pass}/${pass + fail} passed`);
 console.log("=".repeat(56));

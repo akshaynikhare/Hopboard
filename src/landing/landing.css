@@ -268,6 +268,14 @@ h3 {
 .icons { position:absolute; width:0; height:0; overflow:hidden; }
 .brandmark { width:22px; height:22px; fill:currentColor; stroke:none; flex:none; }
 .brandmark.sm { width:15px; height:15px; }
+/* Inline in a heading or a table cell, an SVG sits on the baseline and hangs
+   below it. Nudged rather than switched to flex, because these appear beside
+   text that has to keep wrapping normally. */
+h1 > .brandmark, h2 > .brandmark, td > .brandmark {
+  vertical-align:-.14em;
+  margin-right:.34em;
+}
+h1 > .brandmark { vertical-align:-.06em; }
 
 .tag {
   font:10.5px/1 var(--mono);
@@ -1236,7 +1244,12 @@ footer a:hover { color:var(--link); }
   .stats { gap:18px 20px; }
   .topbar .row { height:54px; gap:9px; }
   .tlink.strong { padding:6px 10px; }
-  .tag { display:none; }
+  /* Scoped to the bar, which is the only place this rule was ever about: the
+     `pre-alpha` badge is the first thing to drop when the row runs out of room.
+     Unscoped it also hid the "not published yet" pills on /download/, which is
+     the one screen size where a reader most needs to be told a command does not
+     work yet. */
+  .topbar .tag { display:none; }
   .hero > .in::after { inset:-6% -20% 40% 0; }
   .sec > .in > .hint { max-width:none; }
 }

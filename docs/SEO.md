@@ -148,6 +148,20 @@ the best intent in the whole set:
 | `/help/share-clipboard-between-android-devices` | (136) | Second highest |
 | `/help/self-hosted-clipboard-sync` | `clipboard sync self hosted` (34), `open source` (30) | Feeds r/selfhosted and awesome-selfhosted (§6) |
 
+**Built** — the per-platform install guides, split out from under `/help/install/`'s existing
+anchors. Nesting costs nothing: URL depth is not a ranking factor, and the titles carry the
+keywords either way.
+
+| Slug | Target keyword |
+|---|---|
+| `/help/install/windows` | `install clipboard sync windows 11` |
+| `/help/install/mac` | `clipboard between mac and windows` — the install half |
+| `/help/install/linux` | `clipboard sync linux wayland`, `gnome clipboard manager` |
+| `/help/install/android` | `share clipboard between android devices` (136) |
+| `/help/install/iphone` | `add to home screen iphone clipboard`, `iphone clipboard sync` |
+| `/help/install/cli` | `clipboard over ssh`, `command line clipboard` |
+| `/help/install/relay` | the how-to. `/help/self-hosted-clipboard-sync` above stays the keyword page |
+
 ⚠️ Do **not** build for `online clipboard pdf` or `online clipboard image editor`
 — despite decent scores, that is image/PDF *editing* intent, not transfer. And
 skip `online clipboard vercel` / `klipit`: people looking for a named competitor.

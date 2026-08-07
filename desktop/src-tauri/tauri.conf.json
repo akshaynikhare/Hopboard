@@ -1,14 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "RealtimeClipboard",
-  "//version": "A path, not a number. The bundle version is the repository's version — read from package.json rather than restated here, because a second copy is a copy that drifts. It already had: this file said 0.1.0 through the v0.2.0 and v0.2.1 tags, which would have named every artifact after a version nobody released.",
   "version": "../../package.json",
   "identifier": "io.github.akshaynikhare.realtimeclipboard",
 
   "build": {
     "beforeDevCommand": "",
     "beforeBuildCommand": "",
-    "//": "The frontend is the repository's own src/, taken as it stands. Not a copy, not a variant, not a build output — the same files the website serves. This is the single most important line in the file: it is what stops the desktop app becoming a second implementation that drifts.",
     "frontendDist": "../../",
     "devUrl": "http://127.0.0.1:8080"
   },
@@ -24,14 +22,12 @@
         "minWidth": 480,
         "minHeight": 420,
         "resizable": true,
-        "//": "Started hidden when launched at login (--hidden). The window is shown from the tray, or by the global hotkey.",
         "visible": true,
         "center": true,
         "theme": "Dark"
       }
     ],
 
-    "//security": "The webview renders clipboard content that arrives from other devices, so it gets the same policy the website has, plus what the shell needs. tauri: and ipc: are the local scheme the frontend uses to reach the four commands in main.rs; asset: is how the bundled files are served. The relay origins must match src/core/config.js — tests/unit/static-check.mjs asserts that for the web pages, and a self-hoster changes both.",
     "security": {
       "csp": "default-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' asset: data: blob:; connect-src 'self' ipc: http://ipc.localhost https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev; require-trusted-types-for 'script'; trusted-types realtimeclipboard",
       "assetProtocol": { "enable": true, "scope": [] }
@@ -40,16 +36,13 @@
     "trayIcon": {
       "id": "main",
       "iconPath": "icons/icon.png",
-      "//iconAsTemplate": "false, and it must stay false while the tray icon is icons/icon.png. A macOS template image is drawn from its ALPHA channel alone, and that icon is a full-bleed opaque square — as a template it renders as a solid black block in the menu bar, not as a clipboard. Turning this on needs a separate monochrome-on-transparent tray asset, which would then be invisible on a dark Windows taskbar; hence one colour icon for all three.",
       "iconAsTemplate": false,
-      "//": "Left click shows the window. Quit lives in the menu, because an app that watches your clipboard must have a visible way to stop it.",
       "menuOnLeftClick": false
     }
   },
 
   "bundle": {
     "active": true,
-    "//targets": "One list, every desktop platform. tauri-action picks the ones the runner can produce.",
     "targets": ["msi", "nsis", "dmg", "app", "deb", "rpm", "appimage"],
     "icon": [
       "icons/32x32.png",
@@ -65,7 +58,6 @@
     "licenseFile": "../../LICENSE",
 
     "windows": {
-      "//": "Signing is not optional for this app specifically: SmartScreen and most antivirus treat an unsigned binary that reads the clipboard and opens outbound TLS as suspicious, which is a fair description of what it does. Supplied by CI from secrets; empty here so a local build still works.",
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
       "timestampUrl": "http://timestamp.digicert.com",
@@ -74,14 +66,12 @@
 
     "macOS": {
       "minimumSystemVersion": "11.0",
-      "//": "Notarization is MANDATORY, not advisory: without it Gatekeeper refuses the download outright rather than warning. CI supplies APPLE_* from secrets.",
       "entitlements": null,
       "signingIdentity": null
     },
 
     "linux": {
       "deb": {
-        "//": "webkit2gtk 4.1 is the floor. Named explicitly so apt refuses the install on a distribution too old to run it, rather than installing a binary that fails at launch with a missing symbol.",
         "depends": ["libwebkit2gtk-4.1-0", "libgtk-3-0"]
       }
     }

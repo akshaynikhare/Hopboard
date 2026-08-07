@@ -86,6 +86,60 @@ nobody should pay 35 MB of native binaries on every `npm install` for it.
 > `tauri-plugin-clipboard-manager` v2 trait import in `main.rs` — to need
 > adjusting against the crate versions that actually resolve.
 
+## Why tauri.conf.json looks like that
+
+The file carries no `"//"` comment keys. **It cannot**: `tauri-build` deserializes
+the config with unknown fields denied, so a `"//"` key is not an ignored comment
+but a hard build failure — `unknown field '//version', expected one of …`. The
+config had carried six of them since it was written and nobody found out, because
+the app had never been compiled. The reasoning they held lives here instead.
+
+- **`version: "../../package.json"`** is a path, not a number. Tauri reads the
+  version from the repository's own manifest rather than restating it. A second
+  copy is a copy that drifts, and this one already had: the config said `0.1.0`
+  through both the v0.2.0 and v0.2.1 tags, which would have named every artifact
+  after a version nobody released. `tools/release/release.mjs` bumps the two
+  remaining copies — `Cargo.toml` and `Cargo.lock` — together, because
+  `cargo build --locked` fails outright when they disagree.
+
+- **`frontendDist: "../../"`** is the repository's own `src/`, taken as it stands.
+  Not a copy, not a variant, not a build output — the same files the website
+  serves. This is the most important line in the file: it is what stops the
+  desktop app becoming a second implementation that drifts.
+
+- **`security.csp`** is the website's policy plus what the shell needs. The
+  webview renders clipboard content arriving from other devices, so it gets the
+  same protection. `tauri:` and `ipc:` are how the frontend reaches the four
+  commands in `main.rs`; `asset:` is how bundled files are served. The relay
+  origins must match `src/core/config.js` — `tests/unit/static-check.mjs` asserts
+  that for the web pages, and a self-hoster changes both.
+
+- **`trayIcon.iconAsTemplate: false`**, and it must stay false while the tray
+  icon is `icons/icon.png`. A macOS template image is drawn from its **alpha
+  channel alone**, and that icon is a full-bleed opaque square — as a template it
+  renders as a solid black block in the menu bar rather than a clipboard. Turning
+  it on needs a separate monochrome-on-transparent asset, which would then be
+  invisible on a dark Windows taskbar. Hence one colour icon for all three.
+
+- **`trayIcon.menuOnLeftClick: false`** — left click shows the window. Quit lives
+  in the menu, because an app that watches your clipboard must have a visible way
+  to stop it.
+
+- **`app.windows[0].visible: true`** — started hidden when launched at login
+  (`--hidden`); shown from the tray or the global hotkey.
+
+- **`bundle.targets`** is one list covering every desktop platform; `tauri-action`
+  picks the ones each runner can actually produce.
+
+- **`bundle.linux.deb.depends`** names webkit2gtk **4.1** as the floor, so apt
+  refuses the install on a distribution too old to run it. Without it the package
+  installs cleanly and then fails at launch with a missing symbol, which reads as
+  "the app is broken" rather than "the dependency is wrong".
+
+- **`bundle.windows.certificateThumbprint: null`** and **`macOS.signingIdentity:
+  null`** are empty so a local build still works. See [Signing](#signing) for what
+  CI does when the secrets exist, and what users see when they do not.
+
 ## The thing to get right
 
 `ECHO_SUPPRESS` in `main.rs`, and the ordering in `set_clipboard`.

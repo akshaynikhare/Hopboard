@@ -60,6 +60,10 @@ const REQUIRED = [
   "assets/social/og-card.png",
   "help/index.html", "blog/index.html",
   "help/clipboard-sync-not-working/index.html", "help/install/index.html",
+  "help/install/windows/index.html", "help/install/mac/index.html",
+  "help/install/linux/index.html", "help/install/android/index.html",
+  "help/install/iphone/index.html", "help/install/cli/index.html",
+  "help/install/relay/index.html",
   "download/index.html", "download/download.css", "src/landing/download.js",
 ];
 

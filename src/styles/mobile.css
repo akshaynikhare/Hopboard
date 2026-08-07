@@ -159,6 +159,9 @@ select { min-height:38px; font-size:16px; padding:7px 8px; }
 .keyrow .btn { flex:1 1 auto; }
 
 .paneh { height:42px; font-size:12px; padding:0 12px; }
+/* The header is twice the height here and the tap target is the whole row, so
+   the chevron grows with the label rather than staying a desktop-sized speck. */
+.chev svg { width:14px; height:14px; }
 
 /* A control revealed by hover is a control a phone does not have — the same
    repair files.css already makes for the tile's remove button. */

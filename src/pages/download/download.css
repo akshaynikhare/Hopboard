@@ -46,7 +46,10 @@
   padding-bottom: clamp(28px, 4vw, 44px);
 }
 .tier > * { padding-left: var(--gut); padding-right: var(--gut); }
-.tier > p { max-width: 72ch; }
+/* The reset zeroes every margin and `.doc` never restored one for <p>, so two
+   consecutive paragraphs ran together — visible in the mobile section, which is
+   the only place on the old page that had a pair. */
+.tier > p { max-width: 72ch; margin-bottom: 14px; }
 .tier > p.honest { max-width: none; }
 
 /*

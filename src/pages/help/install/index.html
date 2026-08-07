@@ -225,34 +225,49 @@
           <b>Live</b> when you want the automatic behaviour.
         </p>
 
-        <h2 id="windows">Windows</h2>
-        <p>Download the <code>.msi</code> from <a href="/download/">the download page</a>, or:</p>
-        <pre><code>winget install RealtimeClipboard.RealtimeClipboard</code></pre>
-        <p>
-          If Windows SmartScreen warns you about the installer, that is worth
-          taking seriously in general. Check that the publisher matches and that
-          you got the file from the
-          <a href="https://github.com/akshaynikhare/RealtimeClipboard/releases/latest">official releases page</a>.
-        </p>
-        <p>
-          <b>On a work machine:</b> the app needs no administrator rights and
-          installs no driver or service. It makes outbound connections on 443
-          only, to a single hostname, which is the shape IT departments allowlist.
-          If yours blocks it, the browser version needs nothing at all.
-        </p>
+        <!-- Each section below answers "can I, and what is the command". The
+             per-platform page answers "did it work, what now, and why is it
+             broken" — content this page never had. Do not let the two converge
+             into the same paragraphs; the ids here are linked from outside and
+             have to keep leading somewhere worth arriving at. -->
 
-        <h2 id="mac">macOS</h2>
-        <p>Download the <code>.dmg</code>, or:</p>
-        <pre><code>brew install --cask realtimeclipboard</code></pre>
+        <h2 id="windows"><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-windows"/></svg> Windows</h2>
         <p>
-          One download covers both Intel and Apple Silicon. macOS needs no
-          special permission to read the clipboard, so there is no prompt to
-          grant — which cuts both ways, and is why the app defaults to Manual.
+          Download the <code>.msi</code> from <a href="/download/">the download page</a>,
+          or add the Scoop bucket. Background capture works with no caveats and
+          no permission prompt — Windows is the platform the desktop app is most
+          worth having on.
         </p>
+        <p>
+          The app needs no administrator rights and installs no driver or
+          service. It makes outbound connections on 443 only, to a single
+          hostname, which is the shape IT departments allowlist. If SmartScreen
+          warns you, check the file came from
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/releases/latest">the official releases page</a>
+          before clicking through.
+        </p>
+        <p><a href="/help/install/windows/">Full guide: installing on Windows</a> <span aria-hidden="true">→</span></p>
 
-        <h2 id="linux">Linux</h2>
-        <pre><code>flatpak install flathub io.github.akshaynikhare.RealtimeClipboard</code></pre>
-        <p>Or a <code>.deb</code>, <code>.rpm</code> or AppImage from the releases page, or <code>yay -S realtimeclipboard</code> on Arch.</p>
+        <h2 id="mac"><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-apple"/></svg> macOS</h2>
+        <p>
+          One <code>.dmg</code> covers both Intel and Apple Silicon — the build
+          is universal, so there is no second download to look for.
+        </p>
+        <p>
+          macOS needs no special permission to read the clipboard, so there is no
+          prompt to grant. That cuts both ways: nothing in the operating system
+          would tell you an app had started reading every copy you make, which is
+          why this one ships set to <b>Manual</b>.
+        </p>
+        <p><a href="/help/install/mac/">Full guide: installing on macOS</a> <span aria-hidden="true">→</span></p>
+
+        <h2 id="linux"><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-linux"/></svg> Linux</h2>
+        <p>
+          A <code>.deb</code>, <code>.rpm</code> or AppImage from the releases
+          page, or <code>yay -S realtimeclipboard-bin</code> on Arch. The app
+          needs webkit2gtk 4.1, which is roughly Ubuntu 22.04 or Fedora 36 and
+          newer; on anything older use the browser or the command-line client.
+        </p>
         <p>
           <b>The Wayland caveat, stated plainly.</b> On X11 the app is told when
           the clipboard changes and background capture works. On Wayland it
@@ -262,13 +277,9 @@
           this and says so in its status bar rather than silently doing nothing,
           and falls back to capturing on focus, exactly like the browser.
         </p>
-        <p>
-          <b>Older distributions.</b> The desktop app needs webkit2gtk 4.1, which
-          means roughly Ubuntu 22.04 or Fedora 36 and newer. On anything older,
-          use the browser or the command-line client.
-        </p>
+        <p><a href="/help/install/linux/">Full guide: installing on Linux</a> <span aria-hidden="true">→</span></p>
 
-        <h2 id="android">Android and ChromeOS</h2>
+        <h2 id="android"><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-android"/></svg> Android and ChromeOS</h2>
         <p>
           There is no Android app, and there is not going to be one. Since
           Android 10, only the app you are currently using, the active keyboard,
@@ -281,8 +292,9 @@
           <li>Tap the menu, then <b>Add to Home screen</b>.</li>
         </ol>
         <p>It then has its own icon and window, and works offline. To send something, paste it into the app or use Android's share menu.</p>
+        <p><a href="/help/install/android/">Full guide: Android and ChromeOS</a> <span aria-hidden="true">→</span></p>
 
-        <h2 id="ios">iPhone and iPad</h2>
+        <h2 id="ios"><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-apple"/></svg> iPhone and iPad</h2>
         <p>
           Same answer, for the same reason: iOS has never permitted background
           pasteboard reads, and since iOS 16 it shows a banner every time any app
@@ -296,8 +308,9 @@
           iOS shows no install prompt of its own, so if you are waiting for one
           to appear, it will not. The Share menu is the whole mechanism.
         </p>
+        <p><a href="/help/install/iphone/">Full guide: iPhone and iPad</a> <span aria-hidden="true">→</span></p>
 
-        <h2 id="cli">Servers, SSH sessions and scripts</h2>
+        <h2 id="cli"><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-node"/></svg> Servers, SSH sessions and scripts</h2>
         <pre><code>npx realtimeclipboard D75LV</code></pre>
         <p>
           For machines with no clipboard and no screen. It reads standard input
@@ -310,8 +323,9 @@ npx realtimeclipboard watch D75LV --once &gt; token.txt</code></pre>
           imports the same encryption and transport files the browser runs, so a
           clip sent from a server is indistinguishable from one sent by a laptop.
         </p>
+        <p><a href="/help/install/cli/">Full guide: the command line</a> <span aria-hidden="true">→</span></p>
 
-        <h2 id="relay">Running your own relay</h2>
+        <h2 id="relay"><svg class="brandmark sm" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-docker"/></svg> Running your own relay</h2>
         <p>
           The relay passes encrypted clips between your devices. It cannot read
           them — it only ever sees a room hash and ciphertext — but if you would
@@ -322,7 +336,9 @@ npx realtimeclipboard watch D75LV --once &gt; token.txt</code></pre>
           Then point the app at it under <b>Settings → Relay</b>. There is a
           <code>docker-compose.yml</code> with automatic TLS and a Helm chart in
           <a href="https://github.com/akshaynikhare/RealtimeClipboard/tree/main/deploy">the deploy directory</a>.
+          Pin it to one replica unless you have given it Redis.
         </p>
+        <p><a href="/help/install/relay/">Full guide: running your own relay</a> <span aria-hidden="true">→</span></p>
 
         <p class="hint">
           Ready to install: <a href="/download/">the download page</a>.

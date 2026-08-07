@@ -83,7 +83,7 @@ function mount() {
   pane.id = "paneHistory";
   setHTML(pane, `
     <div class="paneh" id="histHead">
-      <span class="chev">⌄</span> History
+      <span class="chev"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8L12 16L20 8"/></svg></span> History
       <span class="spacer"></span>
       <span class="soft"><span id="histCount">0</span><span class="vh"> clips</span></span>
       <button class="ibtn" type="button" id="histClear" title="Clear history" aria-label="Clear history">
