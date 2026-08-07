@@ -21,7 +21,7 @@
 # ---------------------------------------------------------------------------
 #
 # The app answers at /app. The file behind it is still app.html — Cloudflare
-# serves it there and `_redirects` states the mapping — so both spellings reach
+# serves any .html asset at its extensionless path — so both spellings reach
 # the same page, and a Disallow would have had to name both to mean anything.
 #
 # The previous version blocked it, and the reasoning was backwards. A page

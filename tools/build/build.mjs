@@ -180,9 +180,10 @@ cpSync(join(ROOT, "src/styles/lazy"), join(OUT, "src/styles/lazy"), { recursive:
  * The app is served at `/app`. The FILE is still `app.html`; only the
  * references to it change, and only here.
  *
- * `_redirects` maps `/app` onto it explicitly rather than leaning on the host
- * default, so the mapping is stated in the repository instead of inherited
- * from a setting no file records.
+ * Cloudflare Pages serves it there on its own — every .html asset answers at
+ * its extensionless path. `_redirects` must NOT restate that: a rewrite onto
+ * `/app.html` loops against the canonical redirect coming back the other way.
+ * The note at the top of `_redirects` has the outage it caused.
  *
  * !! Rewritten in the deploy and NEVER on disk. Three things depend on the
  * source tree continuing to say `app.html`, and two of them fail silently:

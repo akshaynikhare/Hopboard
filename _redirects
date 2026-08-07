@@ -1,29 +1,26 @@
 # Cloudflare Pages redirects.
 #
-# The app answers at /app, and the file behind it is still app.html.
+# The app answers at /app, the file behind it is still app.html, and NO RULE
+# HERE MAKES THAT HAPPEN. It must stay that way.
 #
-# A 200 is a rewrite, not a redirect: the browser keeps /app in the address bar
-# and the bytes come from app.html.
+# There was a rule — `/app  /app.html  200` — and it took the app down with
+# ERR_TOO_MANY_REDIRECTS on every hostname while the landing page loaded fine.
+# Pages serves any .html asset at its extensionless path and 308s the .html form
+# onto it, /app.html -> /app, exactly as it does /index.html -> /. It applies
+# that canonical redirect to the *target of a rewrite* as well as to the
+# incoming request. So /app rewrote to /app.html, the asset layer redirected
+# /app.html back to /app, and the browser walked that circle until it gave up.
 #
-# This line used to be load-bearing for more than cosmetics. src/core/paths.js
-# derived APP_ROOT with `new URL(".", document.baseURI)`, so a trailing slash
-# here would have resolved it to /app/ and moved sw.js, the manifest and every
-# lazily-loaded stylesheet a directory down. paths.js now uses `new URL("/", …)`
-# — subpath hosting is gone — so that particular footgun is gone with it.
+# The rule was written out on the reasoning that a default no file in the
+# repository records is a behaviour nobody can check. That reasoning is sound
+# and the conclusion was still wrong: the rule was redundant with the platform
+# going in and fatal coming out. The check belongs in a check, so it lives in
+# tools/check/site-check.mjs, which now fails if any rule maps /app again.
 #
-# Keep it slash-less anyway: /app and /app/ are two URLs for one page, and
-# tools/check/site-check.mjs asserts the mapping has no trailing slash.
-#
-# Cloudflare Pages also serves an extensionless path for any .html asset by
-# default, which would make this rule redundant. It is written out anyway: a
-# default that no file in the repository records is a behaviour nobody can
-# check, and this one decides whether the site loads at all.
-#
-# /app.html itself keeps working — Pages 301s the .html form to the clean one,
-# and every link that was ever shared uses it.
-/app  /app.html  200
+# /app.html keeps working for every link that was ever shared — Pages 308s it to
+# /app, and with no rule in the way that is where it stops.
 
-# Only one other rule, and it exists for a shape of URL that people will keep typing
+# The only path rule, and it exists for a shape of URL that people will keep typing
 # for years: the site lived at github.io/RealtimeClipboard/ for its whole life
 # before this domain, so the repo name is baked into every link that was ever
 # shared, every bookmark, and every search result. GitHub itself 301s those to

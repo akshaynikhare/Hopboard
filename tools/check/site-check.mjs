@@ -137,10 +137,8 @@ try {
  * of arrangement that works until someone adds a link in a form the rewrite's
  * pattern does not match, and then ships a 404 that no test on disk can see.
  *
- * Checked as a pair on purpose. A surviving `app.html` link is a needless
- * redirect hop at best; a missing `_redirects` rule is a site that does not
- * load at all, and the two failures have the same cause — the rewrite silently
- * not happening.
+ * A surviving `app.html` link is a needless redirect hop — Pages 308s it to
+ * /app — and a sign the rewrite silently stopped matching.
  */
 const appLinks = htmlPages()
   .concat(["manifest.webmanifest", "src/landing/landing.js", "src/landing/redirect.js"])
@@ -151,16 +149,24 @@ appLinks.length
   ? appLinks.forEach(f => fail(`${f} still links to app.html — the /app rewrite missed it`))
   : pass("every reference to the app uses /app");
 
-/^\/app\s+\/app\.html\s+200\s*$/m.test(read("_redirects"))
-  ? pass("_redirects maps /app onto app.html")
-  : fail("_redirects has no `/app  /app.html  200` rule — /app would not resolve");
-
-// The slash is not cosmetic: src/core/paths.js resolves APP_ROOT with
-// `new URL(".", document.baseURI)`, so /app/ would move sw.js, the manifest
-// and every lazy stylesheet a directory down. PRD OI-9, again.
-/^\/app\/\s/m.test(read("_redirects"))
-  ? fail("_redirects maps /app/ with a trailing slash — that moves APP_ROOT to /app/")
-  : pass("/app is mapped without a trailing slash");
+/**
+ * No `_redirects` rule may name /app, in any form.
+ *
+ * `/app  /app.html  200` looked like the rule that made the pretty URL work.
+ * It was the rule that broke it: Pages serves an .html asset at its
+ * extensionless path and 308s the .html form onto it, and it applies that
+ * canonical redirect to a rewrite's target too. /app rewrote to /app.html,
+ * which redirected to /app, which rewrote again — ERR_TOO_MANY_REDIRECTS, on
+ * the app only, on both hostnames, with nothing on disk able to see it.
+ *
+ * Pages resolves /app to app.html unaided. Anything written here about /app —
+ * including a trailing-slash /app/, which is a second URL for one page — is
+ * either redundant or another loop.
+ */
+const appRule = read("_redirects").split("\n").find(l => /^\/app(?=[\s/.]|$)/.test(l));
+appRule
+  ? fail(`_redirects maps /app (\`${appRule.trim()}\`) — Pages already serves /app from app.html, and rewriting to .html loops`)
+  : pass("_redirects leaves /app to Cloudflare's extensionless serving");
 
 const swShell = read("sw.js").match(/const SHELL = \[(.*?)\n\];/s)?.[1] ?? "";
 swShell.includes('"./app"')
