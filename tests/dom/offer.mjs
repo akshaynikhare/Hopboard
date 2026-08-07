@@ -4,8 +4,8 @@
  * Two banners above the editor became one line in the app bar, and the reason
  * every assertion below exists is that the row is unsolicited. It has to be
  * small (one row whatever is on offer), honest (the sentence it shows matches
- * what is actually available), and forgettable — an offer that timed out has
- * not been declined, and one that WAS declined must never come back.
+ * what is actually available), and answerable — it stays until it is dealt
+ * with, and once it HAS been declined it must never come back.
  *
  * Usage:  node tests/dom/offer.mjs
  */
@@ -58,7 +58,6 @@ const row = () => host().querySelector(".topnotice");
 const acts = () => [...host().querySelectorAll(".topnotice-act")].map(b => b.textContent);
 const msg = () => host().querySelector(".topnotice-msg")?.textContent ?? "";
 const declined = name => localStorage.getItem(`realtimeclipboard.${name}Dismissed`) === "true";
-const anyDeclined = () => ["desktop", "install"].some(declined);
 
 /**
  * A fresh module instance per scenario. install.js keeps the live offers in
@@ -117,7 +116,7 @@ check("...and it opened the download page", opened === 1);
 check("...and the taken one is remembered as seen",
   declined("desktop"), "otherwise it is offered again tomorrow");
 
-console.log("\nDismissing is permanent; timing out is not\n");
+console.log("\nIt stays until it is answered\n");
 
 localStorage.clear();
 await boot();
@@ -132,26 +131,19 @@ await boot();
 installable();
 check("so a later visit offers nothing at all", row() === null);
 
-/* Run the one-minute clock by hand rather than waiting for it. */
-const { OFFER } = await import("../../src/core/config.js");
-const realSetTimeout = global.setTimeout;
-let expire = null;
-global.setTimeout = (fn, ms) =>
-  (ms === OFFER.DISMISS_MS ? (expire = fn, 0) : realSetTimeout(fn, ms));
-
+/* THE REGRESSION: it used to clear itself after a minute, and the row was gone
+   by the time anyone looked up at the header. Nothing may schedule its removal. */
 localStorage.clear();
+let scheduled = null;
+const realSetTimeout = global.setTimeout;
+global.setTimeout = (fn, ms) => { scheduled = ms; return realSetTimeout(fn, ms); };
+
 await boot();
 check("a fresh visit offers again", row() !== null);
-check("...on a clock", typeof expire === "function", `${OFFER.DISMISS_MS / 1000}s`);
-expire();
-check("...which clears the row when it runs out", row() === null);
-check("...having written nothing", !anyDeclined(),
-  "a row that expired was never read, let alone declined");
+check("...and nothing is counting down to take it away", scheduled === null,
+  scheduled === null ? "no timer is set at all" : `a timer was set for ${scheduled} ms`);
 
 global.setTimeout = realSetTimeout;
-localStorage.clear();
-await boot();
-check("so the offer is back on the next visit", row() !== null);
 
 console.log("\nPhones are not lied to\n");
 

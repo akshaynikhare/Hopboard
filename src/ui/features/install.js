@@ -16,8 +16,7 @@
  */
 
 import { emit, EV } from "../../core/bus.js";
-import { OFFER } from "../../core/config.js";
-import { $, esc, setHTML, clear, scriptURL, autoDismiss } from "../primitives/dom.js";
+import { $, esc, setHTML, clear, scriptURL } from "../primitives/dom.js";
 import { fromUrl, isValid, fragment } from "../../core/keys.js";
 import { loadLastKey, read, write } from "../../core/storage.js";
 import { APP_ROOT, atRoot, lazyStyleHref } from "../../core/paths.js";
@@ -152,8 +151,12 @@ const drop = id => $(id)?.remove();
  * These were two stacked banners above the editor, which spent two rows of the
  * thing people came here to type in on saying "there is also an app" — twice,
  * in a tinted box that reads like a warning. They are one offer with two
- * destinations, so they share a line up here, in --dim, and clear themselves
- * after OFFER.DISMISS_MS.
+ * destinations, so they share a line up here, in --dim.
+ *
+ * It stays until it is answered. A timer was tried and taken out again: the row
+ * is quiet enough to sit in the header indefinitely, and one that clears itself
+ * is one nobody is looking at when it goes — which makes it an offer that was
+ * never made rather than one that was declined.
  *
  * `message` is only used when an offer is alone; with both live the row has no
  * space for either sentence and the buttons carry the meaning.
@@ -179,7 +182,6 @@ const OFFERS = {
 const BOTH = "RealtimeClipboard also runs as an app.";
 
 const live = new Set();
-let stopOfferTimer = null;
 
 function offer(key) {
   if (live.has(key) || read(OFFERS[key].dismissed, false)) return;
@@ -200,8 +202,6 @@ function renderOffers() {
   const host = $("mount-notice");
   if (!host) return;
 
-  stopOfferTimer?.();
-  stopOfferTimer = null;
   clear(host);
   if (!live.size) return;
 
@@ -227,7 +227,6 @@ function renderOffers() {
   el.querySelector(".topnotice-x").addEventListener("click", () => retire(keys, true));
 
   host.appendChild(el);
-  stopOfferTimer = autoDismiss(el, OFFER.DISMISS_MS, () => retire(keys));
 }
 
 /** Already running as an installed app? Then there is nothing to offer. */
