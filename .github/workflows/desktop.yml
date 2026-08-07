@@ -86,10 +86,18 @@ jobs:
       # This turns the guess into a listing, on demand, without publishing
       # anything. Run it before a tag, not after: the alternative is that the
       # first tag is also the first time anyone sees a real filename.
-      - name: Frontend bundle
+      # tauri.conf.json's beforeBuildCommand runs tools/build/build.mjs, which
+      # imports esbuild — so the frontend's devDependencies have to be here
+      # before `tauri build` starts, or it fails inside the bundler with
+      # "Cannot find package 'esbuild'".
+      - name: Node, for the frontend build
         if: inputs.bundle
         uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
+
+      - name: Install frontend devDependencies
+        if: inputs.bundle
+        run: npm ci
 
       - name: Bundle the installers
         if: inputs.bundle
