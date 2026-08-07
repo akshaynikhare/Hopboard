@@ -30,8 +30,13 @@ on:
 
 # A second push supersedes the first: nobody needs the compile result for a
 # commit that has already been replaced.
+#
+# The bundle runs get their own group. They take five times as long as a compile
+# check and are dispatched deliberately to read the artifact names off a real
+# build — having an unrelated push twenty minutes later cancel one is how you
+# lose an afternoon to a workflow doing exactly what it was told.
 concurrency:
-  group: desktop-${{ github.ref }}
+  group: desktop-${{ github.ref }}-${{ inputs.bundle && 'bundle' || 'compile' }}
   cancel-in-progress: true
 
 jobs:
