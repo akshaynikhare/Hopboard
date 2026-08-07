@@ -677,6 +677,20 @@ paths and cannot see the hostname:
   same content is reachable at two origins — split signals, and two separate
   service-worker registrations.
 
+⚠️ **Amended 2026-08-07 — none of the paragraph above is true of the live zone.**
+Measured: `www` answers **`HTTP 522`**, both records are **`DNS only`** rather
+than proxied, and **`www` is not attached to the Pages project at all**, which is
+what produces the 522 — the edge terminates TLS for the hostname and then has no
+route for it. The redirect rule described here was specified and never created.
+
+The verification block below is the reason this went unnoticed for so long: it
+contains `curl -sI https://www.realtimeclipboard.com/  # 301 -> apex`, which
+would have caught it on the first run. **A checklist nobody executes is
+documentation of an intention, not of a state.** The fix and the commands are in
+`LAUNCH-KIT.md` §4; the shape is proxy `www` (a Redirect Rule only runs on
+proxied traffic) and leave the apex as it is, since proxying the apex is what
+would put it behind the AI-crawler blocking discussed in §4.
+
 In-repo redirects live in `_redirects`; today that is one rule catching the old
 `/RealtimeClipboard/*` path shape against the new host.
 
@@ -893,6 +907,37 @@ The strategy above was already researched; this pass executed the parts that liv
 **The `/blog/` defect is the one worth remembering.** The rule was already written down, in the
 sitemap's own header, and the blog still shipped breaking it — because a comment governs whoever
 reads it and nothing else. That is why this pass turned the rule into a check.
+
+### Measured against the live site, 2026-08-07
+
+Three things were checked against `https://realtimeclipboard.com` rather than reasoned about.
+
+**1. Every unmatched path returned HTTP 200 with the full landing page.** Verified:
+`/definitely-not-a-real-page-xyz` → `200`, body identical to the homepage. Cloudflare Pages falls
+back to serving `index.html` with a 200 when **no `404.html` exists at the project root**, and the
+repo had none. Every typo, probe and stale link was therefore an indexable duplicate of the
+homepage. The homepage's self-referential canonical was the only thing limiting it, and a canonical
+is a hint rather than a status code. **Fixed by adding `404.html`** — its existence is the whole
+fix; Pages then serves a real 404. It is in `REQUIRED` in `site-check.mjs` because a missing one
+looks exactly like a healthy deploy.
+
+**2. `www.realtimeclipboard.com` answers `HTTP 522`.** Hard down, not a redirect. The DNS record
+exists as a `DNS only` CNAME to `realtimeclipboard.pages.dev`, but `www` is **not attached to the
+Pages project as a custom domain**, so the edge has no route for that hostname. This is a dashboard
+fix, not a repo one — see below. Note `_redirects` cannot express it: that file matches paths, not
+hostnames.
+
+**3. Nothing is blocking AI crawlers.** The §4 amendment worried that Cloudflare's edge would
+block `OAI-SearchBot` before `robots.txt` was consulted. Measured: requests as `OAI-SearchBot`,
+`ClaudeBot`, `PerplexityBot`, `GPTBot`, `Googlebot` and `bingbot` all return `200`. The reason is
+structural — **both DNS records are `DNS only` (grey cloud), and Cloudflare's zone security
+pipeline (WAF, Bot Fight Mode, AI crawler blocking) only runs on proxied traffic.** Responses still
+carry `Server: cloudflare` and `CF-RAY` because the CNAME target `*.pages.dev` is itself Cloudflare
+— but that is Pages serving an asset, not the zone inspecting a request.
+
+**The consequence to hold on to: the day anyone turns the orange cloud on, the bot-blocking risk
+becomes real and every zone-level feature the docs assume becomes available at the same time.**
+Both halves of that are currently off. Re-run the crawler check above after any proxy change.
 
 ## 10. Still to do, in order
 

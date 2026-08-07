@@ -69,6 +69,10 @@ mkdirSync(OUT, { recursive: true });
 
 for (const f of [
   "index.html", "app.html", "manifest.webmanifest", "sw.js",
+  // Pages serves index.html with HTTP 200 for unmatched paths when this file is
+  // absent, which turns every typo into a soft 404. Its presence at the root is
+  // the entire fix; the desktop shell has no router and never 404s.
+  ...(DESKTOP ? [] : ["404.html"]),
   // llms.txt and the IndexNow key are crawler-facing and meaningless inside the
   // desktop shell. The key file's NAME is the credential — IndexNow verifies by
   // fetching it at the origin root, so it has to keep both its filename and its

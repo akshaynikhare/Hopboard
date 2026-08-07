@@ -54,7 +54,7 @@ const pass = msg => console.log(`  ok    ${msg}`);
  * like a healthy deploy, which is the failure mode that most needs a check.
  */
 const REQUIRED = [
-  "index.html", "app.html", "manifest.webmanifest", "sw.js",
+  "index.html", "app.html", "manifest.webmanifest", "sw.js", "404.html",
   "robots.txt", "sitemap.xml", "changelog.json", "CHANGELOG.md",
   "_headers", "_redirects",
   "src/main.js", "src/styles/main.css",

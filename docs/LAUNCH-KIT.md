@@ -113,10 +113,66 @@ Ordered by the expected value measured in `SEO.md` §6. Every one of these is fr
 3. **IndexNow** is already wired — `npm run seo:indexnow`. It reaches Bing, Yandex, Seznam and
    Naver in one call. Google does not participate. Run it **after** a deploy is live, never before:
    the endpoint fetches each URL to verify it, so submitting early records a 404.
-4. **Verify Cloudflare is not blocking answer-engine crawlers.** Dashboard → Security → Bots. If
-   AI-crawler blocking is on, `OAI-SearchBot` and `PerplexityBot` get a 403 no matter what
-   `robots.txt` says, and the only symptom is never being cited. Nothing in this repo can assert
-   it, which is why it is written down here and in `robots.txt`.
+4. **Verify Cloudflare is not blocking answer-engine crawlers.** Measured 2026-08-07: it is not,
+   and structurally cannot be while both DNS records stay `DNS only` — the zone security pipeline
+   only runs on proxied traffic. Do not take that on trust after any DNS change; the check is one
+   command and needs no dashboard access:
+
+   ```bash
+   for ua in OAI-SearchBot ClaudeBot PerplexityBot Googlebot bingbot; do
+     echo "$ua $(curl -s -o /dev/null -w '%{http_code}' -A "$ua" https://realtimeclipboard.com/)"
+   done
+   ```
+
+   Anything other than `200` means the edge is filtering. If it ever is: the control is under the
+   zone's **Security → Bots** / **AI Crawl Control** section (Cloudflare has moved and renamed it
+   more than once — look for AI crawlers or "Block AI bots", and note Cloudflare began enabling it
+   by default for new zones in 2025). Allow `OAI-SearchBot`, `Claude-SearchBot` and
+   `PerplexityBot` at minimum; blocking `GPTBot` costs nothing, since it is training-only.
+
+5. **`www` is currently `HTTP 522` — fix before any launch.** DNS is fine: `www` CNAMEs to
+   `realtimeclipboard.pages.dev`, resolves to Cloudflare, and TLS completes (a 522 means the
+   handshake succeeded). What is missing is a route — `www` is not attached to the Pages project,
+   so the edge terminates the connection and has nowhere to send it.
+
+   **Do not fix it by adding `www` as a Pages custom domain.** That makes it serve a second copy
+   of the whole site at a second hostname: split ranking signals and two separate service-worker
+   registrations. `www` should redirect, not serve. `_redirects` cannot express it — that file
+   matches paths, not hostnames.
+
+   **Step 1 — proxy the `www` record.** DNS → Records → the `www` CNAME → Edit → set **Proxy
+   status** to **Proxied** (orange cloud) → Save. A Redirect Rule only runs on proxied traffic, so
+   this is what makes step 2 possible. Leave the **apex on `DNS only`**: proxying it is what would
+   put it behind the AI-crawler blocking in item 4, and it is serving correctly as it is.
+
+   **Step 2 — create the redirect.** Rules → **Redirect Rules** → Create rule. Newer dashboards
+   offer a **"Redirect from www to root domain"** template, which does all of this; if you see it,
+   use it and skip to step 3. Otherwise, by hand:
+
+   | Field | Value |
+   |---|---|
+   | Rule name | `www to apex` |
+   | If — custom filter expression | `(http.host eq "www.realtimeclipboard.com")` |
+   | Then — Type | **Dynamic** |
+   | Expression | `concat("https://realtimeclipboard.com", http.request.uri.path)` |
+   | Status code | **301** |
+   | Preserve query string | ✅ |
+
+   Dynamic rather than Static, because a static target drops the path: `www…/help/` has to land on
+   `/help/`, not on the homepage. Same reasoning as the `:splat` note in `_redirects`.
+
+   **Step 3 — verify.** Both must pass:
+
+   ```bash
+   curl -s -o /dev/null -w '%{http_code} -> %{redirect_url}\n' https://www.realtimeclipboard.com/help/
+   #   expect: 301 -> https://realtimeclipboard.com/help/
+
+   curl -s -o /dev/null -w '%{http_code} %{url_effective}\n' -L https://www.realtimeclipboard.com/
+   #   expect: 200 https://realtimeclipboard.com/
+   ```
+
+   Then re-run the crawler check in item 4 — `www` is now proxied, so the zone security pipeline
+   applies to it for the first time.
 
 ---
 
