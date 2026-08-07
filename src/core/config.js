@@ -126,7 +126,7 @@ export const TRANSPORT = { WS: "ws", SSE: "sse" };
  * clip over ~24 KB was accepted by the editor, encrypted, sent, and dropped by
  * the relay, with the rejection arriving as an async `error` frame long after
  * the UI had said it went. Deriving the number is what stops that recurring;
- * tests/clipsize.mjs is what proves the derivation.
+ * tests/unit/clipsize.mjs is what proves the derivation.
  *
  * MAX_CHARS is what the counter shows and what the editor guards on, because
  * users think in characters and one ASCII character is one byte. MAX_BYTES is

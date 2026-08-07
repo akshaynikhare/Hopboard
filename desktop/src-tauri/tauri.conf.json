@@ -30,7 +30,7 @@
       }
     ],
 
-    "//security": "The webview renders clipboard content that arrives from other devices, so it gets the same policy the website has, plus what the shell needs. tauri: and ipc: are the local scheme the frontend uses to reach the four commands in main.rs; asset: is how the bundled files are served. The relay origins must match src/core/config.js — tests/static-check.mjs asserts that for the web pages, and a self-hoster changes both.",
+    "//security": "The webview renders clipboard content that arrives from other devices, so it gets the same policy the website has, plus what the shell needs. tauri: and ipc: are the local scheme the frontend uses to reach the four commands in main.rs; asset: is how the bundled files are served. The relay origins must match src/core/config.js — tests/unit/static-check.mjs asserts that for the web pages, and a self-hoster changes both.",
     "security": {
       "csp": "default-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' asset: data: blob:; connect-src 'self' ipc: http://ipc.localhost https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev; require-trusted-types-for 'script'; trusted-types realtimeclipboard",
       "assetProtocol": { "enable": true, "scope": [] }

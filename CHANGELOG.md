@@ -1,6 +1,6 @@
 # Changelog
 
-Generated from the commit history by `tools/changelog.mjs` — do not edit by
+Generated from the commit history by `tools/release/changelog.mjs` — do not edit by
 hand, the next release will overwrite it. To change an entry, reword the
 commit.
 

@@ -35,7 +35,7 @@ python test_sse.py http://127.0.0.1:8000
 python test_idle.py ws://127.0.0.1:8000 5
 ```
 
-From the repo root, `node tests/fallback.mjs ws://127.0.0.1:8000` drives the
+From the repo root, `node tests/live/fallback.mjs ws://127.0.0.1:8000` drives the
 real client modules against this relay with WebSockets simulated as blocked —
 the failover itself, which is otherwise only reproducible from inside a network
 that blocks them.
@@ -132,7 +132,7 @@ Both ends now refuse to lie about it. `CORSMiddleware` puts the header on every
 response including the ones FastAPI generates on its own, so a missing route
 reads as an honest 404; and if the client meets a relay whose `/health` answers
 while `/sse` does not, it says "this relay is out of date" instead of blaming
-the network. `test_sse.py` S7 and `tests/fallback.mjs` cover both halves.
+the network. `test_sse.py` S7 and `tests/live/fallback.mjs` cover both halves.
 
 ## Limits
 

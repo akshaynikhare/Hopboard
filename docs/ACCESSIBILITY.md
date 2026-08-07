@@ -39,7 +39,7 @@ the app is genuinely operable end to end without a pointer.
 Files owned by this change: `src/ui/{qr,historyPanel,cursors,toast,banners,panes}.js`,
 `src/styles/{base,components}.css`.
 
-### `src/ui/panes.js` — pane headers are real buttons now
+### `src/ui/shell/panes.js` — pane headers are real buttons now
 
 A `.paneh` was a clickable `<div>`: unreachable by keyboard, announced as
 nothing (2.1.1, 4.1.2). The obvious repair — `role="button"` + `tabindex` on the
@@ -59,7 +59,7 @@ stays clickable for the mouse.
 `.panebtn` styling in `components.css` reproduces the header's font, casing and
 spacing exactly; the flex behaviour matches the text node it replaced.
 
-### `src/ui/qr.js` — trap, Escape, restore, and a mount collision
+### `src/ui/features/qr.js` — trap, Escape, restore, and a mount collision
 
 It already had a trap, Escape and restore. Four things were still wrong:
 
@@ -83,7 +83,7 @@ It already had a trap, Escape and restore. Four things were still wrong:
 Also: the QR image's `aria-label` was the entire share link, read out character
 by character immediately before the same URL appeared verbatim below it.
 
-### `src/ui/toast.js` — it did not reliably announce, and it spammed
+### `src/ui/shell/toast.js` — it did not reliably announce, and it spammed
 
 `#toast` is `role="status" aria-live="polite"`, which makes this module the app's
 only real announcement channel. The old six-line version failed both halves.
@@ -102,7 +102,7 @@ only real announcement channel. The old six-line version failed both halves.
 Verified in jsdom: a burst of five yields three sequential, fully-announced
 messages, and the region ends empty.
 
-### `src/ui/cursors.js` — reduced motion
+### `src/ui/features/cursors.js` — reduced motion
 
 `styles/cursors.css` already dropped the 110 ms transform transition under
 `prefers-reduced-motion`, and that stays the primary mechanism. The JS half adds
@@ -118,7 +118,7 @@ two things the sheet cannot:
 The query is live: turning the OS setting on mid-session updates cursors already
 on screen.
 
-### `src/ui/historyPanel.js` — a real bug, plus naming
+### `src/ui/panels/historyPanel.js` — a real bug, plus naming
 
 - **Enter on the Copy button did two things.** The row is `role="button"` and
   contains a real `<button>`. `onListClick` stops propagation for the pointer;
@@ -135,7 +135,7 @@ on screen.
   comment in the file).
 - The bare count now reads "3 clips".
 
-### `src/ui/banners.js` — announcements, and a timed dismissal
+### `src/ui/shell/banners.js` — announcements, and a timed dismissal
 
 - Banners appear unbidden and announced nothing. Each is now a live region:
   `role="status"` for info/warn, `role="alert"` for the split-brain warning,
@@ -181,8 +181,8 @@ on screen.
 ### Verification
 
 - `node --check` on all six JS files: clean.
-- `node tests/static-check.mjs`: **11/11**.
-- `node tests/files.mjs`: 39/39.
+- `node tests/unit/static-check.mjs`: **11/11**.
+- `node tests/unit/files.mjs`: 39/39.
 - A jsdom harness exercising focus trap, Escape, focus restore, inert, pane
   toggling, toast queueing, the history keydown bug and reduced motion:
   **65/65**.
@@ -298,7 +298,7 @@ badly degraded. **Medium** = a real barrier with a workaround. **Low** = polish.
 
 ### B1 · The file-approval dialog steals focus twice a second — **Blocker**
 
-**Where:** `src/ui/filesPanel.js:331` (`setInterval(sweep, 500)`) →
+**Where:** `src/ui/panels/filesPanel.js:331` (`setInterval(sweep, 500)`) →
 `filesPanel.js:345–354` (`sweep()` calls `drawPrompts()` unconditionally) →
 `filesPanel.js:356–391` (`drawPrompts()` replaces `host.innerHTML`, then line
 **383** calls `host.querySelector("[data-allow]")?.focus?.()`).
@@ -357,9 +357,9 @@ the dialog's static text instead ("expires in about 30 seconds").
 
 ### B2 · `#mount-modals` has three owners and one of them wipes it — **High**
 
-**Where:** `src/ui/filesPanel.js:361` and `:366` (`host.innerHTML = …`).
+**Where:** `src/ui/panels/filesPanel.js:361` and `:366` (`host.innerHTML = …`).
 `filesPanel.js:400–411` already documents the hazard and routes `confirmAction()`
-around it to `document.body`; `src/ui/qr.js` now does the same for the same
+around it to `document.body`; `src/ui/features/qr.js` now does the same for the same
 reason. That is two workarounds for one design problem.
 
 **Fix:** give each consumer its own child, and never write the container's
@@ -376,7 +376,7 @@ then `drawPrompts()` writes to `$("modal-files")`, `confirmAction()` appends to
 
 ### B3 · File tiles are not reachable — **Blocker**
 
-**Where:** `src/ui/filesPanel.js:212–226` renders `<div class="tile" data-id=…>`;
+**Where:** `src/ui/panels/filesPanel.js:212–226` renders `<div class="tile" data-id=…>`;
 `filesPanel.js:59–84` binds `click` only.
 
 **Problem:** the tile's primary action — save a received file, or request a
@@ -406,7 +406,7 @@ just a filename: `` `${f.name}, ${formatSize(f.size)} — ${f.blob ? "save to di
 ### B4 · The horizontal splitter takes focus and ignores every key — **Blocker**
 
 **Where:** `app.html:150–151` gives `#resizePanes` `tabindex="0"` and
-`role="separator"`. `src/ui/resizer.js:57–75` (`horizontal()`) has no keydown
+`role="separator"`. `src/ui/shell/resizer.js:57–75` (`horizontal()`) has no keydown
 handler; its sibling `vertical()` does, at `resizer.js:44–53`.
 
 **Problem:** a focus stop that does nothing (2.1.1), and a drag-only operation
@@ -431,7 +431,7 @@ handle.addEventListener("keydown", e => {
 
 ### B5 · Nothing announces an incoming clip — **High**
 
-**Where:** `src/main.js` `on(EV.TEXT_RECEIVED, …)` → `src/ui/editor.js:38`
+**Where:** `src/main.js` `on(EV.TEXT_RECEIVED, …)` → `src/ui/panels/editor.js:38`
 (`setText`). A `<textarea>`'s `value` changing is not announced by anything.
 
 **Problem:** the app's central event is silent unless the editor happens to be
@@ -444,7 +444,7 @@ just before `#toast`:
 <p id="srAnnounce" class="vh" role="status" aria-live="polite" aria-atomic="true"></p>
 ```
 
-and in `src/ui/statusbar.js` (or a 15-line `src/ui/announce.js`):
+and in `src/ui/shell/statusbar.js` (or a 15-line `src/ui/shell/announce.js`):
 
 ```js
 let lastAnnounce = 0;
@@ -467,8 +467,8 @@ know something arrived; the editor is right there to read.
 **Problem:** no live region anywhere, so connection loss, reconnection, peer
 count and transfer path are never announced (**4.1.3 Status Messages**). But
 `#sbLnCol` and `#sbChars` are rewritten on **every keystroke**
-(`src/ui/editor.js:87–95`), and `#sbP2P` on every progress tick
-(`src/ui/statusbar.js:54–57`). Putting `aria-live` on `.statusbar` would make the
+(`src/ui/panels/editor.js:87–95`), and `#sbP2P` on every progress tick
+(`src/ui/shell/statusbar.js:54–57`). Putting `aria-live` on `.statusbar` would make the
 app unusable with a screen reader on.
 
 **Fix — per item, not per bar:**
@@ -486,7 +486,7 @@ app unusable with a screen reader on.
 
 ### B7 · `#sbKey` is a clickable `<div>` — **Blocker**
 
-**Where:** `app.html:225–228`, handler at `src/ui/sessionPanel.js:15`.
+**Where:** `app.html:225–228`, handler at `src/ui/panels/sessionPanel.js:15`.
 
 **Problem:** not focusable, no role, and `title` on a generic `<div>` is not an
 accessible name. "Copy the share link" — arguably the app's most-used action —
@@ -500,7 +500,7 @@ The focus ring for it is already in `components.css` (`.statusbar :focus-visible
 
 ### B8 · `#drop` is a clickable `<div>` — **High**
 
-**Where:** `app.html:138–140`, handler at `src/ui/filesPanel.js:49`.
+**Where:** `app.html:138–140`, handler at `src/ui/panels/filesPanel.js:49`.
 
 **Problem:** the visible primary "add files" affordance is unreachable. `#bAdd`
 (`app.html:133`) is a reachable duplicate.
@@ -512,13 +512,13 @@ and drop stays as it is — a `<button>` fires the same events.
 
 ### B9 · The approval and confirmation dialogs are not trapped — **Medium**
 
-**Where:** `src/ui/filesPanel.js:356–391` (approval) and `:415–458` (confirm).
+**Where:** `src/ui/panels/filesPanel.js:356–391` (approval) and `:415–458` (confirm).
 
 **Problem:** both are `role="dialog" aria-modal="true"`, both focus something
 sensible, both handle Escape — and Tab walks straight out of both into the page
 behind.
 
-**Fix:** lift `trapTab()` and `setShellInert()` from `src/ui/qr.js`; they were
+**Fix:** lift `trapTab()` and `setShellInert()` from `src/ui/features/qr.js`; they were
 written with no QR-specific state for this reason. `confirmAction()` also needs
 focus restore: capture `document.activeElement` before `appendChild` (line 453)
 and call `restore.focus?.()` in `closeConfirm()` after `el.remove()`.
@@ -545,7 +545,7 @@ const setValue = (handle, value, min, max) => {
 
 ### B11 · The mode switch's arrow keys flip rather than move — **Medium**
 
-**Where:** `src/ui/syncMode.js:52–57`.
+**Where:** `src/ui/features/syncMode.js:52–57`.
 
 **Problem:** both ArrowLeft and ArrowRight run the same "toggle to the other
 one" branch. In a two-option radiogroup that happens to look right, but it is not
@@ -609,7 +609,7 @@ exactly this — the markup is the odd one out.
 ### B15 · The share key is pronounced as a word — **Medium**
 
 **Where:** `#key` in the app header and `#sbKeyText` in the status bar. Written
-by `renderKey()` in `src/ui/sessionPanel.js`.
+by `renderKey()` in `src/ui/panels/sessionPanel.js`.
 
 **Problem:** the key exists to be read off one screen and typed on another. A
 screen reader says "D75LV" as a word, which is unusable for that.
@@ -644,7 +644,7 @@ in the header's `.keybar`. Do the same for `#sbKeyText`, or mark it
 ### B17 · Landmarks — **Low**
 
 - `app.html:104` `<aside class="side" id="side">` has no accessible name, and
-  `src/ui/ads.js` adds a second `<aside aria-label="Advertisement">`. Two
+  `src/ui/features/ads.js` adds a second `<aside aria-label="Advertisement">`. Two
   complementary landmarks, one unnamed. Add `aria-label="Session"` to the former.
 - `app.html:224` the status bar is a plain `<div>`. `role="contentinfo"` or
   `role="status"`-per-item (B6) would make it findable.
@@ -685,7 +685,7 @@ Worth recording so they do not get "simplified" away:
   somebody else's mouse is would be pure noise.
 - `<html lang="en">`, and the layout reflows to a single column at 900 px
   (`layout.css:26`), which covers 1.4.10.
-- `esc()` on every interpolation, enforced by `tests/static-check.mjs`.
+- `esc()` on every interpolation, enforced by `tests/unit/static-check.mjs`.
 
 ---
 

@@ -23,7 +23,7 @@ in development.
 ### That happened. Here is what it cost.
 
 Two of the three conditions arrived together — 47 modules and a 17-deep serial
-`@import` chain — so `tools/build.mjs` now assembles the deploy with esbuild.
+`@import` chain — so `tools/build/build.mjs` now assembles the deploy with esbuild.
 The trade was taken exactly as written above:
 
 - **`src/` is untouched.** Development is still `python -m http.server`, the
@@ -58,7 +58,7 @@ touching the build:
    alone, and both panels 404'd in the deploy — caught, warned and degraded
    exactly as designed, which is precisely why it would have shipped. Literal
    specifiers inside thunks keep the laziness and stay analysable.
-   `tests/bundle.mjs` boots the built output and fails on either.
+   `tests/dom/bundle.mjs` boots the built output and fails on either.
 
 The one constraint this imposes: **ES modules require HTTP**. Opening
 `index.html` from `file://` fails on CORS. Use `python -m http.server 8080`.
@@ -67,73 +67,93 @@ The one constraint this imposes: **ES modules require HTTP**. Opening
 
 ## 2. Layout
 
+**A directory's rank decides what it may import**, and every directory carries a `CLAUDE.md`
+stating its own rules. The ranks:
+
+```
+ 0   core/                                     imports nothing above it
+10   transport/  clipboard/  files/  landing/  peers — may not import each other
+20   ui/primitives/
+21   ui/shell/  ui/features/                   peers — may not import each other
+22   ui/panels/                                composes shell + features + primitives
+99   main.js                                   the only file that may cross layers
+```
+
+An import may go downhill or stay inside its own directory, and nothing else. One sideways edge is
+allowed and named in the check: `files/transfer.js` reads `transport/protocol.js` for frame shapes,
+which are transport-agnostic by design.
+
 ```
 index.html              markup only — no styles, no behaviour
 src/
   main.js               composition root: the only file that knows the whole graph
-  core/
-    config.js           every tunable constant
-    bus.js              pub/sub — the only channel between modules
-    state.js            session state + setters that announce changes
-    keys.js             share-key generation, normalisation, URL handling
-    crypto.js           room hashing, PBKDF2 derivation, AES-GCM
-    storage.js          localStorage, wrapped so it cannot throw
-  transport/
-    protocol.js         wire frame shapes (PRD §6)
-    relay.js            WebSocket client, reconnect, heartbeat
-  clipboard/
-    os.js               the OS boundary — readText / writeText, nothing else
-    capture.js          T1/T2/T3 tiers, permission detection, loop suppression
-  files/
-    thumbs.js           canvas thumbnails, icons, size formatting
-    registry.js         in-memory file list
-    transfer.js         P2P transfer (M7)
+  core/                 bus, config, state, crypto, keys, storage, paths, device, history
+                        no DOM — the CLI and the node suites import these unchanged
+  transport/            relay.js is the facade; ws.js and sse.js are interchangeable
+                        channels; protocol.js is frame shapes (PRD §6)
+  clipboard/            os.js is the whole OS boundary; capture.js owns the T0–T3 tiers
+  files/                transfer (WebRTC, relay fallback), registry, chunker, thumbs
   ui/
-    dom.js              $, $$, esc, bind
-    toast.js            queued announcements (the app's only aria-live channel)
-    banners.js          inline notices: permission, pending clip, peer joined
-    editor.js           the main panel
-    filesPanel.js       files and images
-    sessionPanel.js     devices and settings — as status-bar menus, not a pane
-    historyPanel.js     session clip history
-    statusbar.js        bottom bar, and the transport picker on it
-    statusMenu.js       the slide-up menus every status item opens
-    syncMode.js         Live / Manual switch
-    cursors.js          live peer pointers
-    hints.js            getting-started overlay
-    panes.js            collapsible sidebar panes (delegated)
-    resizer.js          draggable splitters
-    modal.js            the one focus-trapping dialog shell
-    qr.js               QR modal (predates modal.js; still has its own copy)
-    lockDialog.js       the PIN prompt for locked sessions, and the notice
-                        shown to a device removed by one
-    lockButton.js       "Lock session" in the app header, and who may press it
-    whatsNew.js         release notes, read from changelog.json
-    install.js          PWA install + service worker
-    ads.js              the single ad placeholder
-  styles/
-    main.css            @imports the rest
-    tokens.css          every colour and metric
-    base.css            reset, scrollbars
-    layout.css          shell grid
-    …                   one file per component
+    primitives/         dom.js, modal.js, statusMenu.js — no domain knowledge
+    shell/              statusbar, banners, panes, resizer, mobileNav, toast
+    features/           lock*, syncMode, qr, whatsNew, install, cursors, hints, appLinks, ads
+    panels/             editor, filesPanel, sessionPanel, historyPanel
+  styles/               tokens.css owns every colour; main.css @imports the rest
+    lazy/               fetched on first open, never bundled — see below
+  landing/              behaviour for index.html: a separate document, CSS co-located
+  pages/                help/ blog/ download/ — static content, copied to the
+                        site root rather than bundled, so their links are
+                        root-absolute and subpath hosting is not supported
 ```
+
+`src/pages/` is the one directory here that is copied verbatim, and the one whose disk path is not
+its URL: `src/pages/help/install/` is published at `/help/install/`. That lift is why every link
+inside those pages is root-absolute — a relative one resolves against the page's depth, and these
+pages have one depth on disk and another when served, so it would be correct in exactly one place.
+`app.html` and `index.html` stay at the root precisely so the app keeps a dev loop where disk and
+URL still agree.
+
+### Eager and lazy stylesheets
+
+`styles/` is bundled into one file; `styles/lazy/` is copied and fetched on first open by the panel
+that needs it. `core/paths.js` `lazyStyleHref()` can address the second and nothing else, so the
+two halves cannot disagree — the build used to recover the lazy set by grepping every module for
+call sites, which meant a sheet could sit in both and ship twice. `qr.css` and `history.css` did
+exactly that, invisibly, because CSS is idempotent.
+
+Which half a sheet belongs in is a **correctness** question, not a payload one: `mobile.css` loads
+last and overrides earlier sheets by source order, and a lazy `<link>` is injected after it. So
+anything `mobile.css` restyles has to stay eager whatever it weighs.
 
 ---
 
 ## 3. The one rule
 
-**UI modules never import transport or clipboard modules. They publish and
-subscribe on the bus.**
+**UI modules never import a transport channel. They publish and subscribe on the
+bus.**
 
 ```
   clipboard/capture ──emit(TEXT_CAPTURED)──► bus ──► main.js ──► transport/relay
                                               │
-  ui/editor ◄──────────on(TEXT_RECEIVED)──────┘
+  ui/panels/editor ◄────on(TEXT_RECEIVED)─────┘
 ```
 
 `main.js` is the only file allowed to know both sides. Everything else depends on
 the bus and on `core/`, never sideways.
+
+> This rule used to read "transport **or clipboard** modules", and five UI
+> modules imported `clipboard/` anyway — `shell/banners`, `panels/editor`,
+> `panels/historyPanel`, `panels/sessionPanel` and `features/syncMode`. The
+> check only ever enforced the transport half, so the drift was invisible for as
+> long as it existed.
+>
+> The transport half is the one that earned its keep: it carried the entire SSE
+> fallback in without a UI file changing, which is the argument the rest of this
+> section makes. The clipboard half never paid for itself — `clipboard/` is a
+> stable local boundary, not a swappable one, and `os.js` is already confined by
+> its own check. So the rule is now narrowed to what is true and enforced, rather
+> than left aspirational. Enforcing the wider version instead is a real option;
+> it costs a bus round trip in five modules and needs its own tests.
 
 Why it matters here specifically: the transport is the least settled part of the
 system. If the deployed relay turns out not to pass WebSocket upgrades
@@ -157,7 +177,7 @@ and know nothing but how to move frames. Everything that is easy to get subtly
 different between two transports — the hello, the 30 s heartbeat, jittered
 reconnect backoff, the last-clip replay — lives in `relay.js` once, for both.
 Nothing above `relay.js` can tell which one is live, and the static check
-enforces that no UI/files/clipboard module imports anything from `transport/`.
+enforces that no UI/files/clipboard module imports a channel from `transport/`.
 
 The switch itself: try WebSocket, give it `NET.PROBE_MS` to become usable, and
 after `NET.SWITCH_AFTER` attempts that never do, move to SSE and say so. The
@@ -165,7 +185,7 @@ probe matters more than it looks — a blocked WebSocket usually does not fail, 
 hangs, so there is no error to react to and nothing but a timer will notice.
 
 The status bar can pin it by hand, and that is a good example of the rule
-working rather than an exception to it. `ui/statusbar.js` owns the menu and
+working rather than an exception to it. `ui/shell/statusbar.js` owns the menu and
 knows the three values; it emits `EV.TRANSPORT_SELECT`, `main.js` calls
 `relay.setTransport()`, and the UI hears the result back as `EV.TRANSPORT`. No
 UI file imports a channel, so the picker would keep working if the channels
@@ -190,10 +210,14 @@ were replaced tomorrow.
 | Add a wire message | `transport/protocol.js`, then handle it in `relay.js` |
 | Change how a clip is captured | `clipboard/capture.js` |
 | Touch the system clipboard | `clipboard/os.js` — the only file that may |
-| Add a UI panel | new `ui/*.js` + `styles/*.css`, register in `main.js` |
+| Add a DOM helper with no idea what the app does | `ui/primitives/` |
+| Add persistent chrome — a bar, a pane, a splitter | `ui/shell/` |
+| Add a feature that could be deleted without breaking the layout | `ui/features/` |
+| Add a content surface built out of the other three | `ui/panels/` + `styles/*.css`, register in `main.js` |
+| Add a stylesheet | `styles/` if `main.css` should bundle it; `styles/lazy/` only if the component is optional **and** `mobile.css` says nothing about it |
 | Change a colour | `styles/tokens.css` |
 | Add a setting | `state.js` defaults → a row in the right menu in `sessionPanel.js`. No markup in `app.html`: the menus render from state when opened |
-| Add a modal | `ui/modal.js` — `show({className, html, labelledBy, onClose})`. It owns the inert shell, the tab ring, Escape, and focus restore. Do **not** hand-roll another one, and do not mount to `#mount-modals`: `filesPanel.js` owns that node and rewrites its `innerHTML` on a 500 ms tick, which would delete a dialog out from under its own focus trap |
+| Add a modal | `ui/primitives/modal.js` — `show({className, html, labelledBy, onClose})`. It owns the inert shell, the tab ring, Escape, and focus restore. Do **not** hand-roll another one, and do not mount to `#mount-modals`: `filesPanel.js` owns that node and rewrites its `innerHTML` on a 500 ms tick, which would delete a dialog out from under its own focus trap |
 | Release something | `npm run release -- minor`. Tests run in a git hook, not on GitHub; a tag is what deploys — [RELEASING.md](RELEASING.md) |
 
 ### Adding a feature, worked example
@@ -201,7 +225,7 @@ were replaced tomorrow.
 Say incoming clips should ding.
 
 1. `core/config.js` — `export const SOUND = { enabled: true, url: "…" }`
-2. `ui/sound.js` — `on(EV.TEXT_RECEIVED, play)`
+2. `ui/features/sound.js` — `on(EV.TEXT_RECEIVED, play)`
 3. `main.js` — `sound.init()`
 
 No existing module changes. That is the test of whether the boundaries hold.
@@ -215,24 +239,24 @@ These are load-bearing. Breaking one is a vulnerability, not a bug.
 | Invariant | Enforced in |
 |---|---|
 | An incoming clip never destroys unsent editor text | `main.js` checks `editor.isDirty()` before overwriting; otherwise it offers |
-| A device joining the session is announced, not silent | `state.setPeers()` diffs the roster → `ui/banners.js` |
+| A device joining the session is announced, not silent | `state.setPeers()` diffs the roster → `ui/shell/banners.js` |
 | Signalling and cursor frames are sealed like clips | `main.js` `encryptFrame()`; only routing fields stay clear |
 | A peer may retract only files it announced | `files/registry.js` `applyGone()` checks the relay-stamped `from` |
 | The share key is never transmitted — only `SHA-256(key)` and ciphertext | `core/crypto.js` |
 | Keys are normalised (uppercased) before hashing | `core/keys.js` |
 | A session PIN is never transmitted, never in the URL, never on disk, never logged — only PBKDF2+HKDF output derived from it | `core/crypto.js`, `core/storage.js` `saveLock()`, `main.js` `announce()` |
-| A locked link opens no connection until the PIN is given, and never falls back to the unlocked room of the same key | `main.js` `startSession()`; `tests/boot.mjs --locked` |
+| A locked link opens no connection until the PIN is given, and never falls back to the unlocked room of the same key | `main.js` `startSession()`; `tests/live/boot.mjs --locked` |
 | The lock marker is parsed **before** key normalisation | `core/keys.js` `parseFragment()` — normalising first turns `#!ABCDEF` into the different, valid key `ABCDEF` |
 | The lock beacon is planted only into a room with no retained clip | `main.js` on `EV.ROOM_STATE` — it is itself a clip, and would otherwise overwrite the last-clip replay of FR-3.3 |
-| A locked session claims "Private" only once something has actually decrypted | `state.setVerified()` → `ui/sessionPanel.js` `renderLock()` |
-| Only the device that opened the room may lock it, once anyone else is in it | `state.canLock()`, fed by `welcome.existing` — enforced at both call sites (`ui/lockButton.js` and `main.js` `session:lock`) |
+| A locked session claims "Private" only once something has actually decrypted | `state.setVerified()` → `ui/panels/sessionPanel.js` `renderLock()` |
+| Only the device that opened the room may lock it, once anyone else is in it | `state.canLock()`, fed by `welcome.existing` — enforced at both call sites (`ui/features/lockButton.js` and `main.js` `session:lock`) |
 | Locking never leaves the other devices connected to a session nobody is in | `main.js` `sendEviction()` plants `LOCK.EVICT` in the room being abandoned; `onEvicted()` is the other end |
 | A bus event that reports is never named the same as one that commands | `core/bus.js` — `EV.LOCK_STATE` and the `"session:lock"` imperative once shared a name, and every `setKey()` opened the PIN dialog by itself |
-| Peer content is escaped before entering `innerHTML` | `ui/dom.js` `esc()`, and `setHTML()` is the only sink — enforced by Trusted Types in the CSP, and by the static check |
+| Peer content is escaped before entering `innerHTML` | `ui/primitives/dom.js` `esc()`, and `setHTML()` is the only sink — enforced by Trusted Types in the CSP, and by the static check |
 | `lastSent` and the suppression window are set *before* writing to the OS clipboard | `clipboard/capture.js` `apply()` |
 | The AES key is derived once per session, never per message — and is cleared on leave, rotate and rejoin | `core/crypto.js` cache + `clearCache()` |
 | Rejected files always report why | `files/registry.js` → `filesPanel.js` |
-| The transfer path (P2P vs relay) is always visible | `ui/filesPanel.js` `badge()` |
+| The transfer path (P2P vs relay) is always visible | `ui/panels/filesPanel.js` `badge()` |
 
 The suppression ordering is the subtle one. Write first and your own poller sees
 a "new" clipboard value and bounces it back to the sender, forever. See
@@ -242,7 +266,11 @@ a "new" clipboard value and bounces it back to the sender, forever. See
 
 ## 6. Testing
 
-No test runner in the repo — the modules are pure enough to exercise directly:
+No test runner in the repo — the modules are pure enough to exercise directly.
+Suites are filed by **what they need to run**: `tests/unit/` needs nothing,
+`tests/dom/` needs jsdom, `tests/live/` needs a relay, so `node tests/<path>`
+never fails for a reason unrelated to your change. See
+[../tests/README.md](../tests/README.md).
 
 ```bash
 mkdir -p /tmp/t && cp -r src /tmp/t/ && echo '{"type":"module"}' > /tmp/t/package.json

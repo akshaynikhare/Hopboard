@@ -120,20 +120,35 @@ clipboard on their own.
 ```
 index.html              marketing landing page (indexable)
 app.html                the app itself (noindex) — served at /app; the .html is
-                        rewritten out by tools/build.mjs, in the deploy only
+                        rewritten out by tools/build/build.mjs, in the deploy only
 src/
-  main.js               composition root — wires modules together
-  core/                 bus, config, state, crypto, storage
-  transport/            relay client, protocol, reconnect, WebSocket/SSE failover
+  main.js               composition root — the only file that crosses layers
+  core/                 bus, config, state, crypto, keys, storage, paths — no DOM
+  transport/            relay facade + interchangeable WebSocket and SSE channels
   clipboard/            OS clipboard read/write, capture tiers
-  files/                thumbnails, registry, P2P transfer
-  ui/                   one module per panel + shared helpers
-  styles/               design tokens + per-component CSS
-backend/                FastAPI relay — deployed separately
-tests/e2e.mjs           two peers, real crypto, live relay
-tests/fallback.mjs      WebSocket blocked → SSE failover, through the real client
-docs/                   PRD, clipboard design, P2P design, M0 results
+  files/                thumbnails, registry, chunking, P2P transfer
+  ui/                   primitives → shell + features → panels, in that order
+  styles/               design tokens + per-component CSS; lazy/ is fetched on demand
+  landing/              behaviour for index.html — a separate document from the app
+  pages/                help/ blog/ download/ — copied to the site root, not bundled
+cli/                    the same crypto and protocol, on the command line
+backend/                FastAPI relay — deployed separately, shares no code
+desktop/                Tauri shell around this very src/ — no second implementation
+assets/                 icons/ (precached whole) + social/ (the OG card, never)
+tests/                  unit/ needs nothing · dom/ needs jsdom · live/ needs a relay
+tools/                  build/ · check/ · release/ · seo/
+docs/                   PRD, architecture, clipboard design, P2P design, SEO
 ```
+
+A directory **at the root** is served at its own path — `assets/icons/icon.svg` is
+`/assets/icons/icon.svg`. `src/` is the opposite: inputs that get bundled, plus `src/pages/`, which
+is lifted to the site root at build time. `app.html` and `index.html` stay at the root so the app
+keeps a dev loop where the disk path and the URL are the same string.
+
+**Every directory carries its own `CLAUDE.md` and `README.md`** — the rules that
+govern a change live next to the code they govern, and a static check fails if a
+directory has neither. Start at [src/CLAUDE.md](src/CLAUDE.md) for the import
+rules.
 
 Details and conventions: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -160,10 +175,10 @@ configuring — but nothing else will be found either. Open `app.html#DEVKEY` in
 two windows to watch a clip cross between them.
 
 `app.html` here, not `/app`: the clean URL is a deploy-time rewrite in
-`tools/build.mjs`, and `python -m http.server` does not strip extensions. The
+`tools/build/build.mjs`, and `python -m http.server` does not strip extensions. The
 same is true of the desktop app, which ships this tree as it stands.
 
-With the relay running, `node tests/fallback.mjs ws://127.0.0.1:8000` exercises
+With the relay running, `node tests/live/fallback.mjs ws://127.0.0.1:8000` exercises
 the client's WebSocket → SSE failover with WebSockets simulated as blocked.
 
 Full setup, the service-worker cache trap, and how to check a UI change:

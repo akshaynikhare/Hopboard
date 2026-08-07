@@ -38,6 +38,20 @@ python -m http.server 8080
 # the app       http://127.0.0.1:8080/app.html
 ```
 
+**The content pages are the exception**, and the only thing in this repo that needs
+a build to look at. `src/pages/help/` is published at `/help/`, one level up from
+where it sits, so its links are root-absolute and point at URLs that exist only
+after the lift:
+
+```bash
+npm run build:site && (cd _site && python -m http.server 8080)
+```
+
+That trade is deliberate and it is contained: `app.html` and `index.html` stayed
+at the root so the app — the thing actually being edited — keeps a loop where the
+disk path and the URL are the same string. See
+[../src/pages/CLAUDE.md](../src/pages/CLAUDE.md).
+
 **Terminal 2 — the relay.**
 
 ```bash
@@ -97,7 +111,7 @@ Two rules when you touch anything in `src/` or `index.html`:
    this file is also the only signal the browser has that an update exists — it
    byte-compares `sw.js`.
 2. **Add new modules to the `SHELL` list.** There is no build step generating
-   it; it is a hand-written array. `tests/static-check.mjs` diffs that list
+   it; it is a hand-written array. `tests/unit/static-check.mjs` diffs that list
    against what is on disk and fails if they disagree, which is the safety net
    — but the net only catches you if you run the tests.
 
@@ -114,15 +128,22 @@ npm test
 ```
 
 Each file gates one thing, and each exists because the bug it checks for
-actually shipped once:
+actually shipped once.
+
+**The directory says what a suite needs**, so `node tests/<path>` never fails
+for a reason unrelated to your change: `tests/unit/` needs nothing,
+`tests/dom/` needs jsdom, `tests/live/` needs a relay. A suite needing two is
+filed under the heavier one — `boot` needs jsdom *and* a relay, so it is
+`live/`. The full inventory is in [../tests/README.md](../tests/README.md); the
+ones worth knowing by name:
 
 | File | What it proves | Relay it uses by default |
 |---|---|---|
-| `tests/static-check.mjs` | every import path resolves, every element id referenced in JS exists in the HTML, the `SHELL` list matches disk | none |
-| `tests/files.mjs` | adding a file tells the other peers about it | none |
-| `tests/e2e.mjs` | **the one that matters** — two peers, real crypto, real relay, a string in on A comes out intact on B | **deployed** |
-| `tests/boot.mjs` | `boot()` actually reaches the transport, in a real DOM | **deployed** (needs `jsdom`; skips cleanly without it) |
-| `tests/fallback.mjs` | the *client* notices a swallowed WebSocket and moves itself to SSE | **local**, `ws://127.0.0.1:8000`; skips cleanly if nothing is there |
+| `tests/unit/static-check.mjs` | every import path resolves, every element id referenced in JS exists in the HTML, the `SHELL` list matches disk | none |
+| `tests/unit/files.mjs` | adding a file tells the other peers about it | none |
+| `tests/live/e2e.mjs` | **the one that matters** — two peers, real crypto, real relay, a string in on A comes out intact on B | **deployed** |
+| `tests/live/boot.mjs` | `boot()` actually reaches the transport, in a real DOM | **deployed** (needs `jsdom`; skips cleanly without it) |
+| `tests/live/fallback.mjs` | the *client* notices a swallowed WebSocket and moves itself to SSE | **local**, `ws://127.0.0.1:8000`; skips cleanly if nothing is there |
 
 Note the split, because it catches people out: **a bare `npm test` reaches the
 internet.** `e2e` and `boot` default to the deployed relay, so on a plane or
@@ -131,9 +152,9 @@ change. Every one of them takes a relay URL as its first argument, so point the
 whole suite at the one on your desk:
 
 ```bash
-node tests/e2e.mjs      ws://127.0.0.1:8000
-node tests/boot.mjs     ws://127.0.0.1:8000
-node tests/fallback.mjs ws://127.0.0.1:8000   # already the default
+node tests/live/e2e.mjs      ws://127.0.0.1:8000
+node tests/live/boot.mjs     ws://127.0.0.1:8000
+node tests/live/fallback.mjs ws://127.0.0.1:8000   # already the default
 ```
 
 Running against your local relay is also the honest way to test a *relay*
@@ -201,8 +222,8 @@ source data:
 ```bash
 # Natural Earth 1:110m land, public domain
 curl -o land.geojson https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_land.geojson
-node tools/build-land-mask.mjs land.geojson          # 1° — what ships
-node tools/build-land-mask.mjs land.geojson 1.5      # coarser, 4.8 kB
+node tools/build/build-land-mask.mjs land.geojson          # 1° — what ships
+node tools/build/build-land-mask.mjs land.geojson 1.5      # coarser, 4.8 kB
 ```
 
 That writes `src/landing/land.js` and prints the land-cell count. It is **not a
@@ -282,7 +303,7 @@ light palette, inject the `prefers-color-scheme: light` token values as a plain
 - **Every constant lives in `src/core/config.js`.** A magic number anywhere else
   is a bug in the making.
 - **Contain failures at boot.** Each feature is started inside a `try` so one
-  throw cannot take out everything after it — a lesson `tests/boot.mjs` exists
+  throw cannot take out everything after it — a lesson `tests/live/boot.mjs` exists
   to enforce.
 - **The relay learns nothing.** It sees a room hash and ciphertext, keeps
   neither, and is never told anything about the visitor. Any change that widens

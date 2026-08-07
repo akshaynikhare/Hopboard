@@ -37,7 +37,7 @@ Three rules follow from that diagram, and each is enforced rather than trusted:
 | No commits directly on `main` | `.husky/pre-commit` |
 | Tests pass before a commit exists | `.husky/pre-commit` → `npm run verify` |
 | A commit says what kind of change it is | `.husky/commit-msg` |
-| A broken site is never promoted | `tools/site-check.mjs`, in the Cloudflare build |
+| A broken site is never promoted | `tools/check/site-check.mjs`, in the Cloudflare build |
 | Only a tag ships CLI/desktop/relay | `.github/workflows/release.yml` |
 
 ---
@@ -55,7 +55,7 @@ dashboard rather than in this repo, so they are recorded here:
 | Root directory | `/` |
 | `NODE_VERSION` | `22` |
 
-`npm run build:site` is `tools/build.mjs` followed by `tools/site-check.mjs`. The
+`npm run build:site` is `tools/build/build.mjs` followed by `tools/check/site-check.mjs`. The
 second half is the gate: it asserts the required files exist, that the sitemap
 and `robots.txt` name the canonical origin, that `app.html` still carries its
 `noindex`, that the manifest has no SVG icon, and that the `_headers` CSP and the
@@ -161,7 +161,7 @@ pick without changing anything.
 ### The one place `--no-verify` is used on purpose
 
 The release commit is made on `main`, which the pre-commit hook exists to
-prevent. `tools/release.mjs` passes `--no-verify` for that one commit, having
+prevent. `tools/release/release.mjs` passes `--no-verify` for that one commit, having
 already run the checks itself a moment earlier. It is the only automated bypass
 in the repository.
 
@@ -169,7 +169,7 @@ in the repository.
 
 ## The changelog
 
-`tools/changelog.mjs` reads the git history and writes two files from one pass:
+`tools/release/changelog.mjs` reads the git history and writes two files from one pass:
 
 - **`CHANGELOG.md`** — every release, in full, for the repository
 - **`changelog.json`** — the last few releases, capped, shipped with the app
@@ -188,7 +188,7 @@ npm run changelog -- --check  # exit 1 if they are stale
 
 ### In the app
 
-`src/ui/whatsNew.js` fetches `changelog.json` and shows a dismissible banner
+`src/ui/features/whatsNew.js` fetches `changelog.json` and shows a dismissible banner
 when the running version differs from the last one this browser saw. Two rules:
 
 - **It never interrupts.** Arrival is a banner; the dialog only opens if asked.
@@ -202,7 +202,7 @@ A missing or malformed `changelog.json` produces silence, not an error.
 
 ### One version, one identity
 
-`tools/build.mjs` stamps `sw.js`'s `VERSION` as **`<package.json version>+<short
+`tools/build/build.mjs` stamps `sw.js`'s `VERSION` as **`<package.json version>+<short
 commit sha>`** — `0.3.1+9f2c4ab10e77`. The leading half is the same string that
 heads `CHANGELOG.md` and appears in "What's new", so a cache name still reads as
 a release rather than as an opaque hash.
@@ -241,7 +241,7 @@ one-second reachability check the pre-push hook uses.
 
 ## If the deploy fails
 
-Read the Cloudflare build log. A failure is almost always `tools/site-check.mjs`
+Read the Cloudflare build log. A failure is almost always `tools/check/site-check.mjs`
 catching something real — a file that moved, a missing `noindex` on `app.html`,
 an SVG that crept back into the manifest's `icons[]`, a canonical URL still
 naming the old origin. Each check prints what it was protecting.

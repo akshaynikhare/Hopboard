@@ -35,9 +35,9 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run verify
-      - run: node tests/bundle.mjs
-      - run: node tests/e2e.mjs
-      - run: node tests/cli.mjs
+      - run: node tests/dom/bundle.mjs
+      - run: node tests/live/e2e.mjs
+      - run: node tests/live/cli.mjs
 
   desktop:
     needs: verify
@@ -150,13 +150,13 @@ jobs:
       - name: Scoop bucket
         # The easiest Windows channel by a distance: no signing, no review, no
         # waiting. Shipped before winget for exactly that reason.
-        run: node tools/manifest.mjs scoop ${{ github.ref_name }}
+        run: node tools/release/manifest.mjs scoop ${{ github.ref_name }}
 
       - name: Homebrew tap
-        run: node tools/manifest.mjs homebrew ${{ github.ref_name }}
+        run: node tools/release/manifest.mjs homebrew ${{ github.ref_name }}
 
       - name: AUR PKGBUILD
-        run: node tools/manifest.mjs aur ${{ github.ref_name }}
+        run: node tools/release/manifest.mjs aur ${{ github.ref_name }}
 
       - name: Open the manifest updates
         env:
@@ -165,4 +165,4 @@ jobs:
           # Deliberately pull requests rather than direct pushes. These land in
           # repositories other people also touch, and a bot force-pushing a tap
           # is how a tap acquires a reputation.
-          node tools/manifest.mjs publish ${{ github.ref_name }}
+          node tools/release/manifest.mjs publish ${{ github.ref_name }}

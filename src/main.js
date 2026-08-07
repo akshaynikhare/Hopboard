@@ -25,25 +25,25 @@ import * as capture from "./clipboard/capture.js";
 // key into the fragment at module-evaluation time, which must happen before
 // resolveKey() runs — an installed PWA opens with no fragment, because a
 // manifest start_url cannot carry one (OI-10).
-import * as install from "./ui/install.js";
+import * as install from "./ui/features/install.js";
 
-import * as toast from "./ui/toast.js";
-import * as banners from "./ui/banners.js";
-import * as panes from "./ui/panes.js";
-import * as editor from "./ui/editor.js";
-import * as filesPanel from "./ui/filesPanel.js";
-import * as sessionPanel from "./ui/sessionPanel.js";
-import * as statusbar from "./ui/statusbar.js";
-import * as resizer from "./ui/resizer.js";
-import * as syncMode from "./ui/syncMode.js";
-import * as appLinks from "./ui/appLinks.js";
-import * as lockButton from "./ui/lockButton.js";
-import * as lockDialog from "./ui/lockDialog.js";
-import * as whatsNew from "./ui/whatsNew.js";
-import * as hints from "./ui/hints.js";
-import * as cursors from "./ui/cursors.js";
-import * as ads from "./ui/ads.js";
-import * as mobileNav from "./ui/mobileNav.js";
+import * as toast from "./ui/shell/toast.js";
+import * as banners from "./ui/shell/banners.js";
+import * as panes from "./ui/shell/panes.js";
+import * as editor from "./ui/panels/editor.js";
+import * as filesPanel from "./ui/panels/filesPanel.js";
+import * as sessionPanel from "./ui/panels/sessionPanel.js";
+import * as statusbar from "./ui/shell/statusbar.js";
+import * as resizer from "./ui/shell/resizer.js";
+import * as syncMode from "./ui/features/syncMode.js";
+import * as appLinks from "./ui/features/appLinks.js";
+import * as lockButton from "./ui/features/lockButton.js";
+import * as lockDialog from "./ui/features/lockDialog.js";
+import * as whatsNew from "./ui/features/whatsNew.js";
+import * as hints from "./ui/features/hints.js";
+import * as cursors from "./ui/features/cursors.js";
+import * as ads from "./ui/features/ads.js";
+import * as mobileNav from "./ui/shell/mobileNav.js";
 
 /* ------------------------------------------------------------------
    session key
@@ -217,7 +217,7 @@ async function retryLock() {
    What this cannot cover: a room whose last clip has expired with the room
    itself (10 minutes after the last device leaves). Then there is nothing to
    check against and the session stays "unverified" rather than guessing — see
-   the banner in ui/banners.js.
+   the banner in ui/shell/banners.js.
 ------------------------------------------------------------------- */
 async function sendBeacon() {
   const { aesKey } = state.get();
@@ -259,7 +259,7 @@ async function sendEviction() {
  * it has been told to leave, sending clips to it and taking clips from it.
  *
  * Guarded because the goodbye is a retained clip: a reconnect replays it, and
- * a second notice stacked on the first would close the first (ui/modal.js
+ * a second notice stacked on the first would close the first (ui/primitives/modal.js
  * never stacks) and resolve its promise as a cancel.
  */
 let evicted = false;
@@ -572,7 +572,7 @@ function wire() {
   --------------------------------------------------------------------- */
 
   on("session:lock", async () => {
-    // Checked here as well as on the button (ui/lockButton.js), because the
+    // Checked here as well as on the button (ui/features/lockButton.js), because the
     // gear menu emits this same event and a rule enforced at one of two call
     // sites is a rule that is about to be enforced at neither.
     if (state.get().locked) return emit(EV.TOAST, "This session is already locked");
@@ -742,13 +742,13 @@ async function loadOptional() {
   // register the service worker twice.
   // Thunks, not path strings. `import(variable)` is opaque to a bundler: it
   // cannot know what to emit, so it leaves the specifier alone and the deploy
-  // asks for ./ui/qr.js, which the bundle does not contain. Both panels then
+  // asks for ./ui/features/qr.js, which the bundle does not contain. Both panels then
   // fail to load — caught, warned, and degraded exactly as designed, which is
   // precisely why nobody would notice. A literal specifier inside a thunk keeps
-  // the laziness AND lets tools/build.mjs split each one into its own chunk.
+  // the laziness AND lets tools/build/build.mjs split each one into its own chunk.
   const features = [
-    [() => import("./ui/historyPanel.js"), "history"],
-    [() => import("./ui/qr.js"),           "qr"],
+    [() => import("./ui/panels/historyPanel.js"), "history"],
+    [() => import("./ui/features/qr.js"),           "qr"],
   ];
   for (const [load, label] of features) {
     try {

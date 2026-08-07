@@ -23,7 +23,7 @@ const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 /**
  * Each feature is started separately and its failure is contained.
  *
- * The app learned this the expensive way (see tests/boot.mjs): one unguarded
+ * The app learned this the expensive way (see tests/live/boot.mjs): one unguarded
  * throw during start-up took out everything after it, and the only symptom was
  * a feature quietly not working. Here it would mean an SVG API missing on some
  * browser stopping the key generator from ever running — the one thing on this

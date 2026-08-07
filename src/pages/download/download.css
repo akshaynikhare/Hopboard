@@ -1,0 +1,125 @@
+/*
+ * The download page's own layout. Everything else comes from
+ * ../src/landing/landing.css, and every colour here is a token from it — a hex
+ * literal in this file would be a bug for the same reason it is one in
+ * src/styles/ (docs/ARCHITECTURE.md §3).
+ */
+
+.pick {
+  margin: 24px 0 8px;
+}
+
+.pickcard {
+  border: 1px solid var(--rule2);
+  border-left: 3px solid var(--link);
+  border-radius: 8px;
+  padding: 18px 20px;
+  background: var(--panel);
+}
+
+.pickhead {
+  margin: 0 0 4px;
+  font-weight: 600;
+  color: var(--bright);
+}
+
+.pickcard p { margin: 0 0 10px; }
+.pickcard .btn { margin-top: 4px; }
+
+.dlgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 20px 0 32px;
+}
+
+.dlcard {
+  border: 1px solid var(--rule2);
+  border-radius: 8px;
+  padding: 18px 20px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+}
+
+.dlcard.wide { grid-column: 1 / -1; }
+
+.dlcard h3 {
+  margin: 0 0 10px;
+  font-size: 1.02rem;
+}
+
+.dlcard .btn { align-self: flex-start; }
+
+.dlcard .hint,
+.dlcard .pm { margin: 8px 0 4px; }
+
+.dlcard pre {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--sunk);
+  border: 1px solid var(--rule2);
+  /* Commands are the one thing on this page a reader will copy, and a wrapped
+     command is a mis-pasted command. Scroll the block, never the page. */
+  overflow-x: auto;
+}
+
+.dlcard code { font-size: 0.86rem; }
+
+.steps-list {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+.steps-list li { margin: 0 0 6px; }
+
+/*
+ * The capability line, which is the most important text on the page.
+ *
+ * Colour-coded, and ALSO prefixed with a word — "yes", "not possible" — because
+ * the distinction it draws is the one users get wrong, and a reader who cannot
+ * tell green from amber must still get the answer. Colour is the decoration
+ * here, never the message (docs/ACCESSIBILITY.md).
+ */
+.cap {
+  margin-top: auto;
+  padding-top: 12px;
+  font-size: 0.88rem;
+  color: var(--dim);
+}
+.cap.yes  b { color: var(--ok); }
+.cap.part b { color: var(--warn); }
+.cap.no   b { color: var(--dim); }
+
+/* The paragraph that says what installing the desktop agent actually means.
+   It sits between the pitch and the buttons on purpose. */
+/*
+ * The gutter is a MARGIN here, not the padding every other block on the grid
+ * uses (landing.css, `.doc > *`). This element needs its own inner padding for
+ * the tinted panel, and one box cannot hold both — the `padding` shorthand
+ * below silently resets the grid inset, which left the callout sitting on the
+ * page's vertical rules while everything above and below it stayed clear.
+ */
+.honest {
+  border-left: 3px solid var(--warn);
+  padding: 12px 16px;
+  margin: 16px var(--gut) 8px;
+  background: var(--panel);
+  border-radius: 0 6px 6px 0;
+}
+
+@media (max-width: 560px) {
+  /*
+   * minmax(0,1fr), not a bare 1fr.
+   *
+   * `1fr` is shorthand for `minmax(auto,1fr)`, so the track's floor is the
+   * card's min-content width — and a card holds a <pre> with an install command
+   * in it. One `winget install RealtimeClipboard.RealtimeClipboard` was enough
+   * to push the track wider than the phone, and because <body> sets
+   * overflow-x:hidden the result was not a scrollbar but the right edge of the
+   * page silently cut off. An explicit 0 floor lets the track shrink and leaves
+   * the command scrolling inside its own <pre>, which is what .dlcard pre's
+   * overflow-x is for.
+   */
+  .dlgrid { grid-template-columns: minmax(0, 1fr); }
+}
