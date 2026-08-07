@@ -139,6 +139,8 @@ const RELAY_FRAME_GAP_MS = Math.ceil(1000 / RELAY_FRAMES_PER_SEC);
  */
 const IDLE_GRACE = 4;
 
+const stallMs = () => iceTimeout * IDLE_GRACE;
+
 /* ------------------------------------------------------------------ *
  * Injected collaborators
  * ------------------------------------------------------------------ */
@@ -487,7 +489,7 @@ async function streamOverDataChannel(t) {
     if (t.done || !registry.get(t.id)) return abort(t, "the file went away mid-transfer");
     if (dc.readyState !== "open") return abort(t, "the direct connection closed");
 
-    await drain(t);
+    if (!await drain(t)) return abort(t, "the direct connection stopped accepting data");
     if (t.done) return;
 
     header.setUint32(0, c.seq);
@@ -500,8 +502,50 @@ async function streamOverDataChannel(t) {
     progress(t, ((c.seq + 1) / p.total) * 100);
   }
 
-  if (dc.readyState === "open") dc.send(JSON.stringify({ fin: 1, id: t.id, digest: t.digest }));
+  if (dc.readyState !== "open") return abort(t, "the direct connection closed");
+  dc.send(JSON.stringify({ fin: 1, id: t.id, digest: t.digest }));
+
+  // dc.send() only queues, and pc.close() destroys the SCTP association along
+  // with anything still in it. For a file under the high-water mark drain()
+  // never paused once, so that is frequently the whole transfer — and we would
+  // have reported "Sent" on the way out.
+  if (!await flush(t)) return abort(t, "the direct connection dropped before the file finished");
+
+  await closeGracefully(t);
+  if (t.done) return;
   sent(t);
+}
+
+/**
+ * Wait for the send queue to fall to `low`, having decided to wait at `gate`.
+ * Resolves false if the channel died or the queue never got there — the caller
+ * decides whether that is fatal.
+ *
+ * The threshold is set per wait rather than once at setup, because
+ * bufferedamountlow fires on the downward crossing and the two waits want
+ * different marks. Mid-stream we resume at one chunk so the pipe never goes
+ * idle; the final flush can only accept zero, because whatever is left when
+ * pc.close() runs is thrown away.
+ */
+function untilBuffered(dc, { gate, low }) {
+  if (!dc || dc.readyState !== "open") return Promise.resolve(false);
+  if (dc.bufferedAmount <= gate) return Promise.resolve(true);
+
+  dc.bufferedAmountLowThreshold = low;
+  return new Promise(resolve => {
+    let timer = null;
+    const release = () => {
+      clearTimeout(timer);
+      dc.removeEventListener("bufferedamountlow", release);
+      dc.removeEventListener("close", release);
+      dc.removeEventListener("error", release);
+      resolve(dc.readyState === "open" && dc.bufferedAmount <= low);
+    };
+    timer = setTimeout(release, stallMs());
+    dc.addEventListener("bufferedamountlow", release);
+    dc.addEventListener("close", release);        // never wait on a dead channel
+    dc.addEventListener("error", release);
+  });
 }
 
 /**
@@ -509,19 +553,30 @@ async function streamOverDataChannel(t) {
  * SCTP as fast as the loop can read it and the buffer either balloons or the
  * channel is torn down by the browser.
  */
-function drain(t) {
+const drain = t => untilBuffered(t.dc, { gate: SEND_HIGH_WATER, low: FILES.CHUNK_BYTES });
+
+/** Everything we queued has left. Only now is it safe to close the transport. */
+const flush = t => untilBuffered(t.dc, { gate: 0, low: 0 });
+
+/**
+ * Close the channel and give the stream reset a chance to land before the peer
+ * connection goes. A close we asked for is not a drop, so the handlers that
+ * would report it as one come off first.
+ */
+function closeGracefully(t) {
   const dc = t.dc;
-  if (!dc || dc.readyState !== "open" || dc.bufferedAmount <= SEND_HIGH_WATER) return Promise.resolve();
+  if (!dc || dc.readyState !== "open") return Promise.resolve();
+  dc.onclose = dc.onerror = null;
   return new Promise(resolve => {
-    const release = () => {
-      dc.removeEventListener("bufferedamountlow", release);
-      dc.removeEventListener("close", release);
-      dc.removeEventListener("error", release);
+    let timer = null;
+    const done = () => {
+      clearTimeout(timer);
+      dc.removeEventListener("close", done);
       resolve();
     };
-    dc.addEventListener("bufferedamountlow", release);
-    dc.addEventListener("close", release);        // never wait on a dead channel
-    dc.addEventListener("error", release);
+    timer = setTimeout(done, FILES.CHANNEL_CLOSE_MS);
+    dc.addEventListener("close", done);
+    try { dc.close(); } catch { done(); }
   });
 }
 
@@ -1031,7 +1086,7 @@ function armIdle(t) {
   t.idleTimer = setTimeout(() => {
     if (t.done) return;
     abort(t, "the transfer stalled — the other device stopped responding");
-  }, iceTimeout * IDLE_GRACE);
+  }, stallMs());
 }
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));

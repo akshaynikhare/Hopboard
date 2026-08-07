@@ -250,6 +250,25 @@ h3 {
 .brand svg { width:19px; height:19px; color:var(--blue); transition:transform .35s var(--ease); }
 .brand:hover svg { transform:translateY(-1px) rotate(-4deg); }
 .brand b { font-size:15.5px; font-weight:650; letter-spacing:-.01em; }
+
+/*
+ * Platform marks. Fill glyphs, unlike every other SVG on this site, which is
+ * stroked — that is what the upstream artwork is and redrawing it as strokes
+ * would make it unrecognisable, which is the entire reason it is there.
+ *
+ * `fill:currentColor` is what makes the light theme work without a fork. Each
+ * brand's own colour would need one @media block per icon and one hex literal
+ * per brand, and Apple's mark is solid black, so on --bg it would simply be
+ * invisible. currentColor also survives forced-colours mode, where it resolves
+ * to CanvasText.
+ *
+ * Lives here rather than in download.css because /help/install/ uses the same
+ * sprite and does not load that sheet.
+ */
+.icons { position:absolute; width:0; height:0; overflow:hidden; }
+.brandmark { width:22px; height:22px; fill:currentColor; stroke:none; flex:none; }
+.brandmark.sm { width:15px; height:15px; }
+
 .tag {
   font:10.5px/1 var(--mono);
   text-transform:uppercase;

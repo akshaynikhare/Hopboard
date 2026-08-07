@@ -64,6 +64,17 @@ export function setHTML(el, html) {
 }
 
 /**
+ * Empty a node. Never `node.innerHTML = ""`.
+ *
+ * Chromium enforces Trusted Types on the empty string as well, so a bare clear
+ * throws under our own CSP — and it throws wherever the caller happens to be,
+ * which is how it stayed invisible. statusMenu.js close() cleared its host that
+ * way, so every status-bar menu action died before it ran (they all close
+ * first), and the menus stopped closing on Escape or a click away.
+ */
+export const clear = el => setHTML(el, "");
+
+/**
  * Mint a URL that may be loaded AS CODE — today only the service worker.
  *
  * Passed through unchanged, like createHTML above: the value is ours, built by

@@ -107,7 +107,8 @@ shipped once:
 
 - `navigator.clipboard` only in `src/clipboard/`.
 - `innerHTML` is written **only** in `src/ui/primitives/dom.js`; everything else uses `esc()` and `setHTML()`.
-  Enforced by Trusted Types in the CSP too. (`= ""` stays legal.)
+  Enforced by Trusted Types in the CSP too — including `= ""`, which Chromium rejects like any
+  other string, so clearing a node is `clear()`, never a bare assignment.
 - No `ui/`, `files/` or `clipboard/` module imports `transport/{relay,ws,sse}.js`. `protocol.js` is
   exempt — it is frame shapes, transport-agnostic.
 - **No module resolves a path from `import.meta.url`.** Use `core/paths.js`. Bundling collapses the

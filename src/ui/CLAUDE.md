@@ -33,6 +33,8 @@ Register it with one `init()` line in `main.js`, inside `safeInit()`. Its styles
 - **`innerHTML` is written only in `primitives/dom.js`**, through `setHTML()`. Everything else uses
   `esc()`. Anyone holding the session key can put markup on your clipboard, so this is a
   vulnerability boundary, not a style preference — Trusted Types in the CSP enforces it at runtime.
+  Emptying a node is `clear()`: Chromium rejects `= ""` too, and the throw lands in whatever
+  `catch` the caller happens to sit inside.
 - **Use `primitives/modal.js`.** Do not hand-roll a dialog: it owns the inert shell, the tab ring,
   Escape and focus restore. And never mount to `#mount-modals` — `panels/filesPanel.js` rewrites
   that node on a 500 ms tick and would delete a dialog out from under its own focus trap.

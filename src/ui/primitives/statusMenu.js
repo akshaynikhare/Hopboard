@@ -17,7 +17,7 @@
  * It owns none of the *content*. statusbar.js and sessionPanel.js supply that.
  */
 
-import { $, esc, setHTML } from "./dom.js";
+import { $, esc, setHTML, clear } from "./dom.js";
 
 const menus = new Map();          // button id -> {label, render, onEvent}
 let openId = null;
@@ -71,7 +71,7 @@ export function close() {
   const host = $("mount-menus");
   if (openId) $(openId)?.setAttribute("aria-expanded", "false");
   openId = null;
-  if (host) host.innerHTML = "";
+  if (host) clear(host);
   document.removeEventListener("click", onAway, true);
   document.removeEventListener("keydown", onKey);
 }

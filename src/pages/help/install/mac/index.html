@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+
+<title>Install RealtimeClipboard on macOS — Intel and Apple Silicon</title>
+<meta name="description" content="One universal .dmg for both chips, how to confirm the menu-bar item is running, your first sync, and what Gatekeeper will say the first time.">
+<link rel="canonical" href="https://realtimeclipboard.com/help/install/mac/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="RealtimeClipboard">
+<meta property="og:title" content="Install RealtimeClipboard on macOS">
+<meta property="og:description" content="One download for Intel and Apple Silicon, what a working install looks like, and why the app ships set to Manual.">
+<meta property="og:url" content="https://realtimeclipboard.com/help/install/mac/">
+<meta property="og:image" content="https://realtimeclipboard.com/assets/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://realtimeclipboard.com/help/install/mac/#article",
+      "headline": "Install RealtimeClipboard on macOS — Intel and Apple Silicon",
+      "description": "One universal .dmg for both chips, how to confirm the menu-bar item is running, your first sync, and what Gatekeeper will say the first time.",
+      "isPartOf": { "@id": "https://realtimeclipboard.com/#website" },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "RealtimeClipboard", "item": "https://realtimeclipboard.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Help", "item": "https://realtimeclipboard.com/help/" },
+        { "@type": "ListItem", "position": 3, "name": "Installing", "item": "https://realtimeclipboard.com/help/install/" },
+        { "@type": "ListItem", "position": 4, "name": "macOS" }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/src/landing/landing.css">
+</head>
+<body>
+
+<!-- Platform mark, sized and coloured by .brandmark in landing.css. Path data
+     from Simple Icons (CC0-1.0) except the Windows pane, which is drawn here —
+     Simple Icons carries no Microsoft mark. The marks are trademarks of their
+     owners and identify the platform only. -->
+<svg class="icons" aria-hidden="true">
+  <symbol id="i-apple" viewBox="0 0 24 24"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></symbol>
+</svg>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="/">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <rect x="8" y="3" width="8" height="4" rx="1"/>
+          <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
+          <path d="M9 13l2 2 4-4"/>
+        </svg>
+        <b>RealtimeClipboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="/download/">Download</a>
+      <a class="tlink" href="/help/">Help</a>
+      <a class="tlink" href="/blog/">Blog</a>
+      <a class="tlink strong" href="/app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="sec">
+    <div class="in doc">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">RealtimeClipboard</a> <span aria-hidden="true">/</span>
+        <a href="/help/">Help</a> <span aria-hidden="true">/</span>
+        <a href="/help/install/">Installing</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">macOS</span>
+      </nav>
+
+      <header class="pagehead">
+        <h1><svg class="brandmark" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-apple"/></svg> Installing on macOS</h1>
+        <p class="lede">
+          One download covers Intel and Apple Silicon. macOS asks for no
+          permission to read the clipboard, which makes the install trivial and
+          is exactly why the app ships set to Manual.
+        </p>
+      </header>
+
+      <div class="article">
+
+        <p class="honest">
+          <b>The first release has not been published yet.</b> The download link
+          below lands on an empty releases page until
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/blob/main/.github/workflows/release.yml">the release pipeline</a>
+          runs against a tag.
+          <a href="/app.html">The browser version</a> needs no install and works now.
+        </p>
+
+        <h2 id="install">Install it</h2>
+        <ol class="steps">
+          <li>Download <code>RealtimeClipboard_&lt;version&gt;_universal.dmg</code> from
+            <a href="https://github.com/akshaynikhare/RealtimeClipboard/releases/latest">the releases page</a>.</li>
+          <li>Open it and drag RealtimeClipboard to Applications.</li>
+          <li>Launch it. It requires macOS 11 or later.</li>
+        </ol>
+        <p>
+          <b>There is one download, not two.</b> The release workflow builds
+          <code>--target universal-apple-darwin</code>, so the same file runs
+          natively on both architectures. If you are looking for a separate
+          Apple Silicon build, you already have it.
+        </p>
+
+        <h2 id="pkg">Or from a package manager</h2>
+        <pre><code>brew install --cask akshaynikhare/tap/realtimeclipboard</code></pre>
+        <p>
+          <b>Not published yet.</b> The cask is generated from each release by
+          <code>tools/release/manifest.mjs</code>, but the tap it belongs in has
+          to be pushed by hand and has not been yet.
+        </p>
+        <p>
+          The command-line client is a separate formula,
+          <code>realtimeclipboard-cli</code>, and is not the same thing as the
+          desktop app — see <a href="/help/install/cli/">the command-line guide</a>.
+        </p>
+
+        <h2 id="check">Check it worked</h2>
+        <ul class="sq-list">
+          <li><b>A menu-bar item appears.</b> Click it to bring the window back;
+            Quit is in its menu, on purpose — an app that watches your clipboard
+            has to have a visible way to stop it.</li>
+          <li><b>The status bar reads <code>T0 · watching the system clipboard</code></b>,
+            bottom right of the window. That is the native watcher confirming
+            itself. Safari on the same machine reports
+            <code>T1 · paste only</code>, which is the difference you installed
+            this for.</li>
+        </ul>
+
+        <h2 id="first">Your first sync</h2>
+        <ol class="steps">
+          <li>Note the five-character key at the top of the app, or type your own.</li>
+          <li>Open <a href="/app.html">the app</a> on a second device and enter
+            the same key.</li>
+          <li>Copy something on the Mac, without switching to RealtimeClipboard. It
+            appears on the other device.</li>
+        </ol>
+        <p class="honest">
+          Nothing happened? The app ships set to <b>Manual</b>. macOS grants
+          clipboard access to any running application with no prompt at all, so
+          nothing in the operating system would have told you this app had begun
+          reading every copy you make. That is precisely why it does not begin
+          until you say so. Switch to <b>Live</b> for the automatic behaviour.
+        </p>
+
+        <h2 id="trouble">When it does not work</h2>
+
+        <h3>“RealtimeClipboard cannot be opened because the developer cannot be verified”</h3>
+        <p>
+          Gatekeeper, on an unnotarised build. Right-click the app in
+          Applications and choose <b>Open</b>, then confirm — that records an
+          exception for this app only, which is a narrower thing to do than
+          turning Gatekeeper down globally. Do it only if you got the file from
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/releases/latest">the official releases page</a>.
+        </p>
+
+        <h3>No permission prompt appeared</h3>
+        <p>
+          There is not one to appear. Unlike the camera, the microphone or the
+          screen, the pasteboard is readable by any running application on macOS
+          without asking. The app cannot show you a system prompt that does not
+          exist, so the Manual default is the substitute for it.
+        </p>
+
+        <h3>Clips arrive on the Mac but not from it</h3>
+        <p>
+          That is the Manual/Live setting, not a bug: receiving always works,
+          sending is what you opt into.
+        </p>
+
+        <h3>Stuck on “Connecting…”</h3>
+        <p>
+          The app tries a WebSocket first and falls back to server-sent events
+          plus POST where upgrades are blocked. If neither connects, the relay
+          host is blocked outright — point the app at your own under
+          <b>Settings → Relay</b>. <a href="/help/install/relay/">Running one is
+          one container.</a>
+        </p>
+
+        <h2 id="remove">Uninstalling</h2>
+        <p>
+          Quit it from the menu bar and drag it from Applications to the Trash,
+          or <code>brew uninstall --cask realtimeclipboard</code>.
+        </p>
+        <p>
+          No clipboard content is ever written to disk, so there is nothing to
+          find and delete afterwards. Your settings and clip history live in the
+          app's own browser storage and go with it.
+        </p>
+
+        <p class="hint">
+          Ready to install: <a href="/download/">the download page</a>. Every
+          other platform: <a href="/help/install/">the installation guide</a>.
+          Something wrong or out of date here?
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/issues">Open an issue</a>.
+        </p>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <p><a href="/">Home</a> · <a href="/download/">Download</a> · <a href="/help/">Help</a> · <a href="/blog/">Blog</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -173,18 +173,21 @@ ok("UI modules writing HTML also use esc()", bad.length === 0, bad.join(", "));
    Trusted Types directive make it a rule the browser enforces rather than one
    a reviewer has to.
 
-   `= ""` stays legal: Trusted Types exempts the empty string, and "clear this
-   node" is not an injection risk. */
-/* Capture the assigned value and test it, rather than putting a lookahead after
-   `\s*` — `\s*` backtracks to zero width, which lets the lookahead pass and
-   reports every `= ""` as a violation. */
+   `= ""` used to be exempt here, on the reasoning that Trusted Types lets the
+   empty string through and "clear this node" is not an injection risk. The
+   second half is true and the first half is not: Chromium throws on the empty
+   string like any other, so four bare clears were live TypeErrors under our own
+   CSP. statusMenu.js close() was one, and because every menu action closes
+   before it acts, it took Copy link, Show QR, New key, Leave session, the lock
+   controls and the relay picker down with it — plus closing on Escape or a
+   click away. Nothing surfaced: close()'s callers all sat inside a catch.
+   Use dom.js clear(). */
 bad = jsFiles
   .filter(f => rel(f) !== "src/ui/primitives/dom.js")
-  .filter(f => [...stripComments(read(f)).matchAll(/\.innerHTML\s*=\s*([^;\n]*)/g)]
-    .some(m => m[1].trim() !== '""'))
+  .filter(f => /\.innerHTML\s*=(?!=)/.test(stripComments(read(f))))
   .map(rel);
 ok("innerHTML is written only in ui/primitives/dom.js", bad.length === 0,
-   bad.length ? `${bad.join(", ")} — use setHTML()` : "");
+   bad.length ? `${bad.join(", ")} — use setHTML() or clear()` : "");
 
 /* ---------- 7. only the clipboard module touches the clipboard ---------- */
 bad = jsFiles

@@ -5,7 +5,7 @@
  * switches. It is now four slide-up menus hanging off the status-bar items that
  * already reported the same things:
  *
- *   #sbPeers  "2 devices"  roster, split-brain warning, new key, leave
+ *   #sbPeers  "2 devices"  roster, split-brain warning, leave
  *   #sbMode   "Live sync"  Live/Manual, clipboard polling, receiving, images
  *   #sbP2P    "P2P idle"   the file settings
  *   #sbGear   (gear)       key strength and pointer sharing
@@ -125,14 +125,11 @@ function onMenuEvent(e, close) {
     syncMode.set(e.target.closest("[data-mode]").dataset.mode, true);
     return menu.refresh();
   }
-  if (action === "new")    { close(); return newKey(); }
   if (action === "leave")  { close(); return emit("session:leave"); }
-  if (action === "link")   { close(); return copyLink(); }
   if (action === "lock")   { close(); return emit("session:lock"); }
   if (action === "unlock") { close(); return emit("session:unlock"); }
   if (action === "repin")  { close(); return emit("session:repin"); }
   if (action === "whatsnew") { close(); return emit("ui:whatsnew"); }
-  if (action === "qr")     { close(); return showQr(); }
   if (action === "relay")       { close(); return changeRelay(); }
   if (action === "relay-reset") { close(); return changeRelay(true); }
 }
@@ -179,13 +176,11 @@ function devicesMenu() {
         Rooms are per-process, so devices on different replicas cannot see each
         other. Pin replicas to 1.
       </div>` : "")
-    + group("This session")
+    // Copy link, Show QR and New key are the app header's three key buttons,
+    // which are on screen at every width. Repeating them here made the roster
+    // mostly a second copy of a toolbar the user was already looking at.
+    // Leaving is the one action with no other home, so it is the one that stays.
     + `<div class="sacts">
-         <button class="btn ghost" type="button" data-act="link" data-mi="link">Copy link</button>
-         <button class="btn ghost" type="button" data-act="qr" data-mi="qr">Show QR</button>
-       </div>
-       <div class="sacts">
-         <button class="btn ghost" type="button" data-act="new" data-mi="new">New key</button>
          <button class="btn ghost" type="button" data-act="leave" data-mi="leave">Leave session</button>
        </div>`
     + (settings.cursors ? "" : `<div class="snote">Pointer sharing is off.</div>`);

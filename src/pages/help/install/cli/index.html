@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+
+<title>The RealtimeClipboard command line — clipboard over SSH</title>
+<meta name="description" content="A command-line client for machines with no clipboard. Pipe into send, redirect out of watch, and use the same encryption the browser does. Needs Node 22.">
+<link rel="canonical" href="https://realtimeclipboard.com/help/install/cli/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="RealtimeClipboard">
+<meta property="og:title" content="RealtimeClipboard on the command line">
+<meta property="og:description" content="Pipe your clipboard in and out of any machine with Node 22. The same encryption and the same protocol as the browser.">
+<meta property="og:url" content="https://realtimeclipboard.com/help/install/cli/">
+<meta property="og:image" content="https://realtimeclipboard.com/assets/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Article",
+      "@id": "https://realtimeclipboard.com/help/install/cli/#article",
+      "headline": "The RealtimeClipboard command line — clipboard over SSH",
+      "description": "A command-line client for machines with no clipboard. Pipe into send, redirect out of watch, and use the same encryption the browser does. Needs Node 22.",
+      "isPartOf": { "@id": "https://realtimeclipboard.com/#website" },
+      "inLanguage": "en"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "RealtimeClipboard", "item": "https://realtimeclipboard.com/" },
+        { "@type": "ListItem", "position": 2, "name": "Help", "item": "https://realtimeclipboard.com/help/" },
+        { "@type": "ListItem", "position": 3, "name": "Installing", "item": "https://realtimeclipboard.com/help/install/" },
+        { "@type": "ListItem", "position": 4, "name": "Command line" }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/src/landing/landing.css">
+</head>
+<body>
+
+<!-- Platform mark, sized and coloured by .brandmark in landing.css. Path data
+     from Simple Icons (CC0-1.0) except the Windows pane, which is drawn here —
+     Simple Icons carries no Microsoft mark. The marks are trademarks of their
+     owners and identify the platform only. -->
+<svg class="icons" aria-hidden="true">
+  <symbol id="i-node" viewBox="0 0 24 24"><path d="M11.998,24c-0.321,0-0.641-0.084-0.922-0.247l-2.936-1.737c-0.438-0.245-0.224-0.332-0.08-0.383 c0.585-0.203,0.703-0.25,1.328-0.604c0.065-0.037,0.151-0.023,0.218,0.017l2.256,1.339c0.082,0.045,0.197,0.045,0.272,0l8.795-5.076 c0.082-0.047,0.134-0.141,0.134-0.238V6.921c0-0.099-0.053-0.192-0.137-0.242l-8.791-5.072c-0.081-0.047-0.189-0.047-0.271,0 L3.075,6.68C2.99,6.729,2.936,6.825,2.936,6.921v10.15c0,0.097,0.054,0.189,0.139,0.235l2.409,1.392 c1.307,0.654,2.108-0.116,2.108-0.89V7.787c0-0.142,0.114-0.253,0.256-0.253h1.115c0.139,0,0.255,0.112,0.255,0.253v10.021 c0,1.745-0.95,2.745-2.604,2.745c-0.508,0-0.909,0-2.026-0.551L2.28,18.675c-0.57-0.329-0.922-0.945-0.922-1.604V6.921 c0-0.659,0.353-1.275,0.922-1.603l8.795-5.082c0.557-0.315,1.296-0.315,1.848,0l8.794,5.082c0.57,0.329,0.924,0.944,0.924,1.603 v10.15c0,0.659-0.354,1.273-0.924,1.604l-8.794,5.078C12.643,23.916,12.324,24,11.998,24z M19.099,13.993 c0-1.9-1.284-2.406-3.987-2.763c-2.731-0.361-3.009-0.548-3.009-1.187c0-0.528,0.235-1.233,2.258-1.233 c1.807,0,2.473,0.389,2.747,1.607c0.024,0.115,0.129,0.199,0.247,0.199h1.141c0.071,0,0.138-0.031,0.186-0.081 c0.048-0.054,0.074-0.123,0.067-0.196c-0.177-2.098-1.571-3.076-4.388-3.076c-2.508,0-4.004,1.058-4.004,2.833 c0,1.925,1.488,2.457,3.895,2.695c2.88,0.282,3.103,0.703,3.103,1.269c0,0.983-0.789,1.402-2.642,1.402 c-2.327,0-2.839-0.584-3.011-1.742c-0.02-0.124-0.126-0.215-0.253-0.215h-1.137c-0.141,0-0.254,0.112-0.254,0.253 c0,1.482,0.806,3.248,4.655,3.248C17.501,17.007,19.099,15.91,19.099,13.993z"/></symbol>
+</svg>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="/">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <rect x="8" y="3" width="8" height="4" rx="1"/>
+          <path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/>
+          <path d="M9 13l2 2 4-4"/>
+        </svg>
+        <b>RealtimeClipboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="/download/">Download</a>
+      <a class="tlink" href="/help/">Help</a>
+      <a class="tlink" href="/blog/">Blog</a>
+      <a class="tlink strong" href="/app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="sec">
+    <div class="in doc">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">RealtimeClipboard</a> <span aria-hidden="true">/</span>
+        <a href="/help/">Help</a> <span aria-hidden="true">/</span>
+        <a href="/help/install/">Installing</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">Command line</span>
+      </nav>
+
+      <header class="pagehead">
+        <h1><svg class="brandmark" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-node"/></svg> The command-line client</h1>
+        <p class="lede">
+          For the machines that have no clipboard at all. It reads standard
+          input and writes standard output, so it composes with everything else
+          you already use — and it is not a second implementation, it imports
+          the very same encryption and transport files the browser runs.
+        </p>
+      </header>
+
+      <div class="article">
+
+        <p class="honest">
+          <b>Not on npm yet.</b> <code>npx realtimeclipboard</code> is what it
+          will be; until the first release is published, run the same client from
+          a clone — <code>node cli/realtimeclipboard.mjs D75LV</code>. Every
+          command below works either way.
+        </p>
+
+        <h2 id="install">Install it</h2>
+        <pre><code>npx realtimeclipboard D75LV</code></pre>
+        <p>
+          There is nothing to install: <code>npx</code> fetches it, runs it and
+          leaves nothing behind. If you would rather have it on your path:
+        </p>
+        <pre><code>npm install -g realtimeclipboard</code></pre>
+        <p>
+          <b>Node 22 or newer is required</b>, for the built-in
+          <code>WebSocket</code>. On an older Node the client exits immediately
+          and says so rather than failing halfway through a transfer.
+        </p>
+
+        <h2 id="pkg">Or from a package manager</h2>
+        <pre><code>brew install akshaynikhare/tap/realtimeclipboard-cli</code></pre>
+        <p>
+          <b>Not published yet.</b> Note the name: the CLI formula is
+          <code>realtimeclipboard-cli</code> and the desktop app is the
+          <code>realtimeclipboard</code> cask. They are different things and
+          installing one does not give you the other.
+        </p>
+
+        <h2 id="check">Check it worked</h2>
+        <pre><code>npx realtimeclipboard --version</code></pre>
+        <p>
+          Connecting prints one status line to <b>standard error</b>, never
+          standard output:
+        </p>
+        <pre><code>realtimeclipboard · room 3f2a91c4…</code></pre>
+        <p>
+          That is the room hash, truncated — never the key. Because it goes to
+          stderr, <code>watch &gt; file</code> still writes only the clip. Pass
+          <code>-q</code> to silence it entirely.
+        </p>
+
+        <h2 id="first">Your first sync</h2>
+        <ol class="steps">
+          <li>Open <a href="/app.html">the app</a> in a browser and note the key.</li>
+          <li>On the server, send something to it:
+            <pre><code>echo "deploy key" | npx realtimeclipboard send D75LV</code></pre></li>
+          <li>It appears in the browser. Now go the other way — copy something in
+            the browser, and on the server run:
+            <pre><code>npx realtimeclipboard watch D75LV --once &gt; token.txt</code></pre></li>
+        </ol>
+
+        <h2 id="usage">The four commands</h2>
+        <div class="tablewrap">
+          <table class="cmp">
+            <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td><code>realtimeclipboard &lt;KEY&gt;</code></td><td>Two-way: prints what arrives, sends what you type</td></tr>
+              <tr><td><code>realtimeclipboard watch &lt;KEY&gt;</code></td><td>Print incoming clips</td></tr>
+              <tr><td><code>realtimeclipboard send &lt;KEY&gt;</code></td><td>Read stdin to EOF and send it</td></tr>
+              <tr><td><code>realtimeclipboard new [--long]</code></td><td>Print a fresh key</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Options: <code>--relay &lt;url&gt;</code>, <code>--pin &lt;pin&gt;</code>,
+          <code>--once</code>, <code>--json</code>, <code>--timeout &lt;s&gt;</code>,
+          <code>-q</code>, <code>-h</code>, <code>-v</code>. The relay and the PIN
+          also read from <code>REALTIMECLIPBOARD_RELAY</code> and
+          <code>REALTIMECLIPBOARD_PIN</code>, which is the right way to pass a
+          PIN — an argument lands in your shell history.</p>
+
+        <pre><code># structured output, one JSON object per line
+npx realtimeclipboard watch D75LV --once --json | jq -r .text
+
+# from a box you are ssh'd into
+ssh build-01 'cat /var/log/deploy.log' | npx realtimeclipboard send D75LV
+
+# against your own relay
+npx realtimeclipboard --relay wss://clip.example.com D75LV</code></pre>
+
+        <h2 id="trouble">When it does not work</h2>
+
+        <h3>“this needs Node 22 or newer”</h3>
+        <p>
+          Exactly what it says: the client uses Node's built-in
+          <code>WebSocket</code> rather than pulling a dependency in, and that
+          landed in 22. It exits at startup rather than mid-transfer.
+        </p>
+
+        <h3>It hangs and never prints anything</h3>
+        <p>
+          <code>watch</code> waits for a clip by design — nothing arrives until
+          something is copied at the other end. Use <code>--timeout 30</code> in
+          a script so it cannot wait forever, and <code>--once</code> so it exits
+          after the first clip.
+        </p>
+
+        <h3>It works interactively but not in CI</h3>
+        <p>
+          There is no TTY, so pass <code>-q</code> and read standard output. Put
+          the key in an environment variable rather than the command line, where
+          it would show up in build logs.
+        </p>
+
+        <h3>Nothing connects from behind a proxy</h3>
+        <p>
+          The client speaks the same protocol as the browser and can be pointed
+          at your own relay with <code>--relay</code>.
+          <a href="/help/install/relay/">Running one is one container.</a>
+        </p>
+
+        <h2 id="remove">Uninstalling</h2>
+        <p>
+          <code>npx</code> leaves nothing to uninstall.
+          <code>npm uninstall -g realtimeclipboard</code> if you installed it
+          globally, or <code>brew uninstall realtimeclipboard-cli</code>.
+        </p>
+        <p class="honest">
+          <b>The key is a bearer credential.</b> Anyone holding it can read the
+          session while it is open, so keep it out of shell history, out of CI
+          logs and out of committed files. Clip contents are encrypted on this
+          machine before they are sent; the relay only ever sees a room hash and
+          ciphertext.
+        </p>
+
+        <p class="hint">
+          Every other platform: <a href="/help/install/">the installation
+          guide</a>. Something wrong or out of date here?
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/issues">Open an issue</a>.
+        </p>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <p><a href="/">Home</a> · <a href="/download/">Download</a> · <a href="/help/">Help</a> · <a href="/blog/">Blog</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

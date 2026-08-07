@@ -187,6 +187,18 @@ export const FILES = {
    * silently retuned the UI.
    */
   REQUEST_TIMEOUT_MS: 15_000,
+
+  /**
+   * How long the sender waits for a data channel it has closed to confirm the
+   * close, before dropping the peer connection out from under it.
+   *
+   * bufferedAmount reaching zero only means SCTP accepted the bytes, not that
+   * the peer has them. The stream reset dc.close() sends is ordered behind the
+   * data already queued on that stream, so the close event is the nearest thing
+   * the transport offers to a delivery signal — worth one round trip. Bounded,
+   * because a wedged association must not hold a finished transfer open.
+   */
+  CHANNEL_CLOSE_MS: 1_000,
 };
 
 export const KEY = {

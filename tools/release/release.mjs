@@ -1,8 +1,13 @@
 /**
  * Cut a release: verify, write the changelog, tag, push.
  *
- * A tag is the only thing that deploys (.github/workflows/pages.yml), so this
- * is the one command that puts code in front of users. It is a script rather
+ * Two things ship, from one command, on two different triggers: pushing main
+ * deploys the site (Cloudflare Pages), and pushing the tag builds the CLI, the
+ * desktop installers and the relay image (.github/workflows/release.yml). The
+ * site therefore goes live in about a minute and the binaries take half an
+ * hour — see docs/RELEASING.md for what /download/ does in between.
+ *
+ * It is a script rather
  * than a list of steps in a README because the steps have an order — the
  * changelog has to be written and committed BEFORE the tag, or the tag points
  * at a commit whose changelog does not mention the release the tag is for.
@@ -22,6 +27,8 @@ import { dirname, join, resolve } from "node:path";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const PKG = join(REPO, "package.json");
+const CARGO_TOML = join(REPO, "desktop/src-tauri/Cargo.toml");
+const CARGO_LOCK = join(REPO, "desktop/src-tauri/Cargo.lock");
 
 const args = process.argv.slice(2);
 const DRY = args.includes("--dry");
@@ -32,6 +39,20 @@ const run = (cmd, ...a) =>
   execFileSync(cmd, a, { cwd: REPO, stdio: "inherit", shell: process.platform === "win32" });
 
 const die = msg => { console.error(`\n  ${msg}\n`); process.exit(1); };
+
+/**
+ * Rewrite one match in a file, and die if there is not exactly one.
+ *
+ * The loud part is the point. A version bump that silently matches nothing
+ * ships a build labelled with the previous release, which nobody notices until
+ * a user reports a bug against a version that never existed.
+ */
+function replaceOnce(file, pattern, replacement) {
+  const before = readFileSync(file, "utf8");
+  const after = before.replace(pattern, replacement);
+  if (after === before) die(`${file} — nothing matched ${pattern}. Refusing to tag a half-bumped tree.`);
+  writeFileSync(file, after);
+}
 
 if (!target) {
   die("Say what to release:  npm run release -- patch | minor | major | v1.2.3");
@@ -124,11 +145,24 @@ run("node", "tools/release/changelog.mjs", "--next", tag);
 pkg.version = version;
 writeFileSync(PKG, JSON.stringify(pkg, null, 2) + "\n");
 
+/* The desktop crate carries the version twice more, and `cargo build --locked`
+   fails outright when the manifest and the lock disagree — so a bump that
+   misses either one turns the next tag red on all three platforms rather than
+   producing a mislabelled binary. tauri.conf.json is NOT here: it reads
+   "../../package.json" and derives its version from the write above.
+
+   Anchored to the first `version =` after the [package] header. A bare
+   /^version = / would match `rust-version` on some formatter's output, and a
+   global replace would rewrite all 600-odd dependency pins in the lock file. */
+replaceOnce(CARGO_TOML, /(\[package\][\s\S]*?\nversion = )"[^"]+"/, `$1"${version}"`);
+replaceOnce(CARGO_LOCK, /(name = "realtimeclipboard"\nversion = )"[^"]+"/, `$1"${version}"`);
+
 // --no-verify, and it is not a shortcut: the pre-commit hook refuses commits on
 // main, which is exactly right for hand-written changes and exactly wrong for
 // the one commit that is only ever made on main by this script. The checks it
 // would have run were run above.
-git("add", "CHANGELOG.md", "changelog.json", "package.json");
+git("add", "CHANGELOG.md", "changelog.json", "package.json",
+    "desktop/src-tauri/Cargo.toml", "desktop/src-tauri/Cargo.lock");
 execFileSync("git", ["commit", "--no-verify", "-m", `chore(release): ${tag}`],
              { cwd: REPO, stdio: "inherit" });
 
@@ -146,5 +180,8 @@ console.log(`\n  Tagged ${tag}. Pushing …\n`);
 run("git", "push", "origin", "main");
 run("git", "push", "origin", tag);
 
-console.log(`\n  ${tag} pushed. GitHub Pages deploys from the tag — watch:`);
+console.log(`\n  ${tag} pushed. The site is deploying from main now; the tag builds`);
+console.log("  the installers, the CLI and the relay image — watch:");
 console.log("    https://github.com/akshaynikhare/RealtimeClipboard/actions\n");
+console.log("  The GitHub release stays a DRAFT until all three desktop builds pass.");
+console.log("  Until it is published, /download/ keeps offering /releases/latest.\n");

@@ -58,6 +58,28 @@ cargo tauri build --config desktop/src-tauri/tauri.conf.json
 
 Artifacts land in `desktop/src-tauri/target/release/bundle/`.
 
+### The icons
+
+`src-tauri/icons/` is generated and committed. It is not decoration: `build.rs`
+runs `tauri-build`, which compiles the first `.ico` into the Windows resource, so
+a missing icon set fails `cargo build` on Windows — not just `tauri build`. That
+is exactly what it did, silently, through the v0.2.0 and v0.2.1 tags.
+
+Regenerate it only when the logo changes:
+
+```bash
+# assets/icons/icon.svg at 1024, because `tauri icon` wants >=1024 and the
+# committed PNG is 512. Any SVG rasteriser does; headless Chrome is already here.
+chrome --headless=new --disable-gpu --window-size=1024,1024 \
+       --screenshot=icon-1024.png file:///…/icon.svg
+
+npx --yes @tauri-apps/cli@2 icon icon-1024.png -o desktop/src-tauri/icons
+rm -rf desktop/src-tauri/icons/{android,ios}   # no mobile target ships
+```
+
+Transient `npx` rather than a devDependency: this runs when the logo changes, and
+nobody should pay 35 MB of native binaries on every `npm install` for it.
+
 > **Not yet compiled.** This scaffold was written without a Rust toolchain
 > available, so it has never been through `cargo build`. Treat the first build as
 > part of the work: expect plugin API details — particularly the

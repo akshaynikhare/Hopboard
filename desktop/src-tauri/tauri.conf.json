@@ -1,7 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "RealtimeClipboard",
-  "version": "0.1.0",
+  "//version": "A path, not a number. The bundle version is the repository's version — read from package.json rather than restated here, because a second copy is a copy that drifts. It already had: this file said 0.1.0 through the v0.2.0 and v0.2.1 tags, which would have named every artifact after a version nobody released.",
+  "version": "../../package.json",
   "identifier": "io.github.akshaynikhare.realtimeclipboard",
 
   "build": {
@@ -39,7 +40,8 @@
     "trayIcon": {
       "id": "main",
       "iconPath": "icons/icon.png",
-      "iconAsTemplate": true,
+      "//iconAsTemplate": "false, and it must stay false while the tray icon is icons/icon.png. A macOS template image is drawn from its ALPHA channel alone, and that icon is a full-bleed opaque square — as a template it renders as a solid black block in the menu bar, not as a clipboard. Turning this on needs a separate monochrome-on-transparent tray asset, which would then be invisible on a dark Windows taskbar; hence one colour icon for all three.",
+      "iconAsTemplate": false,
       "//": "Left click shows the window. Quit lives in the menu, because an app that watches your clipboard must have a visible way to stop it.",
       "menuOnLeftClick": false
     }

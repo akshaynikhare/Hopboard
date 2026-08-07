@@ -36,7 +36,7 @@ import * as state from "../../core/state.js";
 import * as registry from "../../files/registry.js";
 import * as transfer from "../../files/transfer.js";
 import { iconFor, formatSize } from "../../files/thumbs.js";
-import { $, esc, on as bind, setHTML } from "../primitives/dom.js";
+import { $, esc, on as bind, setHTML, clear } from "../primitives/dom.js";
 
 const S = registry.STATE;
 
@@ -479,7 +479,7 @@ function drawPrompts() {
   drawn = signature;
 
   if (!prompts.size) {
-    host.innerHTML = "";
+    clear(host);
     document.removeEventListener("keydown", onKey);
     return;
   }
@@ -490,7 +490,7 @@ function drawPrompts() {
   // region a frame late. Only the cards are ever replaced.
   let region = host.querySelector(".ask.req");
   if (!region) {
-    host.innerHTML = "";
+    clear(host);
     region = document.createElement("div");
     // Not aria-modal, and no focus grab. This used to be a modal covering the
     // screen, on the reasoning that it is the last point at which anything can
@@ -506,12 +506,6 @@ function drawPrompts() {
     host.appendChild(region);
     host.onclick = onPromptClick;
     document.addEventListener("keydown", onKey);
-  }
-
-  if (!prompts.size) {
-    host.innerHTML = "";
-    document.removeEventListener("keydown", onKey);
-    return;
   }
 
   setHTML(region, [...prompts].map(([token, { req, expires }]) => `
