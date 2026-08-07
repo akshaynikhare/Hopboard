@@ -7,7 +7,7 @@
  */
 
 import {
-  TEXT, SYNC_MODES, LOCK, textBytes, RELAY_URL, RELAY_IS_CUSTOM,
+  TEXT, LOCK, textBytes, sharesSession, RELAY_URL, RELAY_IS_CUSTOM,
 } from "./core/config.js";
 import { emit, on, EV } from "./core/bus.js";
 import * as state from "./core/state.js";
@@ -15,6 +15,7 @@ import * as keys from "./core/keys.js";
 import * as storage from "./core/storage.js";
 import * as cryptoBox from "./core/crypto.js";
 import * as device from "./core/device.js";
+import { IS_DESKTOP } from "./core/native.js";
 
 import * as relay from "./transport/relay.js";
 import * as proto from "./transport/protocol.js";
@@ -58,7 +59,7 @@ function resolveKey() {
   const remembered = storage.loadLastKey();
   if (remembered && keys.isValid(remembered.key)) return { ...remembered, intent: "join" };
 
-  return { key: keys.generate(), locked: false, intent: "create" };
+  return { key: keys.generate(keys.nextLength()), locked: false, intent: "create" };
 }
 
 /**
@@ -296,8 +297,7 @@ async function onEvicted() {
   evicted = false;
   if (answer !== "action") return;
 
-  const key = keys.generate(
-    state.get().settings.longKeys ? keys.LENGTHS.LONG : keys.LENGTHS.NORMAL);
+  const key = keys.generate(keys.nextLength());
   emit(EV.TOAST, "New session — share the link to bring a device in");
   await openSession(key, "create");
 }
@@ -326,11 +326,38 @@ async function onFrame(msg) {
         if (text === LOCK.EVICT) return onEvicted();
         if (text === LOCK.BEACON) return;
 
+        // "Off" means nothing arrives either, not only that nothing leaves.
+        // Gated HERE rather than at the top of onFrame, deliberately: the two
+        // sentinels above ride this same frame type, and an Off device that
+        // stopped reading clips would never hear that a session was locked out
+        // from under it, nor latch setVerified() on a room it can decrypt.
+        // The rung governs what reaches the user, not what the session knows.
+        if (!sharesSession(state.get().settings.syncMode)) return;
+
         emit(EV.TEXT_RECEIVED, { text, from: msg.originId });
       } catch {
         // Almost always a key mismatch, which shouldn't be reachable: the room
         // name is a hash of the key, so peers in a room share it by construction.
         emit(EV.TOAST, "Could not decrypt a clip — key mismatch");
+      }
+      break;
+    }
+
+    case proto.T.STREAM: {
+      if (msg.originId === originId) return;          // our own echo, ignore
+      if (!aesKey) return;
+      if (!sharesSession(state.get().settings.syncMode)) return;
+      const frame = await decryptFrame(msg);
+      // A view update and nothing else: no history, no clipboard write, no
+      // dedupe. The editor decides whether it is safe to render (it is not,
+      // while the user is typing) — see ui/panels/editor.js.
+      if (frame && typeof frame.text === "string") {
+        emit(EV.TEXT_STREAMED, {
+          text: frame.text,
+          caret: frame.caret,
+          name: frame.name,
+          from: msg.from || msg.originId,
+        });
       }
       break;
     }
@@ -406,7 +433,8 @@ async function decryptFrame(frame) {
    outbound
 ------------------------------------------------------------------- */
 async function sendText(text) {
-  const { aesKey, originId } = state.get();
+  const { aesKey, originId, settings } = state.get();
+  if (!sharesSession(settings.syncMode)) return;    // Off: nothing leaves, ever
   if (!aesKey || !relay.isOpen()) return;
 
   // Bytes, not characters. The relay counts the encoded frame, so multibyte
@@ -426,6 +454,32 @@ async function sendText(text) {
   relay.send(proto.clip({ payload, iv, originId }));
 }
 
+/**
+ * Typing, for the far editor to render. Not a clip — see protocol.js stream().
+ *
+ * Fire-and-forget on purpose. A dropped stream frame costs one repaint and the
+ * next one supersedes it, so retrying or reporting would spend more than the
+ * frame is worth. What must not be dropped is the COMMIT, and that travels the
+ * clip path above with all of its guarantees intact.
+ *
+ * The size gate sits here as well as in the editor for the reason the desktop
+ * clipboard gate does: this is the last point before the wire, and a rule
+ * enforced at one of two call sites is a rule about to be enforced at neither.
+ */
+async function sendStream({ text, caret }) {
+  const { aesKey, originId, settings } = state.get();
+  if (!sharesSession(settings.syncMode)) return;
+  if (!aesKey || !relay.isOpen()) return;
+  if (textBytes(text) > TEXT.STREAM_MAX_BYTES) return;
+
+  try {
+    relay.send(await encryptFrame(
+      proto.stream({ text, caret, name: device.name(), originId })));
+  } catch (err) {
+    console.error("[realtimeclipboard] could not send a stream frame", err);
+  }
+}
+
 /* ------------------------------------------------------------------
    wiring
 ------------------------------------------------------------------- */
@@ -440,21 +494,32 @@ function wire() {
     return true;
   });
 
-  // Local capture -> encrypt -> wire.
-  on(EV.TEXT_CAPTURED, ({ text }) => {
-    editor.setText(text);
+  // A clip settled here -> encrypt -> wire.
+  //
+  // A commit that came FROM the editor does not go back into it: the committed
+  // text is trimmed, and writing it back would move the caret of someone who is
+  // very likely still typing.
+  on(EV.TEXT_CAPTURED, ({ text, source }) => {
+    if (source !== "editor") editor.setText(text);
     sendText(text);
   });
 
+  // Typing -> the far editors, and nowhere else. Deliberately not routed
+  // through sendText(): that path is the commit, and putting keystrokes down it
+  // would fill history and rewrite everyone's clipboard letter by letter.
+  on(EV.TEXT_TYPED, frame => sendStream(frame));
+
   // Remote clip -> OS clipboard, and the editor only if it is safe to.
   //
-  // The clipboard write always happens: that is the product, it is what the
-  // user asked for by enabling the session, and it costs them nothing.
+  // The clipboard write is the rung's business and capture.apply() owns that
+  // decision: on Clipboard it writes (or queues, if this window is in the
+  // background or you copied something here seconds ago), and below it does
+  // nothing at all.
   //
   // The EDITOR is different. Overwriting it discards whatever the user was
   // typing, with no undo. So when there is unsent work in there, the clip is
-  // offered rather than applied — the text is already on their clipboard, and
-  // one click puts it in the editor if they want it.
+  // offered rather than applied — this is the rule that lets two people type at
+  // once without a merge algorithm: never merge, never destroy, always offer.
   on(EV.TEXT_RECEIVED, async ({ text }) => {
     await capture.apply(text);
 
@@ -462,8 +527,8 @@ function wire() {
       editor.setText(text);
       // The core event of the product announced nothing at all: a screen-reader
       // user had no way to know a clip had arrived. Routed through the toast
-      // queue, which collapses duplicates and paces bursts, so Live mode does
-      // not turn this into a firehose.
+      // queue, which collapses duplicates and paces bursts, so a busy session
+      // does not turn this into a firehose.
       emit(EV.TOAST, `Clip received · ${text.length.toLocaleString()} characters`);
       return;
     }
@@ -477,7 +542,7 @@ function wire() {
   on(EV.KEY_COLLISION, async () => {
     relay.close();
     cryptoBox.clearCache();
-    const key = keys.generate();
+    const key = keys.generate(keys.nextLength());
     emit(EV.TOAST, "That key was taken — generated a new one");
     // A locked session keeps its PIN across the regenerated key: the collision
     // is with the key, and re-asking for the PIN would look like the one the
@@ -505,24 +570,26 @@ function wire() {
     }
   });
 
-  // Restoring an old clip from history should behave exactly like a local
-  // capture: it goes to the editor and out to peers.
+  // Restoring an old clip from history behaves exactly like a local capture: it
+  // goes to the editor and out to peers.
   //
-  // It also drops the session into Manual. Reaching back for an old clip is a
-  // deliberate, one-off act, and in Live mode it does not survive: the T3 poll
-  // tick reads the OS clipboard a second later, sees whatever is actually
-  // there — not the clip just restored — and broadcasts that instead, so the
-  // click appears to do nothing. Manual stops the poller, which is exactly the
-  // state someone picking a specific clip out of a list is asking for. The
-  // toast says so, because a mode change nobody asked for out loud is a bug
-  // report waiting to happen; the header and status bar then show it.
+  // It used to force the session down to Manual as well, because on the top
+  // rung the restore did not survive: the poll tick read the OS clipboard a
+  // second later, found whatever was actually there rather than the clip just
+  // restored, and broadcast that instead, so the click appeared to do nothing.
+  //
+  // Writing the clip to the clipboard fixes that at its cause — the poller then
+  // reads back what it expects and dedupes — and it is the coherent behaviour
+  // besides: on the Clipboard rung the app and the OS clipboard are one thing,
+  // so putting a clip in the editor means putting it on the clipboard. Below
+  // that rung it is a no-op. Unbinding someone's clipboard in both directions
+  // as a side effect of clicking a history row was always a far larger act than
+  // the one they asked for.
   on("history:restore", ({ text }) => {
-    const switched = syncMode.set(SYNC_MODES.MANUAL);
     editor.setText(text);
     capture.capture(text, "Restored from history");
-    emit(EV.TOAST, switched
-      ? "Loaded into the editor — switched to Manual"
-      : "Loaded into the editor");
+    capture.putOnClipboard(text);
+    emit(EV.TOAST, "Loaded into the editor");
   });
 
   on("session:rejoin", async ({ key, locked = false }) => {
@@ -552,8 +619,7 @@ function wire() {
     cryptoBox.clearCache();
     state.resetRoster();
     const { locked } = state.get();
-    const key = keys.generate(
-      state.get().settings.longKeys ? keys.LENGTHS.LONG : keys.LENGTHS.NORMAL);
+    const key = keys.generate(keys.nextLength());
     emit(EV.TOAST, locked
       ? "New key — the PIN is unchanged"
       : "New key — the old session is abandoned");
@@ -596,8 +662,7 @@ function wire() {
     relay.close();
     cryptoBox.clearCache();
     state.resetRoster();
-    const key = keys.generate(
-      state.get().settings.longKeys ? keys.LENGTHS.LONG : keys.LENGTHS.NORMAL);
+    const key = keys.generate(keys.nextLength());
     emit(EV.TOAST, others
       ? `Locked — ${others} device${others === 1 ? "" : "s"} disconnected. `
         + "They need the new link and the PIN"
@@ -610,8 +675,7 @@ function wire() {
     relay.close();
     cryptoBox.clearCache();
     state.resetRoster();
-    const key = keys.generate(
-      state.get().settings.longKeys ? keys.LENGTHS.LONG : keys.LENGTHS.NORMAL);
+    const key = keys.generate(keys.nextLength());
     emit(EV.TOAST, "Unlocked — anyone with the new link can read this");
     await openSession(key, "create");
   });
@@ -749,6 +813,14 @@ async function loadOptional() {
   const features = [
     [() => import("./ui/panels/historyPanel.js"), "history"],
     [() => import("./ui/features/qr.js"),           "qr"],
+    // Installed builds only. Gated here rather than inside the modules so a web
+    // visitor never fetches the chunks at all; both also early-return on their
+    // own, because a guard that lives in one place is a guard with one place to
+    // forget it.
+    ...(IS_DESKTOP ? [
+      [() => import("./ui/features/desktopPrefs.js"), "desktop preferences"],
+      [() => import("./ui/panels/guidePanel.js"),     "guide"],
+    ] : []),
   ];
   for (const [load, label] of features) {
     try {
@@ -778,6 +850,11 @@ function safeInit(label, fn) {
 }
 
 async function boot() {
+  // First, and the ordering is load-bearing: resolveKey() below asks how long
+  // the next key should be, and before this ran here that question was answered
+  // from the defaults rather than from what the user chose.
+  state.restore();
+
   // A relay handed to us in `?relay=` has already been resolved by config.js;
   // this is what makes it stick. Persisting here rather than there keeps
   // core/config.js free of writes — it reads settings, it does not own them —

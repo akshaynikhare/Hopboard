@@ -3,7 +3,7 @@
  *
  * The status bar became the app's settings surface: every item that reports
  * something is also the control for it. Connection picks the transport, the
- * device count opens the roster, Live sync opens the sync settings, P2P opens
+ * device count opens the roster, the sync rung opens the sync settings, P2P opens
  * the file settings, and the gear holds what belongs to none of them. That
  * replaced a sidebar pane whose six groups of switches were, on a phone, one
  * tab out of four behind the editor.

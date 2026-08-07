@@ -9,10 +9,11 @@
  * Why a new event rather than re-emitting EV.TEXT_RECEIVED: TEXT_RECEIVED means
  * "a peer sent this". Restoring from history is neither remote nor new, and
  * main.js routes TEXT_RECEIVED into clipboard/capture.apply() — so borrowing it
- * would both lie about provenance and fire an unrequested OS clipboard write,
- * with a suppression window that then swallows the user's next real copy.
- * main.js wires RESTORE to the editor, a send, and a switch to Manual mode —
- * never to the OS clipboard.
+ * would lie about provenance, and route a deliberate act through the path that
+ * defers to a recent local copy. main.js wires RESTORE to the editor, a send,
+ * and — on the Clipboard rung only — a deliberate clipboard write of its own
+ * via capture.putOnClipboard(), which is what makes the restored clip survive
+ * the next poll tick instead of being overwritten by it.
  *
  * ── ESCAPING ───────────────────────────────────────────────────────────────
  * Every clip value that reaches innerHTML goes through esc() first. Clip text is
@@ -197,11 +198,11 @@ async function copy(id) {
 }
 
 /**
- * Announce the intent and stop. The toast lives with the wiring in main.js,
- * not here: restoring also flips the session to Manual, and only the handler
- * that performs the switch knows whether the mode actually changed. Emitting a
- * "Loaded into the editor" toast here as well would queue two messages behind
- * one click — toast.js serialises them, so it reads as a stutter.
+ * Announce the intent and stop. The toast lives with the wiring in main.js, not
+ * here: that handler is the one that knows what restoring actually did on this
+ * rung. Emitting a "Loaded into the editor" toast here as well would queue two
+ * messages behind one click — toast.js serialises them, so it reads as a
+ * stutter.
  */
 function restore(id) {
   const entry = history.get(id);

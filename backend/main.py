@@ -197,12 +197,13 @@ TARGETED = {
     "file-req", "file-accept", "file-deny",
     "file-chunk", "file-done", "file-cancel", "file-error",
 }
-ROOM_WIDE = {"file-meta", "file-gone", "cursor"}
+ROOM_WIDE = {"file-meta", "file-gone", "cursor", "stream"}
 
 # What REALTIMECLIPBOARD_DISABLE_FILES turns off: everything that moves a file or sets up
-# the channel to move one. Not `cursor`, which is presence rather than data, and
-# not `clip`, which is the product.
-FILE_FRAMES = (TARGETED | ROOM_WIDE) - {"cursor"}
+# the channel to move one. Not `cursor` or `stream`, which are presence and the
+# editor's own view channel rather than data movement, and not `clip`, which is
+# the product.
+FILE_FRAMES = (TARGETED | ROOM_WIDE) - {"cursor", "stream"}
 
 # Every forwarded frame is setup/teardown control traffic — bursty for a moment,
 # then silent — except file-chunk, which is the bulk path, and cursor, which is
@@ -218,8 +219,16 @@ FRAME_CLASS.update({
     # interactive bucket would let a moving mouse starve the thing people came
     # for. 20/s leaves the client room to jitter without ever competing.
     "cursor": "cursor",
+    # Live typing, for the far editor to render. Same reasoning as `cursor` and
+    # the same numbers: the client throttles to 10/s (TEXT.STREAM_THROTTLE_MS)
+    # and this leaves it room to jitter. It must NOT share `interactive`, which
+    # is 10/s and also carries `clip` — one person typing would sit exactly on
+    # that ceiling and rate-limit the clips, which is the product, in favour of
+    # a view update, which is not.
+    "stream": "stream",
 })
 CLASS_LIMITS["cursor"] = 20
+CLASS_LIMITS["stream"] = 20
 
 # ---- permessage-deflate, off ---------------------------------------------
 #

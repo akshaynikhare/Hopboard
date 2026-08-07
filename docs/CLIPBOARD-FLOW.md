@@ -87,10 +87,23 @@ Much simpler, because writing needs no permission:
                                     Ctrl+V anywhere now pastes it.
 ```
 
-If the window happens to be unfocused when the clip arrives, `writeText()` is
-refused. We do not drop the clip — it queues, the UI shows a **"1 pending"**
-badge, and it is written the moment you focus the window. Same gesture as
-sending, so the user learns one rule instead of two.
+Two things defer that write, and both queue into the same place so the user
+learns one rule instead of two:
+
+1. **The window is unfocused.** `writeText()` is refused outright. The clip is
+   not dropped — it queues, the UI shows a **"1 pending"** badge, and it lands
+   the moment you focus the window. Same gesture as sending.
+2. **You copied something here in the last 10 seconds** (`TEXT.LOCAL_COPY_GRACE_MS`).
+   A local copy outranks an arriving clip, because the moment this costs you is
+   reaching for something you just copied and finding another device had
+   replaced it. Two machines both in active use would otherwise overwrite each
+   other's clipboard continuously.
+
+Neither is a preference, and neither is reachable below the **Clipboard** rung —
+on `App` and `Off` the OS clipboard is not written at all. Reading and writing
+are both derived from the rung and neither has a switch of its own; receiving
+used to have one, which meant a device set to Manual stopped sending while
+arriving clips still landed on its system clipboard.
 
 ---
 

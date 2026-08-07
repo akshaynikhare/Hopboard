@@ -253,10 +253,16 @@ These are load-bearing. Breaking one is a vulnerability, not a bug.
 | Locking never leaves the other devices connected to a session nobody is in | `main.js` `sendEviction()` plants `LOCK.EVICT` in the room being abandoned; `onEvicted()` is the other end |
 | A bus event that reports is never named the same as one that commands | `core/bus.js` — `EV.LOCK_STATE` and the `"session:lock"` imperative once shared a name, and every `setKey()` opened the PIN dialog by itself |
 | Peer content is escaped before entering `innerHTML` | `ui/primitives/dom.js` `esc()`, and `setHTML()` is the only sink — enforced by Trusted Types in the CSP, and by the static check |
-| `lastSent` and the suppression window are set *before* writing to the OS clipboard | `clipboard/capture.js` `apply()` |
+| `lastSent` and the suppression window are set *before* writing to the OS clipboard | `clipboard/capture.js` `writeNow()` — the one path both deferral routes funnel through |
+| Reading and writing the OS clipboard are both derived from the sync rung, and neither has a switch of its own | `core/config.js` `bindsClipboard()`, checked in `capture.js` at every tier and in `apply()`; `tests/unit/syncmode.mjs`. Receiving used to have an independent switch, so a device set to Manual stopped sending while arriving clips still landed on its clipboard |
+| An `Off` device puts nothing on the wire and shows nothing arriving — but still hears the eviction sentinel | `core/config.js` `sharesSession()`, gated in `main.js` `sendText()`/`sendStream()` and *after* the sentinel checks in `onFrame()` |
+| Live typing is a view channel and never reaches history, the OS clipboard or the dedupe | `EV.TEXT_TYPED`/`EV.TEXT_STREAMED` vs `EV.TEXT_CAPTURED`; `tests/dom/editor.mjs` |
+| A peer's typing is never merged into yours and never overwrites it | `ui/panels/editor.js` drops an inbound stream while `isDirty()`; `main.js` offers a conflicting commit via `EV.CLIP_OFFERED` rather than applying it |
 | The AES key is derived once per session, never per message — and is cleared on leave, rotate and rejoin | `core/crypto.js` cache + `clearCache()` |
 | Rejected files always report why | `files/registry.js` → `filesPanel.js` |
 | The transfer path (P2P vs relay) is always visible | `ui/panels/filesPanel.js` `badge()` |
+| The desktop shell is never told anything derived from the key | `desktop/src-tauri/src/main.rs` — the tray emits `ui://copy-link` and the webview builds the link; Rust owns windows and booleans only |
+| The native bridge has one owner and one feature test | `core/native.js` — the only module that may name `__TAURI__`, enforced by the static check |
 
 The suppression ordering is the subtle one. Write first and your own poller sees
 a "new" clipboard value and bounces it back to the sender, forever. See

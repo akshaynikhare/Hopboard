@@ -8,6 +8,7 @@
 export const T = {
   HELLO:   "hello",
   CLIP:    "clip",
+  STREAM:  "stream",
   PING:    "ping",
   PONG:    "pong",
   WELCOME: "welcome",
@@ -31,6 +32,33 @@ export const hello = (intent, originId, name) => ({ t: T.HELLO, intent, originId
 
 export const clip = ({ payload, iv, originId }) => ({
   t: T.CLIP, payload, iv, originId, ts: Date.now(),
+});
+
+/**
+ * Typing, for the far editor to render. A VIEW frame, and the distinction from
+ * `clip` is the whole design:
+ *
+ *   clip   — a discrete thing that settled. Goes to history, to the OS
+ *            clipboard, through the dedupe and against the size cap. Retained
+ *            by the relay and replayed to late joiners (FR-3.3).
+ *   stream — what the text looks like right now. Renders and nothing else. Not
+ *            retained, not replayed, never written to anyone's clipboard.
+ *
+ * It carries the WHOLE text rather than a diff, which is what lets live typing
+ * exist here without positions or operational transform. That trade is bounded
+ * by TEXT.STREAM_MAX_BYTES — above it the editor stops streaming and the text
+ * syncs on commit only, because re-sending 20 KB per keystroke is not a thing
+ * anybody should do to a relay.
+ *
+ * `name` rides along for the same reason it does on a cursor frame: nothing
+ * replays these, so a device that joins mid-sentence would otherwise render an
+ * unattributed caret until the next roster frame happened to arrive.
+ *
+ * Everything but `t` and `originId` is sealed by main.js encryptFrame(), so the
+ * relay forwards a blob and never sees a keystroke.
+ */
+export const stream = ({ text, caret, name, originId }) => ({
+  t: T.STREAM, text, caret, name, originId,
 });
 
 export const ping = () => ({ t: T.PING });

@@ -139,7 +139,10 @@ the network. `test_sse.py` S7 and `tests/live/fallback.mjs` cover both halves.
 | Limit | Value | Source |
 |---|---|---|
 | Frame size | 32 KB | FR-2.8 |
-| Rate | 10 msg/s per connection | §6 |
+| Rate — `clip`, `ping`, `hello` | 10 msg/s per connection | §6 |
+| Rate — `cursor` (presence) | 20 msg/s per connection | its own class, so a moving mouse cannot starve a clip |
+| Rate — `stream` (live typing) | 20 msg/s per connection | same reasoning; the client throttles to 10/s |
+| Rate — `signal` / `bulk` | 60 and 400 msg/s | WebRTC setup, and `file-chunk` |
 | Peers per room | 8 | §6 |
 | Room TTL after last peer leaves | 10 min | FR-3.4 |
 | POST body (fallback) | 768 KB, one frame per line | each line still capped at 32 KB |
