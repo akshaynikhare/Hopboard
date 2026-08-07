@@ -114,25 +114,38 @@ jobs:
           Remove-Item cert.pfx
           node -e "const f='desktop/src-tauri/tauri.conf.json',fs=require('fs');const j=JSON.parse(fs.readFileSync(f));j.bundle.windows.certificateThumbprint=process.argv[1];fs.writeFileSync(f,JSON.stringify(j,null,2))" $c.Thumbprint
 
-      - uses: tauri-apps/tauri-action@v0
+      # !! The APPLE_* variables are exported HERE, and only when a certificate
+      # actually exists, rather than being listed on the step below.
+      #
+      # `APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}` with no such
+      # secret does not leave the variable unset — it sets it to the empty
+      # string. Tauri tests for PRESENCE, so it takes the signing path anyway
+      # and dies importing a certificate that is not there:
+      #
+      #   failed to bundle project: failed codesign application:
+      #   failed to run command security import
+      #
+      # That failed the macOS leg of v0.3.0 twice while Windows, Linux, npm and
+      # the relay image all went green. Not defining them at all is the only
+      # thing that makes Tauri skip signing. !!
+      - name: Apple signing, when there is something to sign with
+        if: matrix.os == 'macos-latest' && env.APPLE_CERTIFICATE != ''
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS. Notarization needs a paid Developer ID; with no secrets these
-          # are all empty and Tauri skips signing, which is what ships today —
-          # /download/ says so and tells people what Gatekeeper will do.
-          #
-          # !! Do NOT default APPLE_SIGNING_IDENTITY to "-" for an ad-hoc
-          # signature. Setting it makes Tauri take the signing path, which
-          # begins by importing APPLE_CERTIFICATE into a keychain — and with no
-          # certificate that fails the whole macOS build with "failed to run
-          # command security import". Ad-hoc signing has to happen after the
-          # bundle is built, not through these variables. !!
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          for v in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY \
+                   APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            printf '%s<<__EOF__\n%s\n__EOF__\n' "$v" "${!v}" >> "$GITHUB_ENV"
+          done
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           configPath: desktop/src-tauri/tauri.conf.json
           tagName: ${{ github.ref_name }}
