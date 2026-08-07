@@ -11,6 +11,12 @@ name: Desktop build
 # toolchain was available to check it, so the first green run of this workflow
 # is the first evidence that desktop/ is real rather than plausible.
 
+# Three runners per run, so it is deliberately hard to trigger by accident.
+#
+# `push` is limited to main. On a branch with an open pull request the two
+# triggers both fire on every commit, which is two identical three-platform
+# builds for one push — six runners to answer one question. The pull_request
+# trigger covers branches; this one covers merges.
 on:
   workflow_dispatch:
     inputs:
@@ -19,6 +25,7 @@ on:
         type: boolean
         default: false
   push:
+    branches: [main]
     paths:
       - "desktop/**"
       - "tools/build/build.mjs"
