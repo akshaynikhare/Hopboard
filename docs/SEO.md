@@ -566,9 +566,10 @@ reason. See `LAUNCH-KIT.md` §1 for the argument and for what must *not* be drop
 spike rather than a large one. Spreading launches guarantees you never trend.
 
 ⚠️ **The ad slot is a distribution decision, not just a product one.**
-`src/ui/features/ads.js` is currently an inert placeholder — no third-party script, no
-network request — and while it stays that way nothing here is affected. The moment
-a real ad network goes in, three of the channels above change:
+`src/ui/features/ads.js` was an inert placeholder when this was written; as of
+2026-08-08 it loads AdSense whenever `GOOGLE.ADSENSE_SLOTS.APP` is filled in, so
+treat the paragraph below as a live constraint rather than a warning about a
+future change. Three of the channels above are affected:
 **pluja/awesome-privacy** requires *"no user-tracking on the project website"* and
 would reject or drop the listing; **r/privacy** and **r/PrivacyGuides** audiences
 will find it and lead with it; and it undercuts the no-telemetry claim that is the
@@ -875,6 +876,19 @@ a clipboard tool. Concretely, it costs:
 That split is defensible in any forum: *"the marketing pages carry ads; the app
 does not load third-party code."* And it costs almost no revenue, because search
 traffic hits the content pages first.
+
+> **What was actually decided, 2026-08-08.** The split above was NOT taken. GA and
+> AdSense were wired into every page including `app.html`, with the trade-off
+> stated and accepted. The costs listed above are therefore live, not
+> hypothetical, and the launch plan in §9 has to assume the privacy communities
+> will lead with it — the honest move there is to say it first, with the
+> `/privacy/` page as the answer, rather than be caught by DevTools.
+>
+> Two things reduce the damage and both are already in place: `app.html` is
+> `noindex`, so this is a community problem rather than a search problem; and
+> `GOOGLE.ADSENSE_SLOTS.APP` in `src/core/config.js` is a separate switch, so
+> emptying that one string restores the recommended split without touching
+> anything else. `docs/ARCHITECTURE.md` §5 has the technical half.
 
 Worth evaluating as a straight upgrade: **EthicalAds** and **Carbon Ads** serve
 developer audiences without cookies or personal-data tracking, which would let ads

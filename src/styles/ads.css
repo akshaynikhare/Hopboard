@@ -35,6 +35,10 @@
   opacity:.55;
 }
 
+/* Set by ads.js once a real unit is in the box. The dashed outline says "this
+   space is reserved"; around a loaded creative it says "this ad is broken". */
+.adslot-box.adlive { border:0; }
+
 /* One line. Deliberately at the bottom of the visual hierarchy: an explanation
    for anyone who wonders, not a pitch.
 

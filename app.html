@@ -15,22 +15,36 @@
      cannot be until the site moves behind a host that can send headers
      (docs/SEO.md §7 recommends that move on independent grounds).
 
+     !! This policy was tight because nothing third-party ran here. Google
+     Analytics and AdSense now do, on every page including this one, and the
+     directives below were widened to let them — script-src, frame-src, img-src
+     and connect-src all name Google origins that can serve arbitrary content.
+     src/ui/features/ads.js states what that costs and why it was accepted; the
+     switch that turns it back off is in src/core/config.js. !!
+
      Notes on the individual directives:
-       default-src 'self'  covers script-src and style-src. There is exactly
-                           one script origin and no inline script anywhere:
-                           the landing page's fragment redirect moved out to
-                           src/landing/redirect.js so this could hold with no
-                           hash and no 'unsafe-inline'.
+       script-src          'self' plus the ad and tag origins. Still no inline
+                           script and no 'unsafe-inline': every tag is injected
+                           from a module, which is why the copy-pasted gtag
+                           snippet is not used anywhere in this repo.
+       style-src           'unsafe-inline' is for the ad tag, which sets style
+                           attributes on the units it renders.
        img-src   data:     files/thumbs.js canvas thumbnails
                  blob:     files/registry.js object URLs for received files
+                 https:    ad creatives, which come from arbitrary CDNs
+       frame-src           ad iframes, and the CMP's consent dialog.
        connect-src         the relay, both ways in — wss:// for the WebSocket
                            and https:// for the SSE+POST fallback and /stats.
-                           127.0.0.1:8000 is the local dev relay; leaving it
-                           in costs nothing, since script-src already stops
-                           injected code from being here to use it.
+                           127.0.0.1:8000 is the local dev relay. The Google
+                           origins are beacons and ad requests.
        form-action 'self'  #keyForm on the landing page is handled in JS. If
                            that ever fails, a plain submit to the same page is
                            harmless; anywhere else would not be.
+       trusted-types  *    was `realtimeclipboard`, the one policy this codebase
+                           creates. Google's tags create their own and would be
+                           refused by name. `require-trusted-types-for` is kept,
+                           so raw innerHTML still throws — the sink protection
+                           survives; only the name allowlist is gone.
 
      !! WebRTC is NOT governed by connect-src. The STUN server in
      files/transfer.js is unaffected by this policy in any current browser. !!
@@ -40,7 +54,7 @@
      pinned here is deliberate — a corporate build that can physically reach
      only its own relay is a feature, not an oversight. tests/static-check.mjs
      asserts this list agrees with RELAY_URL in src/core/config.js. !! -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; script-src 'self' https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagmanager.com https://adservice.google.com https://fundingchoicesmessages.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://fundingchoicesmessages.google.com; require-trusted-types-for 'script'; trusted-types *">
 
 <title>RealtimeClipboard</title>
 <meta name="theme-color" content="#007acc">

@@ -1536,6 +1536,10 @@ footer a:hover { color:var(--link); }
 
 .adph { color:var(--dim); font:11.5px/1 var(--mono); opacity:.6; }
 
+/* Set by tags.js once a real unit is in the box. The dashed outline says "this
+   space is reserved"; around a loaded creative it says "this ad is broken". */
+.adbox.adlive { border:0; background:none; }
+
 /* Centred under the unit and narrower than a normal .hint: this is a footnote
    for the curious, not a section of the page. */
 .adnote { margin:11px auto 0; max-width:60ch; font-size:12px; opacity:.85; }

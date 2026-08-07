@@ -179,10 +179,16 @@ exactly what it is looking for.
 ## 5. Changing the landing page
 
 The landing page (`index.html` + `src/landing/`) is a separate document from the
-app, and deliberately so: `app.html` carries the session key in its fragment and
-the decrypted clipboard in its DOM, so **no third-party script may ever be added
-to it**. The ad slot, the analytics-shaped things, anything remotely updated —
-they live on the landing page, which holds nothing.
+app. It used to be the *only* place a third-party script could go, because
+`app.html` carries the session key in its fragment and the decrypted clipboard in
+its DOM. That is no longer the split: Google Analytics and AdSense load on every
+page, the app included, driven by `GOOGLE` in `src/core/config.js` and off by
+default while those IDs are empty.
+
+The separation still matters for everything else. `src/landing/tags.js` loads the
+tags here; `src/ui/features/analytics.js` and `ads.js` do it in the app, and they
+carry the caveats that only apply there. Nothing new should be added to
+`app.html` without reading `docs/ARCHITECTURE.md` §5 first.
 
 ### The grid
 

@@ -157,7 +157,7 @@ await build({
   // reachable from markup — never imported by another module — is invisible to
   // the bundler and simply will not exist in _site. It 404s on the one page
   // that needs it and nowhere else.
-  entryPoints: ["redirect", "landing", "faq", "download", "copy"].map(n => join(ROOT, `src/landing/${n}.js`)),
+  entryPoints: ["redirect", "landing", "faq", "download", "copy", "tags"].map(n => join(ROOT, `src/landing/${n}.js`)),
   outdir: join(OUT, "src/landing"),
 });
 

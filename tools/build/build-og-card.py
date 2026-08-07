@@ -77,7 +77,7 @@ SUBTITLE = [
     "each device — no account, no install, end-to-end encrypted.",
 ]
 FEATURES = ["No account", "Works across networks", "Files peer-to-peer", "Open source"]
-BADGE = "PRE-ALPHA"
+BADGE = "BETA"
 SAMPLE_KEY = "D75LV"   # the throwaway key the tests use; never a real one
 
 

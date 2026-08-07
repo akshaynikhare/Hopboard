@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html, which is the page that
+     actually needs them. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; script-src 'self' https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagmanager.com https://adservice.google.com https://fundingchoicesmessages.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://fundingchoicesmessages.google.com; require-trusted-types-for 'script'; trusted-types *">
+
+<!--
+  Not an SEO page. It exists because AdSense requires a privacy policy that
+  discloses third-party cookies before it will approve a site, and because the
+  consent dialog has to point somewhere.
+
+  It is written to be true rather than to be reassuring. Two things about this
+  product are unusual and both are stated plainly: the relay genuinely cannot
+  read clipboard contents, and the ad and analytics tags on this site genuinely
+  can see the page they run on — including, in the app, the session key.
+  Softening either one would make this the kind of privacy policy nobody
+  believes.
+-->
+<title>Privacy Policy — RealtimeClipboard</title>
+<meta name="description" content="What RealtimeClipboard collects, what it cannot collect, and what Google Analytics and AdSense see. Clipboard contents are encrypted in your browser and the relay stores nothing.">
+<link rel="canonical" href="https://realtimeclipboard.com/privacy/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="RealtimeClipboard">
+<meta property="og:title" content="Privacy Policy — RealtimeClipboard">
+<meta property="og:description" content="What is collected, what cannot be collected, and what the third-party tags on this site can see.">
+<meta property="og:url" content="https://realtimeclipboard.com/privacy/">
+<meta property="og:image" content="https://realtimeclipboard.com/assets/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://realtimeclipboard.com/privacy/#webpage",
+      "url": "https://realtimeclipboard.com/privacy/",
+      "name": "Privacy Policy",
+      "description": "What RealtimeClipboard collects, what it cannot collect, and what Google Analytics and AdSense see.",
+      "inLanguage": "en",
+      "datePublished": "2026-08-08",
+      "dateModified": "2026-08-08",
+      "publisher": { "@id": "https://realtimeclipboard.com/#org" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "RealtimeClipboard",
+          "item": "https://realtimeclipboard.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Privacy Policy",
+          "item": "https://realtimeclipboard.com/privacy/"
+        }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/src/landing/landing.css">
+<script type="module" src="/src/landing/tags.js"></script>
+</head>
+<body>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="/">
+        <b>RealtimeClipboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="https://github.com/akshaynikhare/RealtimeClipboard">GitHub</a>
+      <a class="tlink strong" href="/app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section class="sec">
+    <div class="in doc">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">RealtimeClipboard</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">Privacy Policy</span>
+      </nav>
+
+      <header class="pagehead">
+        <h1>Privacy Policy</h1>
+
+        <p class="lede">
+          <b>Your clipboard contents are encrypted in your browser and the relay
+          server cannot read them.</b> This site also runs Google Analytics and
+          Google AdSense, which can — like any third-party tag — see the pages
+          they run on. Both halves of that are true and this page says where the
+          line falls.
+        </p>
+      </header>
+
+      <div class="article">
+
+        <p>Last updated 8 August 2026.</p>
+
+        <h2>What the service itself collects</h2>
+
+        <p>
+          Nothing that identifies you, and nothing that can be read. There is no
+          account, no email address, no password and no profile. What you copy is
+          encrypted in your own browser with AES-GCM before it leaves the
+          machine, using a key derived from the short session key you type. That
+          key is never sent anywhere. The relay sees only a hash that tells it
+          which room to route a message to, and ciphertext it has no way to open.
+        </p>
+
+        <p>
+          Messages are held in memory for the moment it takes to pass them on and
+          are not written to disk. Files never reach the server at all — they
+          travel directly between your devices over WebRTC. Closing the tab ends
+          the session.
+        </p>
+
+        <p>
+          The relay records aggregate counts by country for the activity globe on
+          the home page. That is a total per country and nothing else: no
+          addresses, no session keys, no record of which devices are paired.
+        </p>
+
+        <h2>What is stored on your own device</h2>
+
+        <p>
+          Settings and clipboard history are kept in your browser's local storage,
+          on your device, under a <code>realtimeclipboard.</code> prefix. They are
+          never uploaded. Clearing site data removes them.
+        </p>
+
+        <h2>Google Analytics</h2>
+
+        <p>
+          This site uses Google Analytics 4 to count visits and see which pages
+          people reach. It sets cookies and reports the page address, referrer,
+          approximate location, device and browser to Google.
+        </p>
+
+        <p>
+          <b>The page address it reports never includes the part after the
+          <code>#</code>.</b> That matters here more than on most sites: in the
+          app, the session key lives in that fragment, so the analytics tag is
+          configured to strip it before anything is sent. Google does not receive
+          session keys through Analytics.
+        </p>
+
+        <h2>Google AdSense</h2>
+
+        <p>
+          Ads on this site are served by Google AdSense. Google and its partners
+          use cookies and similar technologies to serve and measure ads, and may
+          personalise them based on your prior visits to this and other sites.
+          You can review and change your ad settings at
+          <a href="https://myadcenter.google.com/">My Ad Center</a>, and opt out
+          of personalised advertising at
+          <a href="https://www.google.com/settings/ads">Google's ad settings</a>.
+        </p>
+
+        <p>
+          An ad tag is third-party code that runs inside the page it appears on,
+          and it can read that page — including the address bar. On
+          <code>/app.html</code>, the address bar contains your session key.
+          Unlike Analytics, AdSense provides no supported way to withhold it. If
+          that is not a trade you want to make, use the app with an ad blocker,
+          or run the relay and the site yourself from the
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard">source</a>,
+          where these tags are switched off by default. It does not affect
+          encryption: the relay still cannot read your clipboard either way.
+        </p>
+
+        <h2>Consent</h2>
+
+        <p>
+          If you are in the EEA, the UK or Switzerland, a consent dialog appears
+          before any advertising or analytics cookie is set, and everything stays
+          off until you choose. You can reopen it at any time from the
+          <b>Privacy &amp; cookie settings</b> link in the page footer to change
+          or withdraw what you agreed to.
+        </p>
+
+        <h2>Children</h2>
+
+        <p>
+          This service is not directed at children under 13 and does not knowingly
+          collect information from them.
+        </p>
+
+        <h2>Your rights</h2>
+
+        <p>
+          Because there is no account and no server-side record of you, there is
+          normally nothing to export or delete on request — the material a
+          service would usually hold about you does not exist here. For the
+          analytics and advertising data Google holds, use the Google links
+          above, which reach further than any request to this site could.
+        </p>
+
+        <h2>Changes</h2>
+
+        <p>
+          Changes are published on this page with the date above. The site is
+          open source, so the full history of what this policy said and when is
+          in the
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard">repository</a>.
+        </p>
+
+        <h2>Contact</h2>
+
+        <p>
+          Open an issue on
+          <a href="https://github.com/akshaynikhare/RealtimeClipboard/issues">GitHub</a>.
+          Do not include your session key in one.
+        </p>
+
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <p><a href="/">Home</a> · <a href="/help/">Help</a> · <a href="/blog/">Blog</a> · <a href="/privacy/">Privacy</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

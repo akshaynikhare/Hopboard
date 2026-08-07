@@ -242,7 +242,7 @@ These are load-bearing. Breaking one is a vulnerability, not a bug.
 | A device joining the session is announced, not silent | `state.setPeers()` diffs the roster → `ui/shell/banners.js` |
 | Signalling and cursor frames are sealed like clips | `main.js` `encryptFrame()`; only routing fields stay clear |
 | A peer may retract only files it announced | `files/registry.js` `applyGone()` checks the relay-stamped `from` |
-| The share key is never transmitted — only `SHA-256(key)` and ciphertext | `core/crypto.js` |
+| The share key is never transmitted **by this codebase** — only `SHA-256(key)` and ciphertext | `core/crypto.js` — but see the note below, which weakened this one |
 | Keys are normalised (uppercased) before hashing | `core/keys.js` |
 | A session PIN is never transmitted, never in the URL, never on disk, never logged — only PBKDF2+HKDF output derived from it | `core/crypto.js`, `core/storage.js` `saveLock()`, `main.js` `announce()` |
 | A locked link opens no connection until the PIN is given, and never falls back to the unlocked room of the same key | `main.js` `startSession()`; `tests/live/boot.mjs --locked` |
@@ -268,6 +268,26 @@ These are load-bearing. Breaking one is a vulnerability, not a bug.
 The suppression ordering is the subtle one. Write first and your own poller sees
 a "new" clipboard value and bounces it back to the sender, forever. See
 [CLIPBOARD-FLOW.md §6](CLIPBOARD-FLOW.md).
+
+### The one that was given up, deliberately — 2026-08-08
+
+**"No third-party script in `app.html`" is no longer an invariant.** Google
+Analytics and AdSense load there, from `GOOGLE` in `core/config.js`. Anything
+running in that document can read `location.hash`, which holds the share key, and
+the DOM, which holds decrypted clipboard text. The consequences, in order of how
+much they matter:
+
+| | Status |
+|---|---|
+| Analytics reporting the key in `page_location` | **Fixed.** `pageLocation()` in `core/config.js` strips the fragment, and every `gtag("config", …)` passes it. This is not optional and not a preference — a config call without it sends the key to Google |
+| The ad request reporting the page URL | **Not fixed, and not fixable from here.** AdSense exposes no supported override. `GOOGLE.ADSENSE_SLOTS.APP` is therefore its own switch: empty means the app serves a first-party placeholder while the site still runs ads |
+| The tag reading clipboard text out of the DOM | **Not fixed.** Contextual targeting reads page content by design |
+| Relay confidentiality | **Unaffected.** Encryption is unchanged; the relay still cannot read a clip, and no key reaches it |
+
+The real repair is architectural — get the key out of the fragment — and it is
+worth doing on its own merits. Until then, `src/ui/features/ads.js` is where this
+is written down next to the code that does it, and `/privacy/` is where it is
+disclosed to the people it affects.
 
 ---
 

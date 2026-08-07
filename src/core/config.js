@@ -368,3 +368,71 @@ export const IMAGES = {
   /** Named so a received screenshot does not land as "blob" on disk. */
   NAME_PREFIX: "clipboard-image",
 };
+
+/**
+ * Google Analytics and AdSense.
+ *
+ * Empty by default and every consumer no-ops on empty, so a fork, a local
+ * checkout and a self-hosted deploy load no third-party script at all. Filling
+ * these in is the switch that turns tracking and ads on for a build.
+ *
+ * !! These IDs put third-party script in EVERY document, app.html included.
+ * That was a deliberate call and it costs the app a security property it used
+ * to have — docs/ARCHITECTURE.md §5 and src/ui/features/ads.js record what.
+ * Anything running in app.html can read location.hash and the decrypted
+ * clipboard in the DOM; contextual ad targeting reads page content by design.
+ *
+ * Adding an origin here means adding it to the CSP in _headers AND in every
+ * page's meta tag, which tools/check/site-check.mjs asserts agree.
+ */
+export const GOOGLE = {
+  /** GA4 measurement ID, "G-XXXXXXXXXX". Admin → Data streams → your stream. */
+  GA4_ID: "",
+  /** AdSense publisher ID, "ca-pub-################". Account → Settings. */
+  ADSENSE_CLIENT: "",
+  /**
+   * Per-unit slot IDs, the 10-digit number AdSense prints as `data-ad-slot`
+   * when you create a unit. One per placement, and a unit renders nothing
+   * until its own ID is filled in.
+   */
+  ADSENSE_SLOTS: {
+    /** index.html, the 728×90 after "how it works". */
+    LEADERBOARD: "",
+    /** index.html, the 300×600 rail beside the FAQ. */
+    RAIL: "",
+    /** app.html, below the editor. */
+    APP: "",
+  },
+};
+
+/** Nothing loads unless the ID that drives it is present. */
+export const analyticsEnabled = () => Boolean(GOOGLE.GA4_ID);
+export const adsEnabled = () => Boolean(GOOGLE.ADSENSE_CLIENT);
+
+/**
+ * Consent Mode v2 starts denied in these jurisdictions and stays denied until
+ * the CMP says otherwise; everywhere else the tags behave normally. EEA, plus
+ * the UK and Switzerland.
+ */
+export const CONSENT_REGIONS = [
+  "AT", "BE", "BG", "CH", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GB",
+  "GR", "HR", "HU", "IE", "IS", "IT", "LI", "LT", "LU", "LV", "MT", "NL", "NO",
+  "PL", "PT", "RO", "SE", "SI", "SK",
+];
+
+/**
+ * The page URL with the fragment removed, for `page_location`.
+ *
+ * !! app.html carries the share key in `location.hash`, and gtag's default
+ * `page_location` is `location.href`. The unmodified tag would therefore send
+ * the key to Google on the first page_view — the one thing this project
+ * promises never leaves the browser. Every gtag config passes this instead. !!
+ */
+export const pageLocation = () =>
+  typeof location === "undefined" ? "" : location.origin + location.pathname + location.search;
+
+export const GOOGLE_SRC = {
+  gtag: (id) => `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(id)}`,
+  adsense: (client) =>
+    `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(client)}`,
+};
