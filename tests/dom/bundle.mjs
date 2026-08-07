@@ -81,7 +81,7 @@ const shell = [...(sw.match(/const SHELL = \[([\s\S]*?)\n\];/)?.[1] ?? "")
  * A SHELL entry is a URL, and one of them is not a filename.
  *
  * The app is precached as `./app`, which the host serves from `app.html` — the
- * `_redirects` rewrite that tools/build/build.mjs's pretty-URL pass is built around.
+ * extensionless serving that tools/build/build.mjs's pretty-URL pass is built around.
  * Resolving the literal path first and the `.html` form second is exactly the
  * order the host resolves them in, so this stays true if a future entry is
  * extensionless too, and still catches a genuinely dangling path.

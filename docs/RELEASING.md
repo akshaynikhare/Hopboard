@@ -191,10 +191,32 @@ once, ever.
 release still produces installers — it just never publishes the CLI, and every
 `npx realtimeclipboard` example on the site keeps failing.
 
+npm → **Access Tokens** → **Granular Access Token**, and the settings that
+matter:
+
+| | |
+|---|---|
+| **Bypass two-factor authentication (2FA)** | **ticked** |
+| Packages and scopes | **Read and write**, **All packages** |
+| Expiration | as far out as it allows |
+
 ```bash
-# an AUTOMATION token, not a Classic Publish token: 2FA blocks the latter in CI
 gh secret set NPM_TOKEN
 ```
+
+Each of those is a way to fail:
+
+- **Without the 2FA bypass**, publishing dies with `E403 — Two-factor
+  authentication or granular access token with bypass 2fa enabled is required`.
+  CI cannot answer a 2FA prompt, so this is not optional. It is also the setting
+  npm is phasing out (account changes Aug 2026, direct publishing Jan 2027);
+  when it goes, move to npm's **Trusted Publishing** over OIDC instead — the
+  `npm` job already has the `id-token: write` permission that needs.
+- **Scoped to selected packages** does not work for a *first* publish: the
+  package does not exist yet, so it cannot be selected, and the token ends up
+  with write access to nothing.
+- **Expiry** is the quiet one. The default 30 days means a release two months
+  from now fails with an auth error nobody connects to a token set today.
 
 **2. Make the relay image public.** A package pushed by `GITHUB_TOKEN` is
 created **private**, and linking it to the repository does not grant public
