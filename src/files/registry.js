@@ -11,6 +11,7 @@
 
 import { FILES } from "../core/config.js";
 import { emit, EV } from "../core/bus.js";
+import { stripInvisible } from "../core/text.js";
 import * as state from "../core/state.js";
 import * as thumbs from "./thumbs.js";
 
@@ -95,10 +96,39 @@ export async function add(fileList, { makeThumbs = true } = {}) {
   return { added, rejected };
 }
 
+/**
+ * A filename chosen by somebody else.
+ *
+ * It is rendered in the grid and, if the file is saved, becomes the `download`
+ * attribute — the name the browser writes to disk and the user reads before
+ * opening it. Browsers already refuse a path separator there, so this is not
+ * about traversal; it is about the name being read as what it is:
+ *
+ *   - bidi and control characters, via stripInvisible(). `report[RLO]txt.exe`
+ *     renders as `reportexe.txt` and runs as an executable.
+ *   - path separators and `..`, because `download` is not the only consumer —
+ *     the CLI and any future export path would take this string too, and a
+ *     sanitiser that relies on its caller is one refactor from being wrong.
+ *   - leading dots, which hide a file on every unix desktop.
+ *   - length, because a 30 KB name is a rendering problem in the grid.
+ *
+ * Never empty: a nameless tile cannot be described, asked for, or reported.
+ */
+function safeName(raw) {
+  const cleaned = stripInvisible(String(raw ?? ""))
+    .replace(/[\\/]+/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/^[.\s]+/, "")
+    .trim()
+    .slice(0, FILES.MAX_NAME_CHARS);
+
+  return cleaned || "unnamed";
+}
+
 /** A peer announced a file: metadata and thumbnail only, no bytes. */
 export function addRemote({ id, name, size, type, thumb, originId }) {
   if (get(id)) return;
-  items.push({ id, name, size, type, thumb, blob: null,
+  items.push({ id, name: safeName(name), size, type, thumb, blob: null,
                origin: "remote", owner: originId, progress: 0, path: null,
                state: STATE.IDLE, error: null, url: null });
   emit(EV.FILES_CHANGED, items);

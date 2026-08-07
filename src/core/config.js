@@ -153,9 +153,40 @@ export const TEXT = {
   LOCAL_COPY_GRACE_MS: 10_000,
 };
 
+/**
+ * Pastejacking — see clipboard/guard.js for what is actually checked.
+ *
+ * The room is joinable by anyone holding the key, and an arriving clip is
+ * written to the OS clipboard with no gesture from the person receiving it. So
+ * a peer chooses what you paste into your next terminal.
+ *
+ * `ENABLED` governs only the heuristic that demands a click. Stripping the
+ * trailing newline and the invisible characters is unconditional and has no
+ * switch: it is not a policy, it is the difference between a clip that pastes
+ * and a clip that runs.
+ */
+export const PASTE_GUARD = {
+  ENABLED: true,
+
+  /**
+   * Past this, do not scan. The patterns are anchored per line, so a pasted
+   * logfile is a lot of backtracking for a case that is not what this defends
+   * against — nobody is tricked into pasting 200 KB into a shell.
+   */
+  MAX_SCAN_CHARS: 8_192,
+};
+
 export const FILES = {
   MAX_BYTES: 5 * 1024 * 1024, // 5 MB per file (FR-7.1)
   MAX_COUNT: 20,              // per session, memory only (FR-7.7)
+
+  /**
+   * A filename is chosen by whoever sent the file, so it is bounded like every
+   * other piece of peer-supplied metadata. Long enough that no real name is
+   * truncated; short enough that a hostile one is a tile, not a layout.
+   * files/registry.js `safeName` applies it, along with the character rules.
+   */
+  MAX_NAME_CHARS: 120,
   THUMB_PX: 160,              // longest edge (FR-7.2)
   THUMB_QUALITY: 0.7,
 
@@ -193,14 +224,32 @@ export const FILES = {
 export const KEY = {
   // Crockford-ish: no 0/O, no 1/I/L. Ambiguity here becomes a support ticket.
   ALPHABET: "23456789ABCDEFGHJKMNPQRSTVWXYZ",
-  LENGTH: 6,                  // PRD D3 — the web default
-  LONG_LENGTH: 10,            // "high security" option, PRD §7.3
+  /**
+   * Ten, not six. PRD D3 chose six for the phone keyboard and that argument was
+   * sound about typing and wrong about arithmetic.
+   *
+   * The open room hash is derived through the same 250k PBKDF2 as the AES key
+   * (crypto.js `deriveOpen`), so a guess costs a full derivation rather than one
+   * SHA-256. But `SALT` is a single global constant, so the table an attacker
+   * builds is built ONCE and then opens every unlocked session of that length,
+   * for every user, for as long as the salt stands. That is the number that
+   * matters, and at six characters it is ~12 minutes on 100 rented GPUs:
+   *
+   *     6 chars   7.3e8 keys       12 min on 100 GPUs      29.4 bits
+   *    10 chars   5.9e14 keys      19 years on 100 GPUs    49.1 bits
+   *    16 chars   5.3e23 keys      out of reach            78.5 bits
+   *
+   * Six is therefore not a preference, it is a defect, and no iteration count
+   * fixes a keyspace. Typing cost is paid once per session and only when someone
+   * declines the QR code and the copied link, both of which are in front of it.
+   */
+  LENGTH: 10,
+  LONG_LENGTH: 16,            // "high security" option, PRD §7.3
 
   /**
-   * PRD §7.3's argument for six characters is convenience, and the convenience
-   * is a phone keyboard. An installed app links a device by QR or copied link,
-   * so it does not pay the typing cost — and it is the surface running all day
-   * reading every copy, which §7.3 says should take the 10-character option.
+   * An installed app links a device by QR or copied link, so it does not pay the
+   * typing cost at all — and it is the surface running all day reading every
+   * copy, which is the one that should take the longer option.
    */
   DEFAULT_LONG: IS_DESKTOP,
 };
@@ -211,9 +260,25 @@ export const CRYPTO = {
   ROOM_HASH_BYTES: 16,
 
   /**
+   * One PBKDF2 run, two outputs — see crypto.js `deriveOpen`.
+   *
+   * The room hash used to be `SHA-256("realtimeclipboard:" + KEY)`: unsalted,
+   * unstretched, and the one value the relay holds by construction. Anyone with
+   * it could sweep the whole 6-character keyspace in 0.07s and read back the
+   * key, which made the 250k iterations on the AES key worth exactly one
+   * derivation to an attacker. Deriving both from the same PRK costs nothing —
+   * that PBKDF2 was already being awaited before the connection opened.
+   */
+  OPEN_INFO: {
+    AES:  "realtimeclipboard/aes",
+    ROOM: "realtimeclipboard/room",
+  },
+
+  /**
    * The lock salt is a PREFIX, completed with the share key — random per
    * session, which is what a salt is for. The open-session salt above is one
-   * global constant, so a single precomputed table covers every user on earth.
+   * global constant, so a single precomputed table covers every user on earth;
+   * KEY.LENGTH is what has to make that table too large to build.
    *
    * 600k rather than 250k because the threat differs: a locked session's secret
    * is a PIN held by someone who may already have the link, so the PIN is the
@@ -367,4 +432,72 @@ export const IMAGES = {
   TYPES: ["image/png", "image/jpeg", "image/webp", "image/gif"],
   /** Named so a received screenshot does not land as "blob" on disk. */
   NAME_PREFIX: "clipboard-image",
+};
+
+/**
+ * Google Analytics and AdSense.
+ *
+ * Empty by default and every consumer no-ops on empty, so a fork, a local
+ * checkout and a self-hosted deploy load no third-party script at all. Filling
+ * these in is the switch that turns tracking and ads on for a build.
+ *
+ * !! These IDs put third-party script in EVERY document, app.html included.
+ * That was a deliberate call and it costs the app a security property it used
+ * to have — docs/ARCHITECTURE.md §5 and src/ui/features/ads.js record what.
+ * Anything running in app.html can read location.hash and the decrypted
+ * clipboard in the DOM; contextual ad targeting reads page content by design.
+ *
+ * Adding an origin here means adding it to the CSP in _headers AND in every
+ * page's meta tag, which tools/check/site-check.mjs asserts agree.
+ */
+export const GOOGLE = {
+  /** GA4 measurement ID, "G-XXXXXXXXXX". Admin → Data streams → your stream. */
+  GA4_ID: "G-259V6H3K5M",
+  /** AdSense publisher ID, "ca-pub-################". Account → Settings. */
+  ADSENSE_CLIENT: "ca-pub-6053041142492498",
+  /**
+   * Per-unit slot IDs, the 10-digit number AdSense prints as `data-ad-slot`
+   * when you create a unit. One per placement, and a unit renders nothing
+   * until its own ID is filled in.
+   */
+  ADSENSE_SLOTS: {
+    /** index.html, the 728×90 after "how it works". */
+    LEADERBOARD: "7038244690",
+    /** index.html, the 300×600 rail beside the FAQ. */
+    RAIL: "8299355473",
+    /** app.html, below the editor. */
+    APP: "6948680552",
+  },
+};
+
+/** Nothing loads unless the ID that drives it is present. */
+export const analyticsEnabled = () => Boolean(GOOGLE.GA4_ID);
+export const adsEnabled = () => Boolean(GOOGLE.ADSENSE_CLIENT);
+
+/**
+ * Consent Mode v2 starts denied in these jurisdictions and stays denied until
+ * the CMP says otherwise; everywhere else the tags behave normally. EEA, plus
+ * the UK and Switzerland.
+ */
+export const CONSENT_REGIONS = [
+  "AT", "BE", "BG", "CH", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR", "GB",
+  "GR", "HR", "HU", "IE", "IS", "IT", "LI", "LT", "LU", "LV", "MT", "NL", "NO",
+  "PL", "PT", "RO", "SE", "SI", "SK",
+];
+
+/**
+ * The page URL with the fragment removed, for `page_location`.
+ *
+ * !! app.html carries the share key in `location.hash`, and gtag's default
+ * `page_location` is `location.href`. The unmodified tag would therefore send
+ * the key to Google on the first page_view — the one thing this project
+ * promises never leaves the browser. Every gtag config passes this instead. !!
+ */
+export const pageLocation = () =>
+  typeof location === "undefined" ? "" : location.origin + location.pathname + location.search;
+
+export const GOOGLE_SRC = {
+  gtag: (id) => `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(id)}`,
+  adsense: (client) =>
+    `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(client)}`,
 };

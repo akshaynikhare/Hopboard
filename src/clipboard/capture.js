@@ -25,6 +25,7 @@ import { POLL_OPTIONS, TEXT, bindsClipboard, IMAGES } from "../core/config.js";
 import { emit, EV } from "../core/bus.js";
 import * as state from "../core/state.js";
 import * as native from "../core/native.js";
+import * as guard from "./guard.js";
 import * as os from "./os.js";
 
 let pollTimer = null;
@@ -219,12 +220,23 @@ export function capture(text, how) {
  * copied to find it replaced. Neither case drops the clip; it is held and
  * flushed by the same focus gesture the user already makes.
  */
-export async function apply(text) {
+export async function apply(raw) {
   if (!bindsClipboard(state.get().settings.syncMode)) return false;
 
-  if (!document.hasFocus() || state.recentLocalCopy()) {
+  // Defused before anything else looks at it, so the queued copy, the write and
+  // the banner preview are all the same string — the one that will be pasted.
+  const text = guard.defuse(raw);
+  if (!text) return false;
+
+  // A clip that reads like a command waits for a click WHATEVER the focus state.
+  // The risk is precisely that it lands without anyone deciding it should, and
+  // focus is not a decision: it is what happens when you alt-tab back.
+  const risk = guard.looksExecutable(text);
+
+  if (risk || !document.hasFocus() || state.recentLocalCopy()) {
     pending = text;
-    emit(EV.PENDING_CLIP, { pending: true, text });
+    pendingRisk = risk;
+    emit(EV.PENDING_CLIP, { pending: true, text, risk, altered: guard.wasAltered(raw) });
     return false;
   }
   return writeNow(text);
@@ -258,12 +270,39 @@ export async function putOnClipboard(text) {
 }
 
 let pending = null;
+let pendingRisk = null;
 
-/** Flush a clip that arrived while we were away, or while a local copy held it off. */
+/**
+ * Flush a clip that arrived while we were away, or while a local copy held it
+ * off. Called by the focus and visibility handlers.
+ *
+ * A clip the guard flagged is deliberately NOT flushed here. Regaining focus is
+ * not consent — it is what happens when you alt-tab back to the window, which is
+ * exactly the moment a planted command would land without being read.
+ */
 export async function flushPending() {
+  if (pending === null || pendingRisk) return;
+  return writePending();
+}
+
+/** The user clicked the banner. The only path that writes a flagged clip. */
+export async function confirmPending() {
   if (pending === null) return;
+  return writePending();
+}
+
+/** The user declined it. Dropped, not deferred — offering twice is nagging. */
+export function discardPending() {
+  if (pending === null) return;
+  pending = null;
+  pendingRisk = null;
+  emit(EV.PENDING_CLIP, { pending: false });
+}
+
+async function writePending() {
   const text = pending;
   pending = null;
+  pendingRisk = null;
   const ok = await writeNow(text);
   emit(EV.PENDING_CLIP, { pending: false });
   if (ok) emit(EV.TOAST, "Pending clip written to your clipboard");

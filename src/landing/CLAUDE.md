@@ -3,9 +3,12 @@
 The marketing page. A **separate document** from the app, and the separation is a security
 boundary, not an organisational one.
 
-**No third-party script may ever be added to `app.html`.** It carries the session key in its
-fragment and decrypted clipboard content in its DOM. Anything remotely updated — analytics, ads,
-embeds — belongs here, on a page that holds nothing.
+This page carries no key and no clipboard content, which is why analytics and ads were allowed here
+first. They now run in `app.html` too — see the root `CLAUDE.md` and `src/ui/features/ads.js` for
+what that cost. `tags.js` is this page's half of it; the app has its own, because `core/` is the
+only directory both may import and `core/` may not touch the DOM.
+
+**Anything new and remotely updated still starts here, not in the app.**
 
 May import `core/` (config and keys, for the hand-off). May not import `ui/`, `transport/`,
 `clipboard/` or `files/`.

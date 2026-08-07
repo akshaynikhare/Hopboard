@@ -45,16 +45,28 @@ import * as whatsNew from "./ui/features/whatsNew.js";
 import * as hints from "./ui/features/hints.js";
 import * as cursors from "./ui/features/cursors.js";
 import * as ads from "./ui/features/ads.js";
+import * as analytics from "./ui/features/analytics.js";
 import * as mobileNav from "./ui/shell/mobileNav.js";
 
 /* ---- session key ---- */
 
+/**
+ * A key from the URL, this tab, or disk means JOINING. A key we generate means
+ * CREATING, which must be collision-checked (OI-2) or we could drop the user
+ * straight into a stranger's clipboard.
+ *
+ * The order is the precedence: a link someone just followed outranks whatever
+ * this tab was doing, which outranks what the browser remembers from last week.
+ * The tab's own copy sits in the middle because it is what a reload reads —
+ * openSession() clears the fragment as soon as it has been used, so by the
+ * second boot of the same session the URL no longer names a room.
+ */
 function resolveKey() {
-  // A key from the URL or storage means JOINING. A key we generate means
-  // CREATING, which must be collision-checked (OI-2) or we could drop the user
-  // straight into a stranger's clipboard.
   const url = keys.fromUrl();
   if (keys.isValid(url.key)) return { ...url, intent: "join" };
+
+  const tab = storage.loadSessionKey();
+  if (tab && keys.isValid(tab.key)) return { ...tab, intent: "join" };
 
   const remembered = storage.loadLastKey();
   if (remembered && keys.isValid(remembered.key)) return { ...remembered, intent: "join" };
@@ -77,8 +89,15 @@ let lockPrk = null;
  * the same tab can pass `prk` and skip the 600k iterations.
  */
 async function openSession(key, intent, { locked = false, pin = null, prk = null } = {}) {
-  keys.toUrl(key, locked);
-  storage.saveLastKey(key, locked);
+  // The key is remembered, then taken OUT of the address bar. It used to live in
+  // the fragment for the whole session, which put it in every screenshot and
+  // screen share of the app and in reach of every script in the document —
+  // app.html is where clip content is decrypted, so that is the document where
+  // it matters. shareLink() builds a link from state when one is asked for, so
+  // sharing and the QR code are unaffected; storage is what a reload reads.
+  storage.saveSessionKey(key, locked);
+  storage.saveLastKey(key, locked, state.get().settings.rememberKey);
+  keys.clearUrl();
 
   // A session is being opened, so the gate has nothing left to stand for.
   pendingLock = null;
@@ -112,11 +131,10 @@ async function openSession(key, intent, { locked = false, pin = null, prk = null
     return;
   }
 
-  // Awaited once per session and cached — never per message (OI-8).
-  const [aesKey, roomHash] = await Promise.all([
-    cryptoBox.deriveKey(key),
-    cryptoBox.roomHash(key),
-  ]);
+  // Awaited once per session and cached — never per message (OI-8). One call
+  // rather than two: the room hash comes off the same PBKDF2 as the AES key, so
+  // there is no longer a cheap way to compute it and nothing to run in parallel.
+  const { aesKey, roomHash } = await cryptoBox.deriveOpen(key);
 
   lockPrk = null;
   storage.clearLock();
@@ -235,9 +253,12 @@ async function onEvicted() {
   leaveRoom();
   lockPrk = null;
   storage.clearLock();
-  // Forget the room in both places, or a reload bounces straight back off the
-  // retained goodbye into a loop that keeps announcing the same removal.
-  storage.remove("lastKey");
+  // Forget the room everywhere resolveKey() looks, or a reload bounces straight
+  // back off the retained goodbye into a loop that keeps announcing the same
+  // removal. Three places now, and missing one is indistinguishable from missing
+  // all three.
+  storage.forgetLastKey();
+  storage.clearSessionKey();
   keys.clearUrl();
   state.setConnection("idle", "removed — the session was locked");
 
@@ -782,6 +803,7 @@ async function boot() {
   safeInit("what's new", () => { whatsNew.init(); });
   safeInit("hints", hints.init);
   safeInit("ad slot", ads.init);
+  safeInit("analytics", analytics.init);
   safeInit("peer cursors", cursors.init);
   safeInit("install prompt", install.init);
 

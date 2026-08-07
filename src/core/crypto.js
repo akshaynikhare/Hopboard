@@ -1,8 +1,9 @@
 /**
  * End-to-end encryption. All of it. No libraries.
  *
- *   OPEN    roomHash = SHA-256("realtimeclipboard:" + KEY)[0..16]  -> sent
- *           aesKey   = PBKDF2(KEY, salt, 250k)                     -> never sent
+ *   OPEN    prk      = PBKDF2(KEY, salt, 250k)
+ *           aesKey   = HKDF(prk, "…/aes")
+ *           roomHash = HKDF(prk, "…/room")   -> sent
  *
  *   LOCKED  prk       = PBKDF2(PIN, "realtimeclipboard-lock-v1:" + KEY, 600k)
  *           aesKey    = HKDF(prk, "…/aes")
@@ -22,33 +23,36 @@ const enc = new TextEncoder();
 const dec = new TextDecoder();
 
 /** Derivation is expensive (OI-8), so cache per key for the session. */
-let cached = { id: null, aesKey: null };
-
-export async function roomHash(key) {
-  const digest = await crypto.subtle.digest("SHA-256", enc.encode("realtimeclipboard:" + key));
-  return hex(new Uint8Array(digest).slice(0, CRYPTO.ROOM_HASH_BYTES));
-}
+let cached = { id: null, open: null };
 
 /**
+ * Both outputs of an open session, from one PBKDF2.
+ *
  * Several hundred ms on a low-end Android, so call once per session and show an
- * "unlocking" state — never per message.
+ * "unlocking" state — never per message. It is not a new cost: the room hash was
+ * always awaited alongside this derivation before the connection opened, so the
+ * slower of the two already set the pace.
+ *
+ * Returning them together is deliberate. Two exported functions is what let the
+ * room hash be computed by a route that never ran the PBKDF2, which is exactly
+ * how it ended up being a bare SHA-256 of the key.
  */
-export async function deriveKey(key) {
-  if (cached.id === `open:${key}` && cached.aesKey) return cached.aesKey;
+export async function deriveOpen(key) {
+  if (cached.id === `open:${key}` && cached.open) return cached.open;
 
   const material = await crypto.subtle.importKey(
-    "raw", enc.encode(key), "PBKDF2", false, ["deriveKey"]
+    "raw", enc.encode(key), "PBKDF2", false, ["deriveBits"]
   );
-  const aesKey = await crypto.subtle.deriveKey(
+  const prk = await crypto.subtle.deriveBits(
     { name: "PBKDF2", salt: enc.encode(CRYPTO.SALT),
       iterations: CRYPTO.ITERATIONS, hash: "SHA-256" },
     material,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"]
+    256
   );
-  cached = { id: `open:${key}`, aesKey };
-  return aesKey;
+
+  const open = await expand(prk, CRYPTO.OPEN_INFO);
+  cached = { id: `open:${key}`, open };
+  return open;
 }
 
 /* ---- locked sessions ---- */
@@ -83,12 +87,12 @@ export function normalisePin(raw) {
  */
 export async function deriveLocked(key, pin) {
   const prk = await stretch(key, normalisePin(pin));
-  return { ...(await expand(prk)), prk: hex(new Uint8Array(prk)) };
+  return { ...(await expand(prk, CRYPTO.LOCK_INFO)), prk: hex(new Uint8Array(prk)) };
 }
 
 /** Same outputs, from a remembered prk. No PBKDF2, so this is instant. */
 export async function deriveLockedFromPrk(prkHex) {
-  return { ...(await expand(unhex(prkHex))), prk: prkHex };
+  return { ...(await expand(unhex(prkHex), CRYPTO.LOCK_INFO)), prk: prkHex };
 }
 
 async function stretch(key, pin) {
@@ -103,23 +107,31 @@ async function stretch(key, pin) {
   );
 }
 
-async function expand(prk) {
+/**
+ * Shared by both paths, which is the point: the open and locked sessions differ
+ * only in what they stretch and under which domain-separation strings, never in
+ * how the outputs are pulled off the PRK. `AUTH` is absent from OPEN_INFO — an
+ * unlocked room has no PIN to prove knowledge of — and its absence is what makes
+ * the token optional rather than a flag.
+ */
+async function expand(prk, labels) {
   const ikm = await crypto.subtle.importKey("raw", prk, "HKDF", false, ["deriveBits", "deriveKey"]);
   const info = i => ({ name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: enc.encode(i) });
+  const bits = i => crypto.subtle.deriveBits(info(i), ikm, CRYPTO.ROOM_HASH_BYTES * 8);
 
   const [aesKey, room, auth] = await Promise.all([
     crypto.subtle.deriveKey(
-      info(CRYPTO.LOCK_INFO.AES), ikm,
+      info(labels.AES), ikm,
       { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
     ),
-    crypto.subtle.deriveBits(info(CRYPTO.LOCK_INFO.ROOM), ikm, CRYPTO.ROOM_HASH_BYTES * 8),
-    crypto.subtle.deriveBits(info(CRYPTO.LOCK_INFO.AUTH), ikm, CRYPTO.ROOM_HASH_BYTES * 8),
+    bits(labels.ROOM),
+    labels.AUTH ? bits(labels.AUTH) : null,
   ]);
 
   return {
     aesKey,
-    roomHash:  hex(new Uint8Array(room)),
-    authToken: hex(new Uint8Array(auth)),
+    roomHash: hex(new Uint8Array(room)),
+    ...(auth ? { authToken: hex(new Uint8Array(auth)) } : {}),
   };
 }
 
@@ -146,7 +158,7 @@ export async function decrypt(aesKey, payloadB64, ivB64) {
 // Called on leaving a session and on rotating the key. This had no callers for
 // years, so the AES key of a room you walked out of stayed live until you opened
 // another one.
-export function clearCache() { cached = { id: null, aesKey: null }; }
+export function clearCache() { cached = { id: null, open: null }; }
 
 /* ---- hex helpers ---- */
 function hex(bytes) {

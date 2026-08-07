@@ -7,7 +7,7 @@ written for someone who has opened the network tab, does not trust the marketing
 the numbers. Where the two disagree, this file is newer.
 
 Scope: the hosted service at `realtimeclipboard.com` and the relay in `backend/`, as of
-**2026-08-07**, v0.4.0. No third-party audit has been done. Nothing here has been reviewed by
+**2026-08-08**, v0.5.0. No third-party audit has been done. Nothing here has been reviewed by
 anyone but the author — read it as a self-assessment, not an assurance.
 
 ---
@@ -15,14 +15,15 @@ anyone but the author — read it as a self-assessment, not an assurance.
 ## 1. The one-paragraph version
 
 Text is encrypted with AES-GCM-256 in your browser before it is sent. The relay stores nothing on
-disk and routes by a room hash. **But for an unlocked session the room hash is a plain SHA-256 of
-your share key, so a party that sees room hashes — which means the relay operator — can recover
-the key by brute force and decrypt the session.** That is cheap for a 6-character key and
-practical for a 10-character one. **Against the relay operator, only a PIN-locked session is
-end-to-end encrypted.** Against everyone else, including anyone on your network or on the same
-Wi-Fi, all sessions are.
+disk and routes by a room hash that is **derived through the same 250,000-iteration PBKDF2 as the
+encryption key**, so the value the relay holds cannot be turned back into your share key without
+paying that cost per guess. Generated keys are 10 characters, which puts a full sweep of the
+keyspace at roughly 19 years on 100 GPUs. A PIN-locked session raises it further and also hides
+that the session exists at all.
 
-If that is a surprise, §4 is the section to read.
+**This is what v0.5.0 changed, and §4 records what it was before** — the room hash used to be an
+unsalted SHA-256 of the key, which the relay operator could reverse in well under a second. If you
+are reading this because you saw that earlier version, §4 is the section you want.
 
 ---
 
@@ -53,20 +54,23 @@ session. The relay knows some room had devices in it at some time.
 Generated keys are drawn from a 30-character alphabet (`23456789ABCDEFGHJKMNPQRSTVWXYZ` — no
 `0/O`, no `1/I/L`).
 
-| | Keyspace | Entropy |
-|---|---:|---:|
-| 6 characters — web default | 729,000,000 | **29.4 bits** |
-| 10 characters — desktop default, "longer keys" in settings | 5.9 × 10¹⁴ | **49.1 bits** |
+| | Keyspace | Entropy | Full sweep, 100 GPUs |
+|---|---:|---:|---:|
+| 10 characters — default | 5.9 × 10¹⁴ | **49.1 bits** | ~19 years |
+| 16 characters — "longer keys" in settings, default on desktop | 5.3 × 10²³ | **78.5 bits** | out of reach |
 
-29.4 bits is not a lot. The project's position is that short keys are the product — a key you
-cannot read down a phone line is a key nobody uses — and that the honest response is to say so and
-offer the longer one, not to claim 6 characters is strong.
+**6 characters was the default until v0.5.0 and has been removed.** At 29.4 bits a full sweep is
+~12 minutes on 100 rented GPUs — and because the open salt is one global constant, that table is
+built once and then opens every unlocked 6-character session ever created. No iteration count
+fixes a keyspace that small. Keys of any length from 4 to 32 are still *accepted*, because a key
+from another build or an older link has to keep working; nothing shorter than 10 is *generated*.
 
 Two derivations, from `src/core/crypto.js`:
 
 ```
-OPEN      roomHash = SHA-256("realtimeclipboard:" + KEY)[0..16]      -> sent to the relay
-          aesKey   = PBKDF2-SHA256(KEY, "realtimeclipboard-v1", 250k) -> never sent
+OPEN      prk       = PBKDF2-SHA256(KEY, "realtimeclipboard-v1", 250k)
+          aesKey    = HKDF(prk, ".../aes")
+          roomHash  = HKDF(prk, ".../room")   -> sent to the relay
 
 LOCKED    prk       = PBKDF2-SHA256(PIN, "realtimeclipboard-lock-v1:" + KEY, 600k)
           aesKey    = HKDF(prk, ".../aes")
@@ -76,9 +80,15 @@ LOCKED    prk       = PBKDF2-SHA256(PIN, "realtimeclipboard-lock-v1:" + KEY, 600
 
 ---
 
-## 4. The weakness: the open room hash is not stretched
+## 4. The weakness that v0.5.0 fixed
 
-**Read the two lines above again.** `aesKey` is stretched with 250,000 PBKDF2 iterations.
+> **Resolved 2026-08-08.** The construction described below shipped from the first release until
+> v0.5.0. It is kept in full because it is the evidence for why the change was worth a wire-format
+> break, and because anyone who read the earlier version of this file deserves to see what
+> replaced it rather than a paragraph quietly disappearing. **What follows describes the OLD
+> behaviour.** The resolution is at the end of the section.
+
+**Read the two derivations as they were.** `aesKey` is stretched with 250,000 PBKDF2 iterations.
 `roomHash` is a single SHA-256 with a fixed prefix and **no per-session salt and no stretching**.
 
 The room hash is what travels to the relay. So the attack is not "brute-force the ciphertext", it
@@ -108,27 +118,31 @@ against one room hash is under a day on a single GPU, and hours on a handful.
   whose salt includes the share key, so no global table exists and each guess costs a full PBKDF2.
   This is the correct construction, and the codebase already contains it.
 
-### The fix, and why it is not shipped yet
+### What shipped instead — v0.5.0
 
-Derive the open room hash from the PBKDF2 output instead of from the raw key — exactly the shape
-`deriveLocked()` already uses. It costs **nothing at runtime**: `deriveKey()` already performs that
-PBKDF2, so the room hash becomes one extra HKDF expansion over a value already in hand.
+Two changes, together, because neither is sufficient alone.
 
-What it would cost instead, at the same GPU rate:
+**1. The room hash is derived from the PBKDF2 output**, exactly the shape `deriveLocked()` always
+used. It costs nothing at runtime: that PBKDF2 was already awaited before the connection opened,
+so the room hash is one extra HKDF expansion over a value already in hand. `deriveKey()` and
+`roomHash()` were merged into a single `deriveOpen()` — two exported functions is precisely what
+allowed a caller to obtain a room hash without ever paying for the derivation.
 
-| | today | with the fix |
+**2. Generated keys went from 6 characters to 10**, and the "longer keys" option from 10 to 16.
+This is the part that is easy to skip and must not be. Change 1 alone leaves a 6-character sweep
+at ~40 GPU-hours — and since `SALT` is one global constant, that table is built **once** and then
+opens every unlocked 6-character session, for every user, permanently. Roughly $30 of rented GPU,
+forever. A keyspace that small cannot be rescued by an iteration count.
+
+| Full sweep of the keyspace | before | after |
 |---|---:|---:|
-| 6-char sweep | 0.07 s | **40 GPU-hours** |
-| 10-char sweep | 16.4 h | **~3,700 GPU-years** |
+| default key | **0.07 s** (6 chars, bare SHA-256) | **~19 years on 100 GPUs** (10 chars, PBKDF2) |
+| "longer keys" | 16.4 h | out of reach (16 chars) |
 
-It is not shipped because **the key derivation is a wire format**. Changing it invalidates every
-share link in existence and fails the golden vectors in `tests/unit/lock.mjs` — which is what
-those vectors are for. It is a breaking change and it should be made deliberately, in its own
-release, with the compatibility break stated in the commit body. Tracked as the top item in
-`SEO.md` §10.
-
-**Until it ships, the accurate claim is the one in §1**, and the marketing copy must not say more
-than that.
+**The cost was a wire-format break**: every share link created before v0.5.0 resolves to a
+different room, and the golden vectors in `tests/unit/lock.mjs` were rebaselined — which is what
+those vectors exist to force. `lock.mjs` now also asserts the room hash is *not* the bare SHA-256,
+so the cheap path cannot be reintroduced quietly.
 
 ### Why not Argon2
 
@@ -142,7 +156,7 @@ predictable reply: `crypto.subtle` implements PBKDF2 and does not implement Argo
 in the browser means shipping WebAssembly, which this project has avoided precisely so that the
 whole cryptographic surface is a 175-line file anyone can read. That is a defensible trade at
 250k/600k iterations. It would stop being defensible if it were being used as a reason not to fix
-§4 — it is not.
+§4 — it was not, and §4 is now fixed.
 
 ---
 

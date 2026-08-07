@@ -19,6 +19,25 @@ Receiving used to: it defaulted on and was independent of the mode, so a device 
 stopped sending while arriving clips still landed on its system clipboard — the half nobody
 expected. If you are about to add a flag that governs one direction, you are rebuilding that bug.
 
+## An arriving clip is attacker-controlled
+
+`guard.js` defuses every clip that comes off the wire before it reaches the OS clipboard, and
+`apply()` is the only caller. E2EE protects a clip from the relay; it protects nobody from the other
+people in the room, and the room is joinable by whoever holds the key.
+
+Two rules that look like one:
+
+- **Defusing is unconditional.** Trailing newlines and invisible characters are stripped with no
+  setting to turn it off. The trailing newline is what makes a pasted line *run* in a terminal
+  instead of sitting there.
+- **A flagged clip needs a click, and `flushPending()` is not it.** Regaining focus auto-flushes a
+  waiting clip, which is right for one held because `writeText()` needed focus and catastrophic for
+  one held because it reads like `curl … | sh`. `confirmPending()` is the only path that writes a
+  flagged clip; `flushPending()` steps over them.
+
+`putOnClipboard()` is not defused. That is the user restoring their own history, where rewriting
+what they saved would be the bug.
+
 `apply()` is for clips arriving from a peer and defers to a recent local copy
 (`TEXT.LOCAL_COPY_GRACE_MS`). `putOnClipboard()` is for the user deliberately asking — restoring
 from history — and bypasses that window, because the window exists to protect against *remote*

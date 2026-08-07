@@ -71,9 +71,11 @@ const REQUIRED = [
   "download/index.html", "download/download.css", "src/landing/download.js",
   "snapdrop-alternative/index.html", "what-is-an-online-clipboard/index.html",
   "online-clipboard-no-login/index.html", "clipboard-sync-different-networks/index.html",
-  // Crawler-facing and easy to lose: neither is referenced by any page, so a
-  // build that stopped copying them would look completely healthy.
-  "llms.txt", `${INDEXNOW_KEY}.txt`,
+  "privacy/index.html",
+  // Crawler-facing and easy to lose: none of these is referenced by any page, so
+  // a build that stopped copying them would look completely healthy. ads.txt is
+  // the one with a bill attached — AdSense refuses most demand without it.
+  "llms.txt", `${INDEXNOW_KEY}.txt`, "ads.txt",
 ];
 
 console.log("\nSite check\n");
@@ -284,6 +286,27 @@ else {
     headerCsp.includes("frame-ancestors")
       ? pass("CSP: header and meta agree, and the header adds frame-ancestors")
       : fail("_headers CSP has no frame-ancestors — the only directive it exists to add");
+  }
+
+  /**
+   * Trusted Types must name its policies.
+   *
+   * `require-trusted-types-for 'script'` is what turns "everything goes through
+   * esc()" from a convention into a rule, but only while the policy NAME is
+   * constrained. `trusted-types *` lets injected script declare its own policy;
+   * `'allow-duplicates'` lets it re-declare ours with a pass-through createHTML.
+   * Either one hands back the innerHTML sink the directive exists to close, and
+   * both were briefly present — added for ad tags, and outliving the decision.
+   */
+  for (const [label, csp] of [["app.html", metaCsp], ["_headers", headerCsp]]) {
+    const tt = csp.split(";").map(d => d.trim()).find(d => d.startsWith("trusted-types"));
+    if (!tt) { fail(`${label} has no trusted-types directive`); continue; }
+
+    const loose = ["*", "'allow-duplicates'"].filter(t => tt.split(/\s+/).includes(t));
+    loose.length
+      ? fail(`${label} CSP: \`${tt}\` — ${loose.join(" and ")} defeats the policy `
+           + "allowlist. Enabling Google tags needs this; nothing else does.")
+      : pass(`${label} CSP: trusted-types names its policies`);
   }
 }
 

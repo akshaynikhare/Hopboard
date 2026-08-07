@@ -40,6 +40,12 @@ let started = false;          // init() is idempotent — listeners must not sta
  * Runs at module evaluation rather than from init(), because main.js resolves
  * the key inside boot() and this has to be true first. With no stored key it
  * does nothing and main.js generates one, which is right for a first launch.
+ *
+ * The fragment written here lives for the length of boot and no longer:
+ * openSession() calls keys.clearUrl() as soon as it has read it. resolveKey()
+ * also consults loadLastKey() directly, so this is belt-and-braces for the
+ * launch ordering rather than the only route — and with `rememberKey` off there
+ * is nothing stored to restore, which is what that setting means.
  */
 function restoreRoom() {
   if (isValid(fromUrl().key)) return null;        // the URL already names a room

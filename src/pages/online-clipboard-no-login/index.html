@@ -7,7 +7,7 @@
 <!-- One policy, identical on every page of the site. Reasoning and the
      directive-by-directive notes live in app.html, which is the page that
      actually needs them. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; script-src 'self' https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagmanager.com https://adservice.google.com https://fundingchoicesmessages.google.com https://ep2.adtrafficquality.google; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com https://td.doubleclick.net https://ep2.adtrafficquality.google; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://td.doubleclick.net https://stats.g.doubleclick.net https://csi.gstatic.com https://*.google-analytics.com https://*.analytics.google.com https://fundingchoicesmessages.google.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
 
 <!--
   Target: "online clipboard no login", "clipboard sync free no account",
@@ -75,6 +75,7 @@
 
 <link rel="stylesheet" href="/src/landing/landing.css">
 <script type="module" src="/src/landing/faq.js"></script>
+<script type="module" src="/src/landing/tags.js"></script>
 </head>
 <body>
 
@@ -231,10 +232,9 @@
         </p>
 
         <p>
-          The service <em>operator</em> is a different question, and the honest
-          answer is longer: in an unlocked session the room address is an
-          unstretched hash of your key, so an operator could work back from it.
-          A PIN lock closes that. The
+The room address the operator does see is derived through the same
+          250,000-iteration key stretching, so it cannot be reversed to your key
+          without paying that cost per guess. The
           <a href="/docs/THREAT-MODEL.md">threat model</a> gives the arithmetic.
         </p>
 
@@ -297,9 +297,8 @@
             is addressed by a hash of your key rather than the key itself. Having no
             account removes the two things most often breached — a credential
             database and stored history. The trade is that the short key is the only
-            thing protecting an unlocked session, and the room hash is derived from
-            it cheaply enough that the relay operator could reverse it, so lock the
-            session with a PIN for anything sensitive. The
+            thing protecting an unlocked session, so lock it with a PIN for anything
+            sensitive. The
             <a href="/docs/THREAT-MODEL.md">threat model</a> is specific about it.
             </p>
           </div>
@@ -339,7 +338,7 @@
   <div class="in">
     <div class="footgrid">
       <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
-      <p><a href="/">Home</a> · <a href="/help/">Help</a> · <a href="/blog/">Blog</a></p>
+      <p><a href="/">Home</a> · <a href="/help/">Help</a> · <a href="/blog/">Blog</a> · <a href="/privacy/">Privacy</a></p>
       <p>Sessions are held in memory and never written to disk. Clipboard contents are
          encrypted in your browser before they are sent.</p>
     </div>

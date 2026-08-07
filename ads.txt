@@ -1,0 +1,14 @@
+# Authorized Digital Sellers — IAB Tech Lab spec, served at the origin root.
+#
+# Google crawls https://realtimeclipboard.com/ads.txt and matches the publisher
+# ID below against the account serving the ads. Without it AdSense reports
+# "Earnings at risk — one or more of your sites does not have an ads.txt file"
+# and demand from buyers who require ads.txt is refused, which is most of it.
+#
+# The last field is Google's own certification authority ID and is the same for
+# every publisher; the pub- number is this account's and is not a secret — the
+# whole point of the file is that anyone can fetch and verify it.
+#
+# Keep in step with GOOGLE.ADSENSE_CLIENT in src/core/config.js, which is the
+# same ID with the `ca-` prefix the tag expects.
+google.com, pub-6053041142492498, DIRECT, f08c47fec0942fa0

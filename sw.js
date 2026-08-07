@@ -43,7 +43,7 @@
 
 const KILL = false;
 
-const VERSION = "v10";
+const VERSION = "v12";
 const CACHE = `realtimeclipboard-shell-${VERSION}`;
 
 /** Hosts this worker must never touch, whatever the request looks like. */
@@ -71,6 +71,7 @@ const SHELL = [
   "./app.html",
   "./manifest.webmanifest",
   "./src/clipboard/capture.js",
+  "./src/clipboard/guard.js",
   "./src/clipboard/os.js",
   "./src/core/bus.js",
   "./src/core/config.js",
@@ -82,6 +83,7 @@ const SHELL = [
   "./src/core/paths.js",
   "./src/core/state.js",
   "./src/core/storage.js",
+  "./src/core/text.js",
   "./src/files/chunker.js",
   "./src/files/registry.js",
   "./src/files/thumbs.js",
@@ -94,6 +96,7 @@ const SHELL = [
   "./src/landing/landing.css",
   "./src/landing/landing.js",
   "./src/landing/redirect.js",
+  "./src/landing/tags.js",
   "./src/main.js",
   "./src/styles/ads.css",
   "./src/styles/appbar.css",
@@ -122,6 +125,7 @@ const SHELL = [
   "./src/transport/sse.js",
   "./src/transport/ws.js",
   "./src/ui/features/ads.js",
+  "./src/ui/features/analytics.js",
   "./src/ui/features/appLinks.js",
   "./src/ui/features/cursors.js",
   "./src/ui/features/desktopPrefs.js",

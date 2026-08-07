@@ -1536,6 +1536,12 @@ footer a:hover { color:var(--link); }
 
 .adph { color:var(--dim); font:11.5px/1 var(--mono); opacity:.6; }
 
+/* Set by tags.js once a real unit is in the box: the dashed outline says "this
+   space is reserved", and around a loaded creative it says "this ad is broken".
+   The rest of .adlive is at the end of this section, where it can override the
+   per-slot heights. */
+.adbox.adlive { border:0; background:none; }
+
 /* Centred under the unit and narrower than a normal .hint: this is a footnote
    for the curious, not a section of the page. */
 .adnote { margin:11px auto 0; max-width:60ch; font-size:12px; opacity:.85; }
@@ -1578,6 +1584,26 @@ footer a:hover { color:var(--link); }
 @media (max-width:760px) {
   .adbox { height:250px; max-width:300px; }
 }
+
+/* Reserved space becomes a FLOOR the moment a real unit is in the box.
+   A responsive unit measures its container and picks its own size, which is not
+   necessarily the placeholder's: a fixed height would either clip the creative —
+   an AdSense policy violation, not merely a visual bug — or leave a gap under a
+   short one. min-height still stops the page jumping while it loads, which is
+   the only thing the fixed height was ever for.
+
+   Last in the section on purpose: these have to outrank the per-slot heights
+   above, and equal specificity is settled by source order. */
+/* display:block is load-bearing, not tidying. The placeholder box is a flex
+   centring container, which makes the <ins> a shrink-to-fit flex item — width
+   zero — and AdSense refuses to fill a slot it measures at 0 px. It fails as a
+   console error and an empty box, which is exactly what an unapproved account
+   looks like, so it would have been diagnosed as "waiting for review". */
+.adbox.adlive { display:block; height:auto; min-height:90px; }
+.adrail .adbox.adlive { min-height:600px; }
+
+@media (max-width:980px) { .adrail .adbox.adlive { min-height:250px; } }
+@media (max-width:760px) { .adbox.adlive { min-height:250px; } }
 
 /* ------------------------------------------------------- reduced motion --
    The pill stops travelling, the dots stop marching, the globe stops turning

@@ -9,7 +9,7 @@
      actually needs them; repeating the argument on five pages would guarantee
      five versions of it. The landing page needs connect-src for the relay too —
      src/landing/globe.js fetches /stats. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; img-src 'self' data: blob:; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; script-src 'self' https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagmanager.com https://adservice.google.com https://fundingchoicesmessages.google.com https://ep2.adtrafficquality.google; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com https://td.doubleclick.net https://ep2.adtrafficquality.google; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://td.doubleclick.net https://stats.g.doubleclick.net https://csi.gstatic.com https://*.google-analytics.com https://*.analytics.google.com https://fundingchoicesmessages.google.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
 
 <!--
   Title and description target "online clipboard" and "clipboard sync", which is
@@ -119,6 +119,7 @@
 <script type="module" src="./src/landing/redirect.js"></script>
 <script type="module" src="./src/landing/landing.js"></script>
 <script type="module" src="./src/landing/faq.js"></script>
+<script type="module" src="./src/landing/tags.js"></script>
 </head>
 <body>
 
@@ -281,14 +282,11 @@
 
   <!-- ============ the ad slot ============
 
-    Every network-served unit is here, on the landing page, and never in the
-    app — that is a deliberate split, written up in src/ui/features/ads.js.
-    Short version: app.html carries the session key in its URL fragment and the
-    decrypted clipboard in its DOM, and a remotely-updated third-party script
-    has no business in that document. The app's own sponsor slot is first-party
-    markup from this origin with no script, which is what keeps the note below
-    true. This page holds neither key nor clipboard, and it is the page Google
-    can actually crawl.
+    This page holds neither the session key nor clipboard content, so an ad
+    here costs a reader nothing beyond the usual. That is NOT true of app.html,
+    which now runs the same tags — src/ui/features/ads.js and
+    docs/ARCHITECTURE.md §5 record what it costs there and why it was accepted.
+    This is also the page Google can actually crawl; app.html is noindex.
 
     Placed after "how it works" rather than in the hero: it sits at a real
     section break, below the thing people came for, and above the long tail of
@@ -301,10 +299,11 @@
         <!-- The ad unit replaces the contents of this box, never the box:
              the height is reserved so the page below does not jump when it
              loads. -->
-        <div class="adbox"><span class="adph">Ad slot · 728 × 90</span></div>
+        <div class="adbox" id="adLeaderboard"><span class="adph">Ad slot · 728 × 90</span></div>
         <p class="hint adnote">
-          Ads on this page pay for the relay. The app itself carries one sponsor
-          slot and no third-party script.
+          Ads pay for the relay, which is what keeps this free and account-free.
+          What we can and cannot see is set out in the
+          <a href="./privacy/">privacy policy</a>.
         </p>
       </aside>
     </div>
@@ -723,13 +722,11 @@
             your Wi-Fi or your ISP, it is safe.
             </p>
             <p>
-            Two honest caveats rather than one. The key is a bearer credential: anyone who
-            learns it can read that session while it is open. And in an <em>unlocked</em>
-            session the room address is an unstretched hash of that key, so the relay
-            operator — who holds it by construction — could brute-force it back to the key.
-            Locking a session with a PIN closes that; so does the fix described in the
-            <a href="/docs/THREAT-MODEL.md">threat model</a>, which has the arithmetic and
-            does not round it in our favour.
+The honest caveat is that the key is a bearer credential: anyone who learns
+            it can read that session while it is open. The room address is derived through
+            the same 250,000-iteration PBKDF2 as the encryption key, so it cannot be worked
+            back to your key cheaply — the <a href="/docs/THREAT-MODEL.md">threat model</a>
+            has the arithmetic and does not round it in our favour.
             </p>
           </div>
         </details>
@@ -802,7 +799,7 @@
            sticky because "expand all" makes that height several screens. -->
       <aside class="adrail" aria-label="Advertisement beside the questions">
         <p class="adtag">Advertisement</p>
-        <div class="adbox"><span class="adph">Ad slot · 300 × 600</span></div>
+        <div class="adbox" id="adRail"><span class="adph">Ad slot · 300 × 600</span></div>
       </aside>
     </div>
   </section>
@@ -828,7 +825,7 @@
            because they are for people who arrived from a search, not for
            someone about to press the button — but a crawler still reaches both,
            and through them every article, from the first page it fetches. -->
-      <p><a href="./download/">Download</a> · <a href="./help/">Help</a> · <a href="./blog/">Blog</a></p>
+      <p><a href="./download/">Download</a> · <a href="./help/">Help</a> · <a href="./blog/">Blog</a> · <a href="./privacy/">Privacy</a></p>
       <p>Sessions are held in memory and never written to disk. Clipboard contents are
          encrypted in your browser before they are sent.</p>
     </div>

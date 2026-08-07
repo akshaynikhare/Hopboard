@@ -45,7 +45,7 @@ check("the room hash leaks neither the key nor the PIN",
 
 const wrongPin = await cryptoBox.deriveLocked(KEY, "wrong horse");
 const otherKey = await cryptoBox.deriveLocked("ZZZZZZ", PIN);
-const unlocked = await cryptoBox.roomHash(KEY);
+const unlocked = (await cryptoBox.deriveOpen(KEY)).roomHash;
 
 // The load-bearing claim. Someone holding the link but not the PIN cannot even
 // address the room, which is what makes this admission control rather than
@@ -71,7 +71,7 @@ const sealed = await cryptoBox.encrypt(a.aesKey, "sk-live-do-not-share");
 check("the right PIN opens the message", await opens(a.aesKey, sealed));
 check("the wrong PIN does not", !await opens(wrongPin.aesKey, sealed));
 check("the unlocked derivation for the same key does not",
-  !await opens(await cryptoBox.deriveKey(KEY), sealed));
+  !await opens((await cryptoBox.deriveOpen(KEY)).aesKey, sealed));
 
 /* ------------------------------------------------- PIN normalisation traps */
 
@@ -116,14 +116,14 @@ check("and reproduces a key that still opens the message",
    alone while a PIN was also in play, retyping a corrected PIN would hand back
    the key derived from the wrong one — silently, and forever. */
 
-const openKey = await cryptoBox.deriveKey(KEY);
+const openKey = (await cryptoBox.deriveOpen(KEY)).aesKey;
 const openBox = await cryptoBox.encrypt(openKey, "hello");
 cryptoBox.clearCache();
 check("clearing the cache does not change what the key derives to",
-  await opens(await cryptoBox.deriveKey(KEY), openBox));
+  await opens((await cryptoBox.deriveOpen(KEY)).aesKey, openBox));
 check("a locked derivation does not poison the open cache",
   (await cryptoBox.deriveLocked(KEY, PIN)).roomHash === a.roomHash
-    && await opens(await cryptoBox.deriveKey(KEY), openBox));
+    && await opens((await cryptoBox.deriveOpen(KEY)).aesKey, openBox));
 
 /* --------------------------------------------------------- the fragment marker
 
@@ -237,16 +237,32 @@ state.setKey({ key: "AAAAAA", roomHash: "r", aesKey: null });
 check("opening a different room forgets that we were first",
   state.get().founder === null);
 
-/* ------------------------------------------------ the open path is untouched
+/* ------------------------------------------------ the open path is pinned
 
-   A change to the unlocked derivation would strand every link in existence.
-   These are golden values, rebaselined when the domain-separation strings were
-   renamed to realtimeclipboard-*. If one fails, the wire format has changed. */
+   A change to the unlocked derivation strands every link in existence. These
+   are golden values; if one fails, the wire format has changed and that has to
+   be a decision rather than a surprise.
+
+   REBASELINED TWICE. First when the domain-separation strings were renamed to
+   realtimeclipboard-*. Then in v0.5.0, when the room hash stopped being
+   SHA-256("realtimeclipboard:" + KEY) — unsalted and unstretched, and therefore
+   reversible to the key in 0.07s across the whole 6-character keyspace — and
+   became HKDF over the same 250k PBKDF2 that produces the AES key. That break
+   was the point of the release; see docs/THREAT-MODEL.md §4. */
 
 check("the unlocked room hash for D75LV is unchanged",
-  unlocked === "e545a3e184158f9344abe7f3ded4b6e2", unlocked);
+  unlocked === "1d1555160f272ddecc1f63d7dae19ecc", unlocked);
 check("the unlocked salt and iteration count are unchanged",
   CRYPTO.SALT === "realtimeclipboard-v1" && CRYPTO.ITERATIONS === 250_000);
+
+/* The regression the release exists to prevent: the room hash must not be
+   derivable without paying for the PBKDF2. If this ever passes again, someone
+   has reintroduced a cheap path to it. */
+const bareSha = await crypto.subtle.digest(
+  "SHA-256", new TextEncoder().encode("realtimeclipboard:D75LV"));
+check("the room hash is NOT a bare SHA-256 of the key",
+  unlocked !== [...new Uint8Array(bareSha).slice(0, 16)]
+    .map(b => b.toString(16).padStart(2, "0")).join(""));
 
 console.log(`\n${"=".repeat(58)}`);
 console.log(`LOCK: ${pass}/${pass + fail} passed`);
