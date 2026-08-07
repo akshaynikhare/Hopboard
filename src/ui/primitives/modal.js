@@ -76,7 +76,7 @@ export function show({ className = "modal", html = "", label = "", labelledBy = 
     if (e.target.closest("[data-modal-dismiss]")) close(null);
   });
 
-  open = { el, onKey, onClose, restoreFocus: document.activeElement, inerted: setShellInert(true) };
+  open = { el, onKey, onClose, restoreFocus: document.activeElement, release: shellInert() };
 
   // The dialog itself, so the first thing announced is its label rather than
   // whatever button happens to be first. A caller that wants an input focused
@@ -95,7 +95,7 @@ export function show({ className = "modal", html = "", label = "", labelledBy = 
  */
 export function close(result = null) {
   if (!open) return;
-  const { el, onKey, onClose, restoreFocus, inerted } = open;
+  const { el, onKey, onClose, restoreFocus, release } = open;
   open = null;
 
   // Blank any field before the node is dropped. Removing an element does not
@@ -103,7 +103,7 @@ export function close(result = null) {
   el.querySelectorAll("input").forEach(i => { i.value = ""; });
 
   document.removeEventListener("keydown", onKey, true);
-  if (inerted) setShellInert(false);
+  release();
   el.remove();
   if (restoreFocus && document.contains(restoreFocus)) restoreFocus.focus?.();
 
@@ -112,20 +112,41 @@ export function close(result = null) {
 
 export const isOpen = () => open !== null;
 
-function setShellInert(on) {
+let inertDepth = 0;
+
+/**
+ * Take the app shell out of the tab order and off the screen reader's map, and
+ * hand back the release.
+ *
+ * Refcounted, because two things now want it at once: ui/shell/lockGate.js
+ * holds the shell inert for as long as a locked link has no PIN, and the PIN
+ * dialog opens on top of that gate. Un-inerting on the dialog's close — which
+ * is what a plain boolean did — handed the app back while the gate was still
+ * standing in front of it, so Tab walked into an editor nobody could see.
+ *
+ * Calling the release twice is a no-op, so a caller may be careless with it.
+ */
+export function shellInert() {
   const shell = document.querySelector(SHELL);
-  if (!shell) return false;
+  if (!shell) return () => {};
+
+  if (inertDepth++ === 0) apply(shell, true);
+
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    if (--inertDepth === 0) apply(shell, false);
+  };
+}
+
+function apply(shell, on) {
   // Tested before assigning: `shell.inert = true` would create an own property
   // and make the feature test pass on an engine that does not implement it.
   const supported = "inert" in shell;
-  if (on) {
-    shell.inert = true;
-    if (!supported) shell.setAttribute("aria-hidden", "true");
-  } else {
-    shell.inert = false;
-    shell.removeAttribute("aria-hidden");
-  }
-  return true;
+  shell.inert = on;
+  if (!on) shell.removeAttribute("aria-hidden");
+  else if (!supported) shell.setAttribute("aria-hidden", "true");
 }
 
 /**

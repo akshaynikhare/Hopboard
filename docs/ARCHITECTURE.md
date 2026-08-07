@@ -246,6 +246,7 @@ These are load-bearing. Breaking one is a vulnerability, not a bug.
 | Keys are normalised (uppercased) before hashing | `core/keys.js` |
 | A session PIN is never transmitted, never in the URL, never on disk, never logged — only PBKDF2+HKDF output derived from it | `core/crypto.js`, `core/storage.js` `saveLock()`, `main.js` `announce()` |
 | A locked link opens no connection until the PIN is given, and never falls back to the unlocked room of the same key | `main.js` `startSession()`; `tests/live/boot.mjs --locked` |
+| The app is not usable while a locked link has no PIN — no editor, no history, no files, because none of it is connected to anything | `main.js` emits `EV.LOCK_REQUIRED` → `ui/shell/lockGate.js` holds the shell `inert`; `tests/dom/dialog.mjs` |
 | The lock marker is parsed **before** key normalisation | `core/keys.js` `parseFragment()` — normalising first turns `#!ABCDEF` into the different, valid key `ABCDEF` |
 | The lock beacon is planted only into a room with no retained clip | `main.js` on `EV.ROOM_STATE` — it is itself a clip, and would otherwise overwrite the last-clip replay of FR-3.3 |
 | A locked session claims "Private" only once something has actually decrypted | `state.setVerified()` → `ui/panels/sessionPanel.js` `renderLock()` |

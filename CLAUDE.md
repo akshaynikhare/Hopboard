@@ -216,9 +216,15 @@ Types: `feat fix perf refactor docs test build ci chore style revert`. `!` or a 
 footer marks a release breaking.
 
 The site deploys on **merge to main** (Cloudflare Pages runs `npm run build:site`). CLI, desktop
-builds and the relay image deploy on a **`v*` tag** via `.github/workflows/release.yml`. So for the
-web app, merged and live are the same event, and the hooks are the only thing between a commit and
-production.
+builds and the relay image deploy on a **`v*` tag that `main` already contains**, via
+`.github/workflows/release.yml`. So for the web app, merged and live are the same event, and the
+hooks are the only thing between a commit and production.
+
+**A push to a branch builds nothing, anywhere, and that is enforced not merely observed.** No
+workflow has a branch or pull-request trigger, and Cloudflare Pages preview deployments are off, so
+the only two things that spend a build are a merge to `main` and a `v*` tag. `desktop.yml` is
+`workflow_dispatch` only — run it by hand while working on the Rust. If you add a trigger, you are
+adding a recurring bill; see docs/RELEASING.md.
 
 ## Working conventions
 

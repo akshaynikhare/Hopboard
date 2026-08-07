@@ -678,9 +678,13 @@ starts refusing the browser.
 
 ### The old origin
 
-`akshaynikhare.github.io/RealtimeClipboard/` is a **tombstone**, published by
-`.github/workflows/tombstone.yml`. It is not merely a redirect, and that
-distinction is the whole reason the workflow exists.
+**As built, this section described a tombstone that was never published.** The
+plan below is left standing because the reasoning in it is what makes the
+current state legible — see *What actually happened* at the end of the section.
+
+`akshaynikhare.github.io/RealtimeClipboard/` was to be a **tombstone**, published
+by `.github/workflows/tombstone.yml`. It is not merely a redirect, and that
+distinction is the whole reason the workflow existed.
 
 Service workers, Cache Storage and localStorage are all **origin-scoped**, so
 none of it followed the app to the new domain. Worse, the old service worker
@@ -701,6 +705,38 @@ pre-move link points at. GitHub's own `user.github.io/Repo/*` → custom-domain
 301 is *not* a substitute either: it is undocumented, it targets `http://`, and
 it dies if the repo is renamed or Pages is disabled.
 
+### What actually happened
+
+The workflow was never run, and `.github/workflows/tombstone.yml` is now
+deleted. The old origin serves GitHub's own **Site not found** 404:
+
+```
+$ curl -sI https://akshaynikhare.github.io/RealtimeClipboard/
+HTTP/2 404
+```
+
+The instruction above was written to prevent exactly this, and it lost to the
+mechanics rather than to a decision: `pages.yml` was deleted in the move, so
+nothing published to Pages again, and `tombstone.yml` sat unrun behind
+`workflow_dispatch` while the last Pages deployment aged out.
+
+**What that costs, stated plainly**, because the argument above is still
+correct:
+
+- Anyone who installed the PWA from the old origin is stranded. A 404 on `sw.js`
+  does not unregister a worker — the browser keeps the registration it has — so
+  those installs keep serving a pre-move shell out of Cache Storage, indefinitely,
+  with no channel left to reach them.
+- Pre-move links and search results land on a 404 rather than on the new site.
+  `_redirects` catches `/RealtimeClipboard/*` **against the new host only**; it
+  cannot help a request that never reaches Cloudflare.
+
+**It is recoverable, and the price is one deploy.** Re-enabling Pages and
+publishing the tombstone would restore both — the `sw.js` channel is dead only
+while the origin 404s, not permanently. Nothing was lost that a re-publish does
+not get back. It is a deliberate not-now, not a closed door; `git log
+-- .github/workflows/tombstone.yml` still has the worker, ready to reinstate.
+
 ### Post-migration checklist
 
 - [x] Canonicals, `og:url`, `og:image` and JSON-LD `@id`/`url` on every page
@@ -709,7 +745,7 @@ it dies if the repo is renamed or Pages is disabled.
 - [x] `tools/check/site-check.mjs` fails the build if any crawlable file names the old host
 - [ ] Search Console: add `realtimeclipboard.com` as a **Domain property** (now possible), verify by DNS, submit the sitemap
 - [ ] Submit to [hstspreload.org](https://hstspreload.org/)
-- [ ] Run `.github/workflows/tombstone.yml`, once, after confirming the new site is live
+- [x] ~~Run `.github/workflows/tombstone.yml`, once, after confirming the new site is live~~ — not done, workflow deleted; see *What actually happened* above
 
 
 ## 8. Paying for the domain with ads — the arithmetic

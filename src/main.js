@@ -30,6 +30,7 @@ import * as install from "./ui/features/install.js";
 
 import * as toast from "./ui/shell/toast.js";
 import * as banners from "./ui/shell/banners.js";
+import * as lockGate from "./ui/shell/lockGate.js";
 import * as panes from "./ui/shell/panes.js";
 import * as editor from "./ui/panels/editor.js";
 import * as filesPanel from "./ui/panels/filesPanel.js";
@@ -86,6 +87,12 @@ let lockPrk = null;
 async function openSession(key, intent, { locked = false, pin = null, prk = null } = {}) {
   keys.toUrl(key, locked);
   storage.saveLastKey(key, locked);
+
+  // A session is being opened, so the gate over the app has nothing left to
+  // stand for — including when the key being opened is a brand new one, which
+  // is the second of the two ways out of it.
+  pendingLock = null;
+  emit(EV.LOCK_REQUIRED, { required: false });
 
   // Two different waits, so say which one this is. Locked sessions are four
   // times the PBKDF2 work of an open one (OI-8) and the user is looking at a
@@ -171,6 +178,10 @@ async function startSession(key, intent, locked) {
     // session was ever opened, and announcing a lock state the state object
     // does not hold would put a padlock on a session that does not exist.
     state.setConnection("idle", "locked — PIN required");
+    // And the app behind this is not usable, so it must not look it — the
+    // editor accepted text and the history pane marked it SENT, in a session
+    // that did not exist. See ui/shell/lockGate.js.
+    emit(EV.LOCK_REQUIRED, { required: true });
     return;
   }
   return openSession(key, intent, { locked: true, pin });
@@ -186,17 +197,20 @@ let pendingLock = null;
 
 /** Ask for the PIN again, whether we are in the wrong room or in none at all. */
 async function retryLock() {
+  const inSession = !!state.get().key;
   const key = state.get().key ?? pendingLock?.key;
-  const intent = state.get().key ? "join" : (pendingLock?.intent ?? "join");
+  const intent = inSession ? "join" : (pendingLock?.intent ?? "join");
   if (!key) return;
 
-  const pin = await lockDialog.ask({ mode: "retry", key });
-  if (!pin) return;
+  // "retry" says nobody else is here and the PIN may not match theirs, which is
+  // true of the doubt banner and false of the gate — nothing was ever typed
+  // there, so it is a first ask however many times it is opened.
+  const pin = await lockDialog.ask({ mode: inSession ? "retry" : "join", key });
+  if (!pin) return;              // the gate, if it is up, stays up
 
   relay.close();
   cryptoBox.clearCache();
   state.resetRoster();
-  pendingLock = null;
   await openSession(key, intent, { locked: true, pin });
 }
 
@@ -875,6 +889,11 @@ async function boot() {
   wire();
   await wireFiles().catch(err =>
     console.warn("[realtimeclipboard] files layer unavailable:", err.message));
+
+  // Before the session starts, because the first thing it may do is ask for a
+  // PIN and be told no. safeInit anyway: a gate that fails to build must not
+  // stop the session it is only there to describe.
+  safeInit("lock gate", lockGate.init);
 
   // ---- connect NOW ----------------------------------------------------
   // Deliberately not awaited: the session is the product, and it must not

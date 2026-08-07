@@ -30,7 +30,7 @@ If that becomes uncomfortable — a second contributor, or one bad merge — the
 is to point Cloudflare's *production branch* at a `release` branch and fast-
 forward it from `main` deliberately. Pages settings, no code change.
 
-Three rules follow from that diagram, and each is enforced rather than trusted:
+Every rule that follows from that diagram is enforced rather than trusted:
 
 | Rule | Enforced by |
 |---|---|
@@ -38,7 +38,9 @@ Three rules follow from that diagram, and each is enforced rather than trusted:
 | Tests pass before a commit exists | `.husky/pre-commit` → `npm run verify` |
 | A commit says what kind of change it is | `.husky/commit-msg` |
 | A broken site is never promoted | `tools/check/site-check.mjs`, in the Cloudflare build |
-| Only a tag ships CLI/desktop/relay | `.github/workflows/release.yml` |
+| Only a tag ships CLI/desktop/relay | `.github/workflows/release.yml` — its only trigger is `push: tags: v*` |
+| And only a tag `main` already contains | `release.yml` → *Refuse a tag that is not on main* |
+| Nothing else builds anything, anywhere | no workflow has a branch trigger; Pages previews are off |
 
 ---
 
@@ -47,13 +49,25 @@ Three rules follow from that diagram, and each is enforced rather than trusted:
 **Cloudflare Pages, at `realtimeclipboard.com`.** Settings live in the Cloudflare
 dashboard rather than in this repo, so they are recorded here:
 
-| Setting | Value |
-|---|---|
-| Production branch | `main` |
-| Build command | `npm run build:site` |
-| Build output directory | `_site` |
-| Root directory | `/` |
-| `NODE_VERSION` | `22` |
+| Setting | Value | |
+|---|---|---|
+| Production branch | `main` | |
+| Automatic deployments — **Production** | Enabled | this is the thing that deploys on merge |
+| Automatic deployments — **Preview** | **Disabled** | the build budget; see below |
+| Build command | `npm run build:site` | |
+| Build output directory | `_site` | |
+| Root directory | *(blank — the repo root)* | |
+| Build watch paths | Include `*` | deliberately everything; see below |
+| Build system version | `3` | |
+| Build cache | Enabled | fewer build *minutes*, same build *count* |
+| Build comments | Enabled | |
+| `NODE_VERSION` | `22` | plaintext variable, not a secret |
+
+The two *Automatic deployments* rows are one setting seen twice: **Settings →
+Build → Branch control** shows the production half when the environment picker
+at the top of the page says *Production*, and the preview half when it says
+*Preview*. Switching that picker is the whole change — there is no preview
+setting on the Production view to find.
 
 `npm run build:site` is `tools/build/build.mjs` followed by `tools/check/site-check.mjs`. The
 second half is the gate: it asserts the required files exist, that the sitemap
@@ -62,28 +76,104 @@ and `robots.txt` name the canonical origin, that `app.html` still carries its
 `<meta>` CSP agree. A non-zero exit fails the build, and a failed build is not
 promoted — production keeps serving the previous deploy.
 
-Every non-production branch gets a preview URL automatically. Those are real,
-public, indexable-by-accident URLs; `robots.txt` is served from them too, so
-treat a preview as public.
+### Preview deployments are off, and that is the build budget
+
+Every non-production branch used to get a preview URL automatically. That is
+what **Preview deployments: None** in the table above turns off, and it is the
+single biggest lever on the build count: a branch pushed ten times over an
+afternoon was ten builds, none of which anyone looked at. Cloudflare does not
+charge for a build it *skips* — a skipped branch costs nothing against the
+monthly quota, where a build that starts and then exits in four seconds still
+counts as one.
+
+So the trigger list for the whole project is now exactly two things:
+
+| Push | What runs |
+|---|---|
+| a commit to `main` | Cloudflare Pages builds and deploys the site |
+| a `v*` tag | `.github/workflows/release.yml` — CLI, desktop, relay image |
+| anything else | **nothing** |
+
+`.github/workflows/desktop.yml` is `workflow_dispatch` only, so it is a thing you
+run, not a thing that happens.
+
+**When you actually want a preview URL**, switch Branch control to *Custom* with
+an include pattern — `preview/*` is the obvious one — push the branch under that
+name, and switch it back. Nothing in the repo depends on preview URLs existing;
+they were a convenience, and `npm run build:site && (cd _site && python -m
+http.server 8080)` is the same bytes without the round trip.
+
+Dashboard path: **Workers & Pages → the project → Settings → Build → Branch
+control**. The same setting over the API, for reapplying it or checking it did
+not drift:
+
+```bash
+curl -X PATCH \
+  "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/pages/projects/$CF_PROJECT" \
+  -H "Authorization: Bearer $CF_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"source":{"config":{"production_branch":"main","preview_deployment_setting":"none"}}}'
+```
+
+⚠️ Preview URLs, while they existed, were real, public and indexable by accident
+— `robots.txt` was served from them too. Turning them off closes that as a side
+effect, and it is a reason not to switch them back on casually.
+
+### Build watch paths stay at `*`, and that is a decision
+
+Watch paths are the obvious next lever — skip the build when a commit touched
+nothing the site is made of — and they are set to `*`, everything, on purpose.
+
+**The exclude list is much shorter than it looks, because `docs/` ships.**
+`tools/build/build.mjs` copies `docs/`, `README.md`, `CHANGELOG.md` and
+`changelog.json` into `_site` alongside `src/` and `assets/`. A docs-only commit
+therefore *does* change the deployed site, and excluding `docs/*` — the first
+thing anyone reaches for — would silently stop publishing it. What is genuinely
+not an input is `backend/`, `cli/`, `desktop/`, `deploy/`, `tests/`, `.github/`,
+`.husky/` and `tools/release/`.
+
+Which is a real but small saving, against a failure mode this repo goes out of
+its way to avoid everywhere else: a skipped build looks exactly like a
+successful one. Nothing goes red, the dashboard shows the previous deploy as
+current, and the first symptom is someone asking why a change from last week is
+not live. `site-check.mjs` cannot catch it — it never runs.
+
+So: previews off is a *count* problem solved by a setting that fails loudly if
+it is wrong. Watch paths trade a smaller saving for a silent failure. Revisit it
+only if merges to `main` ever get close to the monthly quota, and if you do,
+exclude only the eight directories above.
 
 **It used to be GitHub Pages, on a tag.** The move happened because GitHub Pages
 cannot set an HTTP response header at all, which left `frame-ancestors` and
 `Strict-Transport-Security` unavailable to a product whose pitch is
-end-to-end encryption — see `_headers` and docs/SEO.md §7. The old origin is now
-a tombstone: `.github/workflows/tombstone.yml`, run manually, once.
+end-to-end encryption — see `_headers` and docs/SEO.md §7.
+
+There was a `.github/workflows/tombstone.yml` to go with it, which would have
+replaced the old origin with a redirect and a self-deleting service worker. It
+was never run, and it is now deleted. GitHub Pages went down on its own — the
+old origin already answers GitHub's own *Site not found* 404 — so the workflow
+had nothing left to publish over. See docs/SEO.md §7 for what that costs, which
+is not nothing.
 
 ---
 
 ## Why the tests are not on GitHub
 
 The workflows in this repository build release artifacts. Nothing in them gates
-a normal commit. That is deliberate.
+a normal commit, and **no workflow has a branch trigger at all**. That is
+deliberate.
 
 CI runs *after* a push. By the time it goes red, the mistake is already in the
 history, already fetched by anyone who pulled, and the fix is a second commit
 that exists only to undo the first. A hook runs *before* the commit exists, so
 the mistake never happens. The feedback is also immediate — no queue, no
 runner boot, no waiting for a log to stream.
+
+There is a second reason, and it is arithmetic rather than principle. Build
+minutes and Cloudflare builds are both metered monthly, and a branch-triggered
+workflow spends them at the rate you push — which, on a branch, is the rate you
+think, not the rate you finish. Every automatic trigger was therefore paying for
+an answer the hooks had already given locally, before the push, for free.
 
 **The honest cost:** the gate is only as good as the machine it runs on. A hook
 can be skipped with `--no-verify`, it only sees the machine's own Node version,
@@ -175,8 +265,16 @@ three** desktop legs. A partial build therefore leaves a draft nobody can
 download, which is the intended failure mode: better no installers than a
 release page advertising a `.dmg` that failed to compile.
 
-If it stops there, the artifacts are still on the draft — fix the failing
-platform, re-run the workflow, and nothing is lost.
+If it stops there, the artifacts are still on the draft and nothing is lost.
+Re-running is `gh run rerun <id> --failed`, which restarts from the tag the run
+started on — **not** a manual dispatch, because there is no longer one to reach
+for. A dispatch off `main` would have handed every downstream job the version
+string `"main"`; the trigger is gone rather than guarded, and the re-run path is
+the one that was always correct anyway.
+
+If the fix needs a code change rather than a re-run, it needs a new tag: land
+the fix on `main`, then `git tag -a v0.3.1` and push that. `release.yml` refuses
+a tag `main` does not contain, so tagging the fix on its branch will not work.
 
 Use `--dry` first if you want to see the commit list and the version it would
 pick without changing anything.
@@ -210,6 +308,13 @@ git push origin v0.3.0               # THIS is what starts release.yml
 ```
 
 Tags are not covered by the ruleset, which is why the last line works.
+
+**`git tag -d` on the first line is not optional, and the reason changed.** It
+used to be tidiness — a local tag pointing at a commit `main` will never have.
+Now it is the gate: `release.yml` refuses any tag whose commit `main` does not
+already contain, so pushing that first tag would fail the release rather than
+mis-release it. The two lines after the merge re-cut the tag on the squashed
+commit, which is the one main actually has. Do the steps in the order written.
 
 **Two ways to stop paying this every release**, and it is worth picking one:
 
