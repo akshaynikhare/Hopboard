@@ -518,6 +518,21 @@ ok(`desktop and package.json versions agree (${pkgVersion})`,
    confOk && cargoVersion === pkgVersion && lockVersion === pkgVersion,
    `package.json ${pkgVersion}, Cargo.toml ${cargoVersion}, Cargo.lock ${lockVersion}, tauri.conf ${conf.version}`);
 
+/* ---------- 24. no page advertises a channel that does not exist ----------
+   /download/ shipped `winget install`, `scoop install`, `brew install --cask`,
+   a Flathub line and `yay -S` while every one of them errored — there was no
+   release, no bucket, no tap and no package. A command on a download page is a
+   promise, and these are the ones the project has decided not to keep. Naming
+   them in prose is fine ("there is no Flathub package"); printing them as
+   something to run is not. */
+const DEAD = ["scoop install", "scoop bucket add", "yay -S ", "flatpak install ", "snap install "];
+bad = [];
+for (const f of pages) {
+  for (const cmd of DEAD) if (read(f).includes(cmd)) bad.push(`${rel(f)}: "${cmd}"`);
+}
+ok(`no page prints a command for a dropped channel (${DEAD.length} checked)`,
+   bad.length === 0, bad.join(", "));
+
 console.log("\n" + "=".repeat(56));
 console.log(`STATIC: ${pass}/${pass + fail} passed`);
 console.log("=".repeat(56));

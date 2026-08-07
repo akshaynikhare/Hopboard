@@ -226,16 +226,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Scoop bucket
-        # The easiest Windows channel by a distance: no signing, no review, no
-        # waiting. Shipped before winget for exactly that reason.
-        run: node tools/release/manifest.mjs scoop ${{ github.ref_name }}
-
+      # Two channels, not five. A Scoop bucket and an AUR package are each a
+      # repository somebody has to keep in step with every release, and one that
+      # has quietly stopped being updated is worse than one that never existed:
+      # it hands people an old build and tells them it is current.
       - name: Homebrew tap
         run: node tools/release/manifest.mjs homebrew ${{ github.ref_name }}
 
-      - name: AUR PKGBUILD
-        run: node tools/release/manifest.mjs aur ${{ github.ref_name }}
+      - name: winget manifest
+        run: node tools/release/manifest.mjs winget ${{ github.ref_name }}
 
       - name: Open the manifest updates
         run: |
