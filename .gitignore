@@ -18,6 +18,10 @@ node_modules/
 # The assembled site. Produced by tools/build.mjs, in CI or locally.
 /_site/
 
+# The same build, minus what only a web host uses — this is what the desktop
+# installer wraps. Written by tauri.conf.json's beforeBuildCommand.
+/_desktop/
+
 # Rust build artifacts: gigabytes of intermediates after a real build, 7 MB
 # after a failed one. Cargo.lock is what makes that build reproducible; this is
 # only the scratch space it works in.

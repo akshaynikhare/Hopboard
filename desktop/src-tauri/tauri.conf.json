@@ -6,8 +6,8 @@
 
   "build": {
     "beforeDevCommand": "",
-    "beforeBuildCommand": "",
-    "frontendDist": "../../",
+    "beforeBuildCommand": "node ../../tools/build/build.mjs _desktop --desktop",
+    "frontendDist": "../../_desktop",
     "devUrl": "http://127.0.0.1:8080"
   },
 

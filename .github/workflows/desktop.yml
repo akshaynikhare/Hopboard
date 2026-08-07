@@ -13,13 +13,20 @@ name: Desktop build
 
 on:
   workflow_dispatch:
+    inputs:
+      bundle:
+        description: "Also bundle the installers and upload them (nothing is published)"
+        type: boolean
+        default: false
   push:
     paths:
       - "desktop/**"
+      - "tools/build/build.mjs"
       - ".github/workflows/desktop.yml"
   pull_request:
     paths:
       - "desktop/**"
+      - "tools/build/build.mjs"
 
 # A second push supersedes the first: nobody needs the compile result for a
 # commit that has already been replaced.
@@ -68,6 +75,36 @@ jobs:
       - name: Compile
         working-directory: desktop/src-tauri
         run: cargo build --locked --verbose
+
+      # ── the dress rehearsal ──────────────────────────────────────────────
+      # Everything downstream of a release — the URLs on /download/, the
+      # Homebrew cask, the winget manifest — is a filename, and Tauri's naming
+      # differs per target and has changed between versions. tools/release/
+      # manifest.mjs says so itself: its asset table is "guesses until the
+      # first real release, and the most likely thing here to be wrong".
+      #
+      # This turns the guess into a listing, on demand, without publishing
+      # anything. Run it before a tag, not after: the alternative is that the
+      # first tag is also the first time anyone sees a real filename.
+      - name: Frontend bundle
+        if: inputs.bundle
+        uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+
+      - name: Bundle the installers
+        if: inputs.bundle
+        working-directory: desktop/src-tauri
+        run: npx --yes @tauri-apps/cli@2 build
+
+      - name: Upload them
+        if: inputs.bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.label }}
+          path: |
+            desktop/src-tauri/target/release/bundle/**/*
+          if-no-files-found: error
+          retention-days: 7
 
       # Warnings are not failures here. The scaffold is new and a pedantic gate
       # on day one would mean fixing style before it has ever run.
