@@ -7,6 +7,21 @@ commit.
 Format follows [Keep a Changelog](https://keepachangelog.com); versions follow
 [Semantic Versioning](https://semver.org).
 
+## v0.3.0 — 2026-08-07
+
+### Added
+
+- download: ship real installers, and a page that links to them
+
+### Fixed
+
+- release: match the Cargo version through CRLF line endings (#8)
+- cli: read the version from package.json
+
+### Build & deploy
+
+- deploy: move the site to Cloudflare Pages and the new domain
+
 ## v0.2.1 — 2026-08-07
 
 ### Fixed
