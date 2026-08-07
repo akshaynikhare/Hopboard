@@ -195,10 +195,14 @@ see meanwhile is written on `/download/` rather than left for them to discover:
 | macOS | Gatekeeper refuses: "Apple cannot check it for malicious software" | **System Settings → Privacy & Security → Open Anyway** |
 | Linux | nothing to sign | AppImage needs `chmod +x` |
 
-macOS gets an **ad-hoc signature** (`APPLE_SIGNING_IDENTITY` falls back to `-`)
-even with no certificate. That does not satisfy Gatekeeper, but it is the
-difference between "unidentified developer", which is a warning, and "the app is
-damaged", which reads as a corrupt download and gets the file deleted.
+**Do not try to ad-hoc sign through `APPLE_SIGNING_IDENTITY: "-"`.** It looks
+like a free improvement and it breaks the macOS build outright: setting the
+identity makes Tauri take the signing path, which starts by importing
+`APPLE_CERTIFICATE` into a keychain, and with no certificate that fails with
+`failed to run command security import`. It cost v0.3.0 a build. An ad-hoc
+signature has to be applied to the `.app` after bundling, before the `.dmg` is
+made — which is worth doing one day, because "unidentified developer" is a
+warning while an entirely unsigned bundle can be reported as "damaged".
 
 ### Getting a Windows certificate
 
