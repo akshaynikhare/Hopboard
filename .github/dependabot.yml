@@ -1,0 +1,54 @@
+# Dependabot — the other half of pinning actions to commit SHAs.
+#
+# `.github/workflows/*.yml` names every action by a 40-character SHA rather than
+# a tag, because a tag is a movable pointer in somebody else's repository and
+# those jobs hold GITHUB_TOKEN and NPM_TOKEN. That is the right call and it has
+# one failure mode: a pin never moves on its own, so "pinned" decays into
+# "frozen at whatever was current the day it was written", security fixes
+# included. This file is what keeps the pins current without unpinning them —
+# Dependabot rewrites the SHA and preserves the `# v4` comment beside it.
+#
+# ── WHAT THIS COSTS, WHICH IS NOT NOTHING ──────────────────────────────────
+#
+# **A Dependabot pull request is not tested by anything.** docs/RELEASING.md
+# explains why there is no CI: the `.husky` hooks run before a commit exists,
+# which is better than a check that runs after. Dependabot commits through the
+# API and never touches those hooks, so its PRs arrive with no gate at all —
+# and an action bump is exactly the change whose blast radius is a workflow
+# holding publish credentials.
+#
+# So these are read, not merged on sight. For each one:
+#
+#   1. Open the action's diff between the two SHAs. Dependabot links it.
+#   2. Check the release is from the real maintainer, not a fresh account.
+#   3. For anything touching release.yml, run `gh workflow run desktop.yml`
+#      before the next tag — it is workflow_dispatch only, so nothing else
+#      will ever exercise the change.
+#
+# Grouped and monthly on purpose. Nine actions on a weekly schedule is a stream
+# of individually trivial PRs, and the failure mode of that is the one thing
+# this file must not cause: bumps that get rubber-stamped because reading them
+# stopped feeling worth it.
+version: 2
+
+updates:
+  - package-ecosystem: "github-actions"
+    # "/" means .github/workflows, not the repository root. It is the only
+    # value this ecosystem accepts and it does not mean what it looks like.
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    commit-message:
+      # .husky/commit-msg enforces Conventional Commits and generates the
+      # changelog from them. Dependabot's own default subject does not match,
+      # and a release would carry an entry nobody wrote.
+      prefix: "ci"
+    groups:
+      actions:
+        # One PR for the routine bumps. A major is broken out on its own,
+        # because that is the one where reading the diff actually matters.
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    labels:
+      - "dependencies"
