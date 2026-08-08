@@ -255,8 +255,12 @@ function render() {
           ? `<div class="sz bad">${esc(f.error || "transfer failed")}</div>`
           : `<div class="sz">${esc(subtitle(f))}</div>`}
       </div>
-      <div class="bar${f.path === "relay" ? " viarelay" : ""}" style="width:${f.progress}%"></div>
+      <div class="bar${f.path === "relay" ? " viarelay" : ""}"></div>
     </div>`).join(""));
+
+  // Widths go through the CSSOM: a style="" attribute in markup is inline style
+  // and the CSP refuses it — every bar rendered at 0 until the next tick.
+  tickProgress(items);
 }
 
 /**
