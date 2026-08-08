@@ -441,14 +441,18 @@ export const IMAGES = {
  * checkout and a self-hosted deploy load no third-party script at all. Filling
  * these in is the switch that turns tracking and ads on for a build.
  *
- * !! These IDs put third-party script in EVERY document, app.html included.
- * That was a deliberate call and it costs the app a security property it used
- * to have — docs/ARCHITECTURE.md §5 and src/ui/features/ads.js record what.
- * Anything running in app.html can read location.hash and the decrypted
- * clipboard in the DOM; contextual ad targeting reads page content by design.
+ * !! Analytics loads everywhere; ADSENSE loads on the 19 crawlable pages and
+ * never in app.html, which holds the share key in its fragment and decrypted
+ * clipboard text in its DOM. The difference is who controls what gets reported:
+ * gtag takes `page_location` from us, so `pageLocation()` below strips the key
+ * out of it, while the ad tag reports the URL itself with no override. That
+ * boundary is enforced by app.html's own meta CSP naming no ad origin — not by
+ * this file, and not by anyone remembering. docs/ARCHITECTURE.md §5 and
+ * src/ui/features/ads.js have the argument. !!
  *
- * Adding an origin here means adding it to the CSP in _headers AND in every
- * page's meta tag, which tools/check/site-check.mjs asserts agree.
+ * Adding an origin means adding it to the CSP in _headers AND in the crawlable
+ * pages' meta tags, which tools/check/site-check.mjs asserts agree — and
+ * leaving app.html's alone, which it also asserts.
  */
 export const GOOGLE = {
   /** GA4 measurement ID, "G-XXXXXXXXXX". Admin → Data streams → your stream. */
@@ -465,8 +469,13 @@ export const GOOGLE = {
     LEADERBOARD: "7038244690",
     /** index.html, the 300×600 rail beside the FAQ. */
     RAIL: "8299355473",
-    /** app.html, below the editor. */
-    APP: "6948680552",
+    /**
+     * There is deliberately no APP slot. A unit exists in the AdSense account
+     * for it (6948680552) and is left unused: app.html carries the share key in
+     * its fragment and decrypted clipboard text in its DOM, and AdSense reports
+     * the page URL with no way to strip it. src/ui/features/ads.js has the
+     * argument; the app's own CSP is what enforces it.
+     */
   },
 };
 

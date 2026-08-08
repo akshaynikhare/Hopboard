@@ -566,10 +566,11 @@ reason. See `LAUNCH-KIT.md` §1 for the argument and for what must *not* be drop
 spike rather than a large one. Spreading launches guarantees you never trend.
 
 ⚠️ **The ad slot is a distribution decision, not just a product one.**
-`src/ui/features/ads.js` was an inert placeholder when this was written; as of
-2026-08-08 it loads AdSense whenever `GOOGLE.ADSENSE_SLOTS.APP` is filled in, so
-treat the paragraph below as a live constraint rather than a warning about a
-future change. Three of the channels above are affected:
+`src/ui/features/ads.js` is still what this describes — a first-party placeholder
+in `app.html`, no third-party script, no network request. AdSense went live on
+the crawlable pages on 2026-08-08 and deliberately not here, so the specific
+claim these channels test still holds. Read the paragraph below as the reason the
+app slot stayed first-party rather than as a warning about it:
 **pluja/awesome-privacy** requires *"no user-tracking on the project website"* and
 would reject or drop the listing; **r/privacy** and **r/PrivacyGuides** audiences
 will find it and lead with it; and it undercuts the no-telemetry claim that is the
@@ -877,18 +878,27 @@ That split is defensible in any forum: *"the marketing pages carry ads; the app
 does not load third-party code."* And it costs almost no revenue, because search
 traffic hits the content pages first.
 
-> **What was actually decided, 2026-08-08.** The split above was NOT taken. GA and
-> AdSense were wired into every page including `app.html`, with the trade-off
-> stated and accepted. The costs listed above are therefore live, not
-> hypothetical, and the launch plan in §9 has to assume the privacy communities
-> will lead with it — the honest move there is to say it first, with the
-> `/privacy/` page as the answer, rather than be caught by DevTools.
+> **Taken, 2026-08-08, on the ads half.** AdSense is live on the 19 crawlable
+> pages (`GOOGLE` in `src/core/config.js`, loaded by `src/landing/tags.js`) and
+> nowhere else. Google Analytics runs site-wide, the app included. So the
+> defensible sentence is narrower than the one above but still worth saying:
+> *"the marketing pages carry ads; the clipboard itself carries no ad tag."*
 >
-> Two things reduce the damage and both are already in place: `app.html` is
-> `noindex`, so this is a community problem rather than a search problem; and
-> `GOOGLE.ADSENSE_SLOTS.APP` in `src/core/config.js` is a separate switch, so
-> emptying that one string restores the recommended split without touching
-> anything else. `docs/ARCHITECTURE.md` §5 has the technical half.
+> Ads briefly went into `app.html` too, before being pulled back. What makes the
+> split hold now is not discipline but the CSP: `app.html`'s meta policy names no
+> ad origin and keeps `trusted-types realtimeclipboard`, the site-wide `_headers`
+> policy is the wide one, and the two intersect so the app enforces the tighter.
+> `tools/check/site-check.mjs` fails the deploy if that gap closes, or if the wide
+> tokens outlive the IDs. `docs/ARCHITECTURE.md` §5 has the technical half.
+>
+> Analytics in the app is a real disclosure and the privacy channels may still
+> raise it — the answer is that `pageLocation()` strips the fragment, so the
+> share key is never in a beacon, and `/privacy/` says so.
+>
+> So the r/privacy exposure above is mostly bought off, but not entirely: the
+> pages a privacy-minded reader lands on from search *do* run AdSense, and that
+> is worth saying first rather than being caught by DevTools. `/privacy/` is the
+> answer to point at.
 
 Worth evaluating as a straight upgrade: **EthicalAds** and **Carbon Ads** serve
 developer audiences without cookies or personal-data tracking, which would let ads

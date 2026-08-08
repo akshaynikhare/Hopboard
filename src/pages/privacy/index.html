@@ -7,7 +7,7 @@
 <!-- One policy, identical on every page of the site. Reasoning and the
      directive-by-directive notes live in app.html, which is the page that
      actually needs them. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; script-src 'self' https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagmanager.com https://adservice.google.com https://fundingchoicesmessages.google.com https://ep2.adtrafficquality.google; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com https://td.doubleclick.net https://ep2.adtrafficquality.google; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://td.doubleclick.net https://stats.g.doubleclick.net https://csi.gstatic.com https://*.google-analytics.com https://*.analytics.google.com https://fundingchoicesmessages.google.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; script-src 'self' https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagmanager.com https://adservice.google.com https://fundingchoicesmessages.google.com https://ep2.adtrafficquality.google; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com https://td.doubleclick.net https://ep2.adtrafficquality.google; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://td.doubleclick.net https://stats.g.doubleclick.net https://csi.gstatic.com https://*.google-analytics.com https://*.analytics.google.com https://fundingchoicesmessages.google.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; require-trusted-types-for 'script'; trusted-types * 'allow-duplicates'">
 
 <!--
   Not an SEO page. It exists because AdSense requires a privacy policy that
@@ -164,10 +164,11 @@
 
         <p>
           <b>The page address it reports never includes the part after the
-          <code>#</code>.</b> That matters here more than on most sites: in the
-          app, the session key lives in that fragment, so the analytics tag is
-          configured to strip it before anything is sent. Google does not receive
-          session keys through Analytics.
+          <code>#</code>.</b> That matters here more than on most sites: a share
+          link carries its session key in that fragment, and following one lands
+          you on this site for a moment before it forwards you to the app. The
+          tag is configured to strip it before anything is sent, so Google does
+          not receive session keys.
         </p>
 
         <h2>Google AdSense</h2>
@@ -183,15 +184,15 @@
         </p>
 
         <p>
-          An ad tag is third-party code that runs inside the page it appears on,
-          and it can read that page — including the address bar. On
-          <code>/app.html</code>, the address bar contains your session key.
-          Unlike Analytics, AdSense provides no supported way to withhold it. If
-          that is not a trade you want to make, use the app with an ad blocker,
-          or run the relay and the site yourself from the
-          <a href="https://github.com/akshaynikhare/RealtimeClipboard">source</a>,
-          where these tags are switched off by default. It does not affect
-          encryption: the relay still cannot read your clipboard either way.
+          <b>There are no ads in the clipboard itself.</b> An ad tag is
+          third-party code that runs inside the page it appears on and can read
+          that page, including the address bar — and in the app the address bar
+          contains your session key. Unlike Analytics, AdSense offers no
+          supported way to stop it reporting that address. So the app carries no
+          ad tag: its own security policy refuses to load one, separately from
+          and more strictly than the rest of the site, and a build that weakened
+          that is rejected before it can be published. Ads appear only on the
+          pages that hold no key and no clipboard content.
         </p>
 
         <h2>Consent</h2>

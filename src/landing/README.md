@@ -1,8 +1,8 @@
 # src/landing/
 
 Behaviour for `index.html`, the indexable marketing page. Deliberately a different document from
-the app — this one holds no key and no clipboard content, which is why the third-party tags were
-safe here long before they were allowed anywhere else.
+the app — this one holds no key and no clipboard content, which is what makes it the only place a
+third-party script may go.
 
 | File | What it does |
 |---|---|

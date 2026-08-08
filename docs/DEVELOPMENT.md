@@ -179,16 +179,19 @@ exactly what it is looking for.
 ## 5. Changing the landing page
 
 The landing page (`index.html` + `src/landing/`) is a separate document from the
-app. It used to be the *only* place a third-party script could go, because
-`app.html` carries the session key in its fragment and the decrypted clipboard in
-its DOM. That is no longer the split: Google Analytics and AdSense load on every
-page, the app included, driven by `GOOGLE` in `src/core/config.js` and off by
-default while those IDs are empty.
+app, and deliberately so: `app.html` carries the session key in its fragment and
+the decrypted clipboard in its DOM, so **no ad tag may ever be added to it**. The
+ad slot lives on the crawlable pages, which hold neither.
 
-The separation still matters for everything else. `src/landing/tags.js` loads the
-tags here; `src/ui/features/analytics.js` and `ads.js` do it in the app, and they
-carry the caveats that only apply there. Nothing new should be added to
-`app.html` without reading `docs/ARCHITECTURE.md` §5 first.
+`src/landing/tags.js` is that surface: Google Analytics and AdSense, switched on
+by `GOOGLE` in `src/core/config.js`. Analytics also runs in the app
+(`src/ui/features/analytics.js`), because gtag lets the page set `page_location`
+and `pageLocation()` strips the key out of it — AdSense has no such override,
+which is the whole reason one is allowed there and the other is not.
+
+The app's meta CSP names no ad origin and is stricter than the site-wide
+`_headers` policy on purpose. Two policies intersect, so the app enforces the
+tighter one — see `docs/ARCHITECTURE.md` §5 before touching either.
 
 ### The grid
 

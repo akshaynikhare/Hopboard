@@ -166,14 +166,14 @@ shipped once:
 - **Nothing decorative may block the session.** `main.js` starts the connection un-awaited and
   wraps every other `init()` in `safeInit()`; `tests/live/boot.mjs` enforces that boot reaches the
   transport.
-- **Third-party script now runs in `app.html`, and this rule used to forbid it.** Google Analytics
-  and AdSense load on every page, the app included, from `GOOGLE` in `src/core/config.js`. That
-  document holds the session key in its fragment and decrypted clipboard content in its DOM, so
-  those tags can read both — `ui/features/ads.js` states the consequences and
-  `docs/ARCHITECTURE.md` §5 records which invariant it costs. Analytics is configured to strip the
-  fragment (`pageLocation()`); AdSense offers no equivalent, which is why `ADSENSE_SLOTS.APP` is a
-  separate switch from the landing-page slots. **Adding a fourth-party — anything not already in
-  the CSP — is still a decision to take deliberately, not a convenience.**
+- **No AD tag may ever run in `app.html`** — it holds the session key in its fragment and decrypted
+  clipboard content in its DOM. The test is not "is it Google" but **who controls what gets
+  reported**: gtag takes `page_location` from us, so `pageLocation()` strips the fragment and
+  analytics is admissible; AdSense reports the URL itself with no override, and that URL is the key.
+  So GA runs everywhere, AdSense only on the 19 crawlable pages. Enforced by app.html's meta CSP
+  naming no ad origin — stricter than the site-wide `_headers` policy, and the two intersect so the
+  app wins. `tools/check/site-check.mjs` fails the deploy if that gap closes. `ui/features/ads.js`
+  has the argument; the app's slot stays first-party.
 - **`src/landing/land.js` is generated** by `tools/build/build-land-mask.mjs` and committed. Do not
   hand-edit it.
 

@@ -35,10 +35,6 @@
   opacity:.55;
 }
 
-/* Set by ads.js once a real unit is in the box. The dashed outline says "this
-   space is reserved"; around a loaded creative it says "this ad is broken". */
-.adslot-box.adlive { border:0; }
-
 /* One line. Deliberately at the bottom of the visual hierarchy: an explanation
    for anyone who wonders, not a pitch.
 
@@ -72,17 +68,3 @@
   .adslot-note { display:none; }
 }
 
-/* Reserved space becomes a FLOOR once a real unit is in the box: a responsive
-   unit picks its own size, and a fixed height would clip anything taller —
-   which is an AdSense policy violation, not just a visual bug. min-height still
-   holds the editor still while the ad loads, which is all the fixed height was
-   for. `flex:none` on .adslot means the editor gives up the difference.
-
-   Last in the file so these outrank the heights above at equal specificity. */
-/* display:block matters — see the same note in src/landing/landing.css. The
-   placeholder box centres with flex, which gives the <ins> zero width, and
-   AdSense will not fill a slot it measures at 0 px. */
-.adslot-box.adlive { display:block; height:auto; min-height:90px; }
-
-@media (max-width:900px)  { .adslot-box.adlive { min-height:100px; } }
-@media (max-height:620px) { .adslot-box.adlive { min-height:60px; } }

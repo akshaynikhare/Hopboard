@@ -89,6 +89,18 @@ jobs:
             # refuses to start on the distributions we claim to support.
             target: ""
     runs-on: ${{ matrix.os }}
+    # Spelled out because a job-level block REPLACES the workflow-level one
+    # rather than merging with it — omitting `contents: write` here would leave
+    # tauri-action unable to create the draft release, and the failure reads as
+    # a token problem rather than a permissions one.
+    #
+    # id-token and attestations are for the provenance step at the end of this
+    # job. They are granted here and not at the workflow level so `relay-image`
+    # and `manifests` cannot mint an attestation in this repository's name.
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09  # v5
 
@@ -163,6 +175,7 @@ jobs:
           done
 
       - uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5  # v0
+        id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -172,6 +185,42 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.target }}
+
+      # ── Build provenance ───────────────────────────────────────────────────
+      #
+      # What a user can check, and why this is the strongest thing here.
+      #
+      # The installers are UNSIGNED (tauri.conf.json: certificateThumbprint and
+      # signingIdentity are both null), so Windows and macOS warn on first run
+      # and nothing in the binary says who built it. `SHA256SUMS`, attached by
+      # the publish-release job, is a fixed value worth quoting elsewhere — but
+      # it is served from the same release as the assets, so anyone able to
+      # swap one could swap both.
+      #
+      # An attestation is not. It is signed through Sigstore against an OIDC
+      # token this workflow run cannot fabricate and a third party holds the
+      # log, so it binds each binary to the commit and workflow that produced
+      # it, verifiably by someone who trusts neither this repository nor its
+      # release page:
+      #
+      #     gh attestation verify RealtimeClipboard_0.5.0_x64-setup.exe \
+      #        --repo akshaynikhare/RealtimeClipboard
+      #
+      # This is the same guarantee `npm publish --provenance` already gives the
+      # CLI, which is why it belongs here rather than being an extra.
+      #
+      # !! It does NOT remove the SmartScreen or Gatekeeper warning. Nothing
+      # replaces code signing for that; see docs/RELEASING.md. Provenance
+      # answers "did this come from that source", not "may this run". !!
+      #
+      # Paths come from the action's own `artifactPaths` output rather than a
+      # hand-written glob: the bundle layout differs per platform and moves
+      # between Tauri versions, and a glob that silently matches nothing would
+      # attest nothing while going green.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a  # v3
+        with:
+          subject-path: ${{ join(fromJSON(steps.tauri.outputs.artifactPaths), ',') }}
 
   npm:
     needs: verify
