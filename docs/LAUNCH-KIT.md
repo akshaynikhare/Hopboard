@@ -50,6 +50,10 @@ listings each describing a slightly different tool.
 > discover each other by broadcasting on the local network, and that stops at the router. MIT
 > licensed; the relay can be self-hosted.
 
+⚠️ **Two Reddit rows in `SEO.md` §6 also move.** r/PrivacyGuides and r/degoogle audiences will
+find the ad and analytics tags and will lead with them — that is the documented pattern, not a
+guess. Neither is now a good first-day channel. r/privacy was already comment-only.
+
 **The caveats, which go in every long-form post.** Leaving them out is what turns a launch thread
 into the QuickClip thread (`SEO.md` §6): the short key is a bearer credential · files capped at
 5 MB · automatic clipboard capture needs a Chromium-based browser · no browser can read the
@@ -100,7 +104,7 @@ Ordered by the expected value measured in `SEO.md` §6. Every one of these is fr
 | **AlternativeTo** | ⏳ Account must exist **one week** before submitting — create it now | Tag `clipboard-sync`. List as an alternative to **KDE Connect** (the big funnel), Pushbullet, and Apple Universal Clipboard. Use the Medium string, **no URLs in it**. Do *not* position as a clipboard *manager* (saturated) or as a Snapdrop clone (declined on sight) |
 | **nuzulul/awesome-webrtc** | ✅ Submit first — no star minimum | File Transfer category, beside Snapdrop/PairDrop/ShareDrop. One line: name, link, Short string |
 | **hemanth/awesome-pwa** | ✅ Ready | Same one-line form |
-| **pluja/awesome-privacy** | ✅ Ready — needs a privacy policy and no user tracking, both true today | ⚠️ Becomes false the moment `src/ui/features/ads.js` gets a real network. See §6's ad-slot warning |
+| **pluja/awesome-privacy** | ❌ **Closed as of 2026-08-08.** The condition this row warned about has happened: AdSense and GA4 are live (`adsEnabled()` and `analyticsEnabled()` both true), and the list requires *no user-tracking on the project website*. Do not submit — a rejection here is public and is worse than an absence. Revisit only if the tags come off |
 | **Microsoft Store via PWABuilder** | ✅ Registration is now free | Start at `storedeveloper.microsoft.com` — entering via Partner Center lands in the legacy paid flow. Review 24–48h. Bonus: Store installs send `Referer: app-info://platform/microsoft-store`, which is free install attribution |
 | **awesome-selfhosted** | ⏳ Blocked until ~December 2026 (4-month rule from first release) | PR `awesome-selfhosted-data`, not the main list. Copy `software/privydrop.yml` as the template. Needs the Dockerfile — §10 item 16 |
 | **GitHub social preview** | ⏳ Manual, no API | Settings → Social preview → upload `assets/social/og-card.png`. **Re-upload whenever the card is regenerated** — GitHub keeps a copy, not a reference |
