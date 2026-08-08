@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- One policy, identical on every page of the site. Reasoning and the
+     directive-by-directive notes live in app.html, which is the page that
+     actually needs them. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; script-src 'self' https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagmanager.com https://adservice.google.com https://fundingchoicesmessages.google.com https://ep2.adtrafficquality.google; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com https://td.doubleclick.net https://ep2.adtrafficquality.google; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://td.doubleclick.net https://stats.g.doubleclick.net https://csi.gstatic.com https://*.google-analytics.com https://*.analytics.google.com https://fundingchoicesmessages.google.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; require-trusted-types-for 'script'; trusted-types * 'allow-duplicates'">
+
+<!--
+  Target: "live clipboard" (1,600/mo measured, and the incumbent's weakest
+  position in the whole set — cl1p.net ranks 7th for it against 9th for the head
+  term). "realtime clipboard" is the secondary.
+
+  docs/SEO.md §2 decides the shape of this page and it is easy to get backwards:
+  the mined completions are `online clipboard realtime`, `online clipboard live`
+  and `online clipboard sync automatically in realtime`. The modifier never
+  leads. So the head term carries the title and `live`/`realtime` carry the slug
+  and the H2s — not the reverse. Writing this page as "Realtime Clipboard: the
+  realtime clipboard" would chase a phrase nobody types bare and abandon the
+  201K head it hangs off.
+
+  The terminology table is the load-bearing part, the same bet as
+  /what-is-an-online-clipboard/: three names for one category, and the page that
+  reconciles them is the one an answer engine quotes when the query fans out.
+
+  The differentiator is real and belongs to this page rather than the homepage:
+  most of this category is a textarea and a Send button. Typing here streams at
+  10 frames/sec and the peer's caret shows in the gutter. That is what "live"
+  actually means, and it is the honest reason to rank for the word.
+-->
+<title>Live Clipboard — an Online Clipboard That Syncs in Realtime</title>
+<meta name="description" content="A live clipboard syncs the moment you type, with no Send button. How realtime clipboard sync works, how it differs from a pastebin, and how to use one across Windows, macOS and Android with no account.">
+<link rel="canonical" href="https://realtimeclipboard.com/live-clipboard/">
+<meta name="theme-color" content="#007acc">
+<link rel="icon" href="/assets/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/assets/icons/icon-192.png">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="RealtimeClipboard">
+<meta property="og:title" content="Live Clipboard — an Online Clipboard That Syncs in Realtime">
+<meta property="og:description" content="No Send button. Text appears on the other device as you type it, and what you copy follows automatically.">
+<meta property="og:url" content="https://realtimeclipboard.com/live-clipboard/">
+<meta property="og:image" content="https://realtimeclipboard.com/assets/social/og-card.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "TechArticle",
+      "@id": "https://realtimeclipboard.com/live-clipboard/#article",
+      "headline": "Live clipboard — an online clipboard that syncs in realtime",
+      "description": "A live clipboard sends what you type as you type it, with no Send button. How realtime clipboard sync works and what it costs.",
+      "inLanguage": "en",
+      "datePublished": "2026-08-08",
+      "dateModified": "2026-08-08",
+      "publisher": { "@id": "https://realtimeclipboard.com/#org" },
+      "mainEntityOfPage": "https://realtimeclipboard.com/live-clipboard/"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "RealtimeClipboard",
+          "item": "https://realtimeclipboard.com/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Live clipboard"
+        }
+      ]
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/src/landing/landing.css">
+<script type="module" src="/src/landing/faq.js"></script>
+<script type="module" src="/src/landing/tags.js"></script>
+</head>
+<body>
+
+<div class="rules" aria-hidden="true">
+  <div class="in"><span></span><span></span><span></span></div>
+</div>
+
+<header class="topbar">
+  <div class="in">
+    <div class="row">
+      <a class="brand" href="/">
+        <b>RealtimeClipboard</b>
+      </a>
+      <span class="spacer"></span>
+      <a class="tlink" href="https://github.com/akshaynikhare/RealtimeClipboard">GitHub</a>
+      <a class="tlink strong" href="/app.html">Open the app</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <section class="sec">
+    <div class="in doc">
+
+      <nav class="crumb" aria-label="Breadcrumb">
+        <a href="/">RealtimeClipboard</a> <span aria-hidden="true">/</span>
+        <span aria-current="page">Live clipboard</span>
+      </nav>
+
+      <header class="pagehead">
+        <h1>A live clipboard, synced in realtime</h1>
+
+        <p class="lede">
+          <b>A live clipboard is an online clipboard with no Send button: text
+          appears on your other device as you type it, and what you copy follows
+          automatically.</b> Most tools in this category are a text box and a
+          button. The difference sounds cosmetic and is not — it is what
+          separates a clipboard you share from a form you submit.
+        </p>
+      </header>
+
+      <div class="article">
+
+        <h2>What makes a clipboard live</h2>
+
+        <p>
+          <b>The test is whether anything has to be pressed.</b> A conventional
+          <a href="/what-is-an-online-clipboard/">online clipboard</a> gives you
+          a box, you paste into it, you press Send, and the other device shows
+          the result once it reloads or polls. Every step is a decision, and the
+          round trip is long enough that people stop trusting it and go back to
+          messaging themselves.
+        </p>
+
+        <p>A live clipboard removes all three steps:</p>
+
+        <ul>
+          <li><b>Nothing to press.</b> Keystrokes stream to the other device while you are still typing.</li>
+          <li><b>Nothing to reload.</b> The connection stays open, so arriving text lands on its own.</li>
+          <li><b>Nothing to paste into.</b> At the top setting, copying anywhere on the machine is enough — the clipboard itself is what is being watched.</li>
+        </ul>
+
+        <p>
+          The last one is the real prize and the one worth being careful about,
+          because a clipboard that syncs everything syncs the passwords you
+          copied for unrelated reasons too. That is why it is a rung you climb
+          to rather than the only way it works.
+        </p>
+
+        <h2>Live clipboard, realtime clipboard, online clipboard</h2>
+
+        <p>
+          <b>These are three names for the same category, and the differences
+          are in emphasis rather than in kind.</b> People searching for any of
+          them usually want the same thing, but the words do carry different
+          expectations and it is worth saying which is which.
+        </p>
+
+        <div class="tablewrap" tabindex="0" role="region"
+             aria-label="Live, realtime and online clipboard terms compared — scrolls sideways">
+          <table class="cmp">
+            <caption class="sr-only">
+              The terms live clipboard, realtime clipboard, online clipboard and
+              cloud clipboard compared by what the word emphasises and what
+              people asking for it usually want.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Term</th>
+                <th scope="col">What the word stresses</th>
+                <th scope="col">What people usually mean</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="me">
+                <th scope="row">Live clipboard</th>
+                <td>No manual step</td>
+                <td>It updates by itself, both ways</td>
+              </tr>
+              <tr class="me">
+                <th scope="row">Realtime clipboard</th>
+                <td>No delay</td>
+                <td>It arrives now, not on the next refresh</td>
+              </tr>
+              <tr>
+                <th scope="row">Online clipboard</th>
+                <td>Over the internet</td>
+                <td>The general category, live or not</td>
+              </tr>
+              <tr>
+                <th scope="row">Cloud clipboard</th>
+                <td>Tied to an account</td>
+                <td class="n">Usually the built-in one — Windows, Apple</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          The last row is the one that trips people up. <b>Cloud clipboard</b> is
+          Microsoft's and Apple's name for the feature built into their own
+          operating systems, and both are locked to one ecosystem and one signed-in
+          account: Windows clipboard history syncs between Windows PCs, Universal
+          Clipboard between Apple devices, and neither crosses to the other. If you
+          are searching because your phone and your laptop are from different
+          makers, the built-in cloud clipboard is the thing that cannot help you.
+        </p>
+
+        <h2>Realtime typing, not just realtime pasting</h2>
+
+        <p>
+          <b>There are two separate things a clipboard can do in realtime, and
+          most tools that claim the word only do the second.</b> Delivering a
+          finished clip quickly is the easy half. Showing the text while it is
+          still being written is the half that makes a shared clipboard feel like
+          one surface rather than two.
+        </p>
+
+        <p>Here, typing is streamed and clips are committed, and they are deliberately different paths:</p>
+
+        <ol class="steps">
+          <li><b>While you type</b>, the editor sends the text about ten times a second. The far side renders it and does nothing else with it — no history entry, no clipboard write.</li>
+          <li><b>When you stop</b>, after 800&nbsp;ms of quiet, or on blur, or on <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, it commits. That is the moment it becomes a real clip: it enters history, and at the top rung it goes to the system clipboard.</li>
+        </ol>
+
+        <p>
+          Streaming stops above roughly 4&nbsp;KB and the text syncs on commit
+          only, which in practice is invisible — text that long is pasted, not
+          typed.
+        </p>
+
+        <p>
+          <b>Two people typing at once is never merged.</b> Merging concurrent
+          edits needs a CRDT, and this is a clipboard, not a document editor. An
+          incoming stream is dropped while you are typing, and an incoming clip
+          that would overwrite unsaved work is offered rather than applied. What
+          prevents the collision in practice is seeing it coming: each peer's
+          caret tints their line in the gutter, in their own colour, so you watch
+          the other person start before you both commit.
+        </p>
+
+        <h2>How far live sync reaches</h2>
+
+        <p>
+          <b>The reach of sync is one setting with three rungs, and each adds
+          exactly one thing to the one below it.</b> It sits in the app header
+          rather than in a settings menu, because it is the control that decides
+          what leaves the machine.
+        </p>
+
+        <div class="tablewrap" tabindex="0" role="region"
+             aria-label="The three sync rungs — scrolls sideways">
+          <table class="cmp">
+            <caption class="sr-only">
+              The three sync rungs — Off, App and Clipboard — by what leaves the
+              device and whether the system clipboard is touched.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Rung</th>
+                <th scope="col">What happens</th>
+                <th scope="col">Touches the OS clipboard?</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Off</th>
+                <td>Nothing leaves this device, and nothing arrives</td>
+                <td class="n">No</td>
+              </tr>
+              <tr>
+                <th scope="row">App</th>
+                <td>Text syncs inside the window, live, both ways</td>
+                <td class="n">No</td>
+              </tr>
+              <tr class="me">
+                <th scope="row">Clipboard</th>
+                <td>What you copy is shared, and what arrives is copied here</td>
+                <td class="y">Yes, both directions</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          <b>App</b> is the rung most people should sit on for shared or work
+          machines: the session is fully live, but your operating system's
+          clipboard is neither read nor written, so nothing you copy for an
+          unrelated reason ever leaves. <b>Clipboard</b> is the one that makes
+          copying anywhere on the machine enough, and it is a single setting
+          governing both directions — a device that has stopped sending is not
+          quietly still receiving.
+        </p>
+
+        <h2>What live sync actually costs</h2>
+
+        <p>
+          <b>Reading the system clipboard automatically is a browser
+          capability, not a feature a website can simply decide to have</b>, and
+          the constraints are worth knowing before you conclude something is
+          broken.
+        </p>
+
+        <ul>
+          <li><b>Automatic capture needs a Chromium-based browser</b> — Chrome, Edge, Brave, Opera. Firefox and Safari can send and receive text you paste in, but cannot read the clipboard themselves.</li>
+          <li><b>No browser reads the clipboard while its tab is in the background.</b> That is a browser security rule and it applies to every web-based tool in this category, not just this one. The window has to have focus.</li>
+          <li><b>A clip is capped at 24,000 characters</b>, which is the relay's frame size after encryption rather than an arbitrary limit.</li>
+          <li><b>Files are not text</b> and do not stream — they go directly between browsers over WebRTC, up to 5&nbsp;MB each.</li>
+        </ul>
+
+        <p>
+          If sync is not arriving at all, the causes are nearly always one of a
+          short list — <a href="/help/clipboard-sync-not-working/">clipboard sync
+          not working</a> walks through them in order.
+        </p>
+
+        <h2>Using a live clipboard</h2>
+
+        <p>
+          <a href="/">RealtimeClipboard</a> is a live clipboard of the shared-key
+          kind, so there is nothing to sign up for:
+        </p>
+
+        <ol class="steps">
+          <li>Open the app on both devices.</li>
+          <li>Type the same short key on each. That key is what pairs them — no account, no email, <a href="/online-clipboard-no-login/">no login</a>.</li>
+          <li>Type. It appears on the other screen as you go.</li>
+        </ol>
+
+        <p>
+          The key never leaves your browser: what reaches the relay is
+          <code>SHA-256(key)</code>, used only as a room address, plus text
+          already encrypted with AES-GCM. The relay forwards ciphertext between
+          connections and stores nothing on disk, so "live" here does not mean
+          "held on a server for you to collect" — there is no copy anywhere to
+          collect. It works
+          <a href="/clipboard-sync-different-networks/">across different
+          networks</a>, not only on the same Wi-Fi, which is the line most
+          local-only tools like
+          <a href="/snapdrop-alternative/">Snapdrop</a> stop at.
+        </p>
+
+        <p>
+          <a class="btn" href="/app.html">Open a live clipboard</a>
+        </p>
+      </div>
+
+      <div class="faq" id="faq">
+        <div class="faqhead">
+          <h2>Common questions</h2>
+          <button type="button" class="faqall" id="faqAll"
+                  aria-expanded="false" aria-controls="faq" hidden>
+            <span class="faqall-i" aria-hidden="true"></span>
+            <span class="faqall-t">Expand all</span>
+          </button>
+        </div>
+
+        <details class="qa">
+          <summary><h3>Is there an online clipboard that syncs automatically in realtime?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes. Both devices open the same page and type the same short key, and
+            from then on text moves between them with nothing to press — while you
+            are still typing, not after you submit. At the top setting the system
+            clipboard is wired in as well, so copying anywhere on the machine is
+            enough to send it.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>What is the difference between a live clipboard and a realtime clipboard?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            In practice, nothing — they name the same category. "Live" stresses that
+            nothing has to be pressed for it to update, and "realtime" stresses that
+            it arrives now rather than on the next refresh. Both are describing an
+            online clipboard that holds an open connection instead of making you
+            submit a form.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>How is a live clipboard different from a pastebin?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            A pastebin stores your text at a URL so you can send that link to
+            somebody, and the text stays there until it expires. A live clipboard has
+            no URL holding your content and nothing to share — it puts the text on
+            another device as it is written and keeps nothing afterwards. One is
+            publishing, the other is syncing.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Does a live clipboard work between Windows and Android?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Yes, and that is the main reason to use one instead of the built-in
+            option. Windows clipboard sync only works between Windows PCs on one
+            Microsoft account, and Apple's Universal Clipboard only between Apple
+            devices. A browser-based clipboard treats every platform the same,
+            because all it needs is a browser.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Why does my clipboard stop syncing when I switch tabs?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            Because no browser lets a page read the system clipboard while its tab is
+            in the background — it is a security rule, and it applies to every
+            web-based clipboard tool. Text already in the session still arrives; what
+            pauses is automatic capture of things you copy elsewhere. Bringing the
+            window back into focus resumes it.
+            </p>
+          </div>
+        </details>
+
+        <details class="qa">
+          <summary><h3>Is a realtime clipboard safe if it sees everything I copy?</h3><span class="qa-i" aria-hidden="true"></span></summary>
+          <div class="qa-a">
+            <p>
+            It depends entirely on whether the service can read what you copy. Here
+            the text is encrypted in your browser before it is sent, so the relay
+            routes ciphertext it cannot decrypt and writes nothing to disk. It is also
+            why the reach of sync is a rung you choose: at the App setting the session
+            is still fully live, but the system clipboard is never read, so passwords
+            you copy for unrelated reasons never enter it at all.
+            </p>
+          </div>
+        </details>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer class="sec">
+  <div class="in">
+    <div class="footgrid">
+      <p>Open source — <a href="https://github.com/akshaynikhare/RealtimeClipboard">github.com/akshaynikhare/RealtimeClipboard</a></p>
+      <p><a href="/">Home</a> · <a href="/help/">Help</a> · <a href="/blog/">Blog</a> · <a href="/privacy/">Privacy</a></p>
+      <p>Sessions are held in memory and never written to disk. Clipboard contents are
+         encrypted in your browser before they are sent.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
