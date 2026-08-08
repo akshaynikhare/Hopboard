@@ -7,6 +7,12 @@ commit.
 Format follows [Keep a Changelog](https://keepachangelog.com); versions follow
 [Semantic Versioning](https://semver.org).
 
+## v0.6.0 — 2026-08-08
+
+### Added
+
+- site: AdSense on the crawlable pages, analytics everywhere (#27)
+
 ## v0.5.0 — 2026-08-08
 
 ### Breaking
