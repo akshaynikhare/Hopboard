@@ -127,7 +127,7 @@ Prefix `/RealtimeClipboard/` until the domain moves. Priority order:
 | `/share-text-between-devices` | share text between devices |
 | `/clipboard-sync-different-networks` | sync clipboard without same wifi — **the differentiator** *(done 2026-08-07)* |
 | `/snapdrop-alternative` | snapdrop alternative *(done 2026-08-07)* |
-| `/live-clipboard` | live clipboard / realtime clipboard |
+| `/live-clipboard` | live clipboard / realtime clipboard *(done 2026-08-08)* |
 | `/android-to-pc-clipboard` | share clipboard android to pc |
 | `/windows-to-android-clipboard` | sync clipboard windows android |
 | `/mac-to-windows-clipboard` | clipboard between mac and windows |
