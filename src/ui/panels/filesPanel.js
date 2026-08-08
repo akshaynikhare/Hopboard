@@ -36,7 +36,10 @@ export function init() {
 
   bind(drop, "click", () => $("picker").click());
   bind("bAdd", "click", e => { e.stopPropagation(); $("picker").click(); });
-  bind("picker", "change", e => { intake(e.target.files); e.target.value = ""; });
+  // Snapshot before clearing: intake() awaits thumbnails mid-iteration, and
+  // resetting the input empties the live FileList under it — picking three
+  // files used to add only the first.
+  bind("picker", "change", e => { intake([...e.target.files]); e.target.value = ""; });
 
   ["dragenter", "dragover"].forEach(ev =>
     bind(drop, ev, e => { e.preventDefault(); drop.classList.add("over"); }));
