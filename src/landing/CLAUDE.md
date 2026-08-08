@@ -3,12 +3,18 @@
 The marketing page. A **separate document** from the app, and the separation is a security
 boundary, not an organisational one.
 
-This page carries no key and no clipboard content, which is why analytics and ads were allowed here
-first. They now run in `app.html` too — see the root `CLAUDE.md` and `src/ui/features/ads.js` for
-what that cost. `tags.js` is this page's half of it; the app has its own, because `core/` is the
-only directory both may import and `core/` may not touch the DOM.
+**No ad tag may ever be added to `app.html`.** It carries the session key in its fragment and
+decrypted clipboard content in its DOM, and an ad tag reports the page URL with no way to withhold
+it. Ads, embeds, anything that reports what it likes — they belong here, on pages that hold neither.
 
-**Anything new and remotely updated still starts here, not in the app.**
+`tags.js` is where that lands: Google Analytics and AdSense, off unless `GOOGLE` in
+`core/config.js` has IDs. Analytics also runs in the app (`ui/features/analytics.js`) because gtag
+lets the page set `page_location`; AdSense does not, which is the whole distinction. The app's meta
+CSP names no ad origin, so the boundary is enforced by the browser rather than by remembering.
+
+**`pageLocation()` is not optional here either.** A share link can arrive on `index.html` and sit in
+the fragment for the instant before `redirect.js` forwards it, so an unmodified `gtag("config")`
+would send someone's key to Google from *this* page.
 
 May import `core/` (config and keys, for the hand-off). May not import `ui/`, `transport/`,
 `clipboard/` or `files/`.

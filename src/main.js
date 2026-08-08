@@ -803,7 +803,7 @@ async function boot() {
   safeInit("what's new", () => { whatsNew.init(); });
   safeInit("hints", hints.init);
   safeInit("ad slot", ads.init);
-  safeInit("analytics", analytics.init);
+  safeInit("analytics", analytics.init);
   safeInit("peer cursors", cursors.init);
   safeInit("install prompt", install.init);
 

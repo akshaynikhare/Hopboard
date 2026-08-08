@@ -12,66 +12,56 @@
      Delivered as <meta> AND as a response header. The header is in `_headers`
      and is the only place `frame-ancestors` can live — a meta policy may not
      express it — so clickjacking protection comes from there. The meta tag is
-     kept because it is what protects this page when it is served by something
-     that is not Cloudflare: `npm run serve`, the Tauri webview, and anyone
-     self-hosting behind their own proxy. The two INTERSECT; tools/check/
-     site-check.mjs asserts they agree apart from `frame-ancestors`.
+     also what protects this page when it is served by something that is not
+     Cloudflare: `npm run serve`, the Tauri webview, and anyone self-hosting
+     behind their own proxy.
 
-     !! This policy was tight because nothing third-party ran here. Google
-     Analytics and AdSense now do, on every page including this one, and the
-     directives below were widened to let them — script-src, frame-src, img-src
-     and connect-src all name Google origins that can serve arbitrary content.
-     src/ui/features/ads.js states what that costs and why it was accepted; the
-     switch that turns it back off is in src/core/config.js. !!
+     !! THIS POLICY IS DELIBERATELY STRICTER THAN THE HEADER, and that gap is a
+     security control rather than drift.
+
+     The crawlable pages run Google Analytics AND AdSense, so `_headers` — which
+     Cloudflare sends for every path, this one included — names the ad origins,
+     allows inline style, and loosens `trusted-types` to `* 'allow-duplicates'`.
+     This document runs analytics only. It holds the share key in
+     `location.hash` and decrypted clipboard text in its DOM, and the line
+     between the two tags is who controls what gets reported: gtag takes
+     `page_location` from us, so `pageLocation()` strips the fragment before
+     anything is sent; the ad tag reports the URL itself with no supported
+     override, and that URL is the key.
+
+     Two CSPs INTERSECT rather than the looser winning, so the ad origins the
+     header permits are refused here by the meta tag below. `goog#html` cannot
+     be created in this document however wide the header gets — and it turns out
+     nothing here wants to: gtag runs fine under `trusted-types
+     realtimeclipboard`, proven by tools/check/csp-check.mjs. So the innerHTML
+     sink stays singular exactly where peer-controlled clip content meets it,
+     and analytics costs this document nothing.
+
+     tools/check/site-check.mjs asserts the split rather than asserting equality:
+     the header must match the crawlable pages, this file must name no ad origin,
+     and its trusted-types must stay narrow. Do not "fix" the difference by
+     copying the header down here.
 
      Notes on the individual directives:
-       script-src          'self' plus the ad and tag origins. Still no inline
-                           script and no 'unsafe-inline': every tag is injected
-                           from a module, which is why the copy-pasted gtag
-                           snippet is not used anywhere in this repo.
-       style-src           'unsafe-inline' is for the ad tag, which sets style
-                           attributes on the units it renders.
+       script-src          'self' plus googletagmanager for gtag.js, and nothing
+                           else. No inline script and no 'unsafe-inline': the
+                           tag is injected from a module, which is why the
+                           copy-pasted gtag snippet is not used in this repo.
        img-src   data:     files/thumbs.js canvas thumbnails
                  blob:     files/registry.js object URLs for received files
-                 https:    ad creatives, which come from arbitrary CDNs
-       frame-src           ad iframes, and the CMP's consent dialog.
+                 gtm       gtag also beacons via an IMAGE to
+                           googletagmanager.com/td, not only via fetch. Found by
+                           csp-check; nothing in Google's setup flow mentions it,
+                           and without this analytics half-works in silence.
        connect-src         the relay, both ways in — wss:// for the WebSocket
                            and https:// for the SSE+POST fallback and /stats.
-                           127.0.0.1:8000 is the local dev relay. The Google
-                           origins are beacons and ad requests; the
-                           adtrafficquality ones are SODAR, the invalid-traffic
-                           probe, which is not optional and not documented in
-                           the AdSense setup flow.
+                           127.0.0.1:8000 is the local dev relay. The
+                           google-analytics hosts are where gtag beacons go;
+                           they are wildcards because GA4 uses regional
+                           endpoints (region1…regionN) chosen without notice.
        form-action 'self'  #keyForm on the landing page is handled in JS. If
                            that ever fails, a plain submit to the same page is
                            harmless; anywhere else would not be.
-       trusted-types       `realtimeclipboard`, the one policy this codebase
-                           creates — NOT `*`, and not `'allow-duplicates'`.
-                           Both of those were added for Google's tags, which
-                           mint their own policies and create `goog#html` once
-                           per injected frame. Together they gave away most of
-                           what the directive buys: with `*` an injected script
-                           declares any policy it likes, and with
-                           `'allow-duplicates'` it can simply re-declare
-                           `realtimeclipboard` with a pass-through createHTML
-                           and reach innerHTML anyway.
-
-                           This is affordable today because GOOGLE.GA4_ID and
-                           ADSENSE_CLIENT in src/core/config.js are both empty,
-                           so no third-party tag loads and no other policy is
-                           wanted. **Turning either on requires widening this
-                           back**, in every page and in _headers, and that is
-                           the point of stating it here: the widening is a cost
-                           of the ads, payable when they earn it, not a
-                           permanent condition of the codebase. Re-run
-                           tools/check/csp-check.mjs against a live tag if you
-                           do — the exact policy names are not documented by
-                           Google and were found empirically.
-
-     !! Both of the above were found by tools/check/csp-check.mjs against a live
-     tag, not by reading Google's docs, which list neither. Run it after any
-     change here — a CSP that is too strict does not fail a build, it fails an
-     ad request, silently, in production. !!
 
      !! WebRTC is NOT governed by connect-src. The STUN server in
      files/transfer.js is unaffected by this policy in any current browser. !!
@@ -81,7 +71,7 @@
      pinned here is deliberate — a corporate build that can physically reach
      only its own relay is a feature, not an oversight. tests/static-check.mjs
      asserts this list agrees with RELAY_URL in src/core/config.js. !! -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; script-src 'self' https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagmanager.com https://adservice.google.com https://fundingchoicesmessages.google.com https://ep2.adtrafficquality.google; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://fundingchoicesmessages.google.com https://td.doubleclick.net https://ep2.adtrafficquality.google; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://td.doubleclick.net https://stats.g.doubleclick.net https://csi.gstatic.com https://*.google-analytics.com https://*.analytics.google.com https://fundingchoicesmessages.google.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; script-src 'self' https://www.googletagmanager.com; img-src 'self' data: blob: https://www.googletagmanager.com; connect-src 'self' https://realtimeclipboard.fastapicloud.dev wss://realtimeclipboard.fastapicloud.dev http://127.0.0.1:8000 ws://127.0.0.1:8000 https://api.github.com https://*.google-analytics.com https://*.analytics.google.com; require-trusted-types-for 'script'; trusted-types realtimeclipboard">
 
 <title>RealtimeClipboard</title>
 <meta name="theme-color" content="#007acc">

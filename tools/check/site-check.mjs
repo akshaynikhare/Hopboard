@@ -258,55 +258,111 @@ noCsp.length ? noCsp.forEach(f => fail(`${f} is missing its Content-Security-Pol
              : pass(`${pages.length} pages carry a CSP meta tag`);
 
 /**
- * The meta policy and the `_headers` policy must agree.
+ * There are TWO policies on this site, and the difference between them is a
+ * security control rather than drift.
  *
- * Browsers INTERSECT multiple policies rather than letting one win, so a
- * directive that is stricter in only one of the two produces an effective
- * policy that neither file describes. The symptom is a resource blocked in
- * production and nowhere else, with a console message naming a policy string
- * that does not appear anywhere in the repository. `frame-ancestors` is the
- * one sanctioned difference: it is ignored in a meta tag by specification, so
- * the header is the only place it can exist.
+ * `_headers` is sent by Cloudflare for every path. It has to permit the Google
+ * tags, because the crawlable pages run them. `app.html`'s meta tag does not
+ * permit them, because that document holds the share key in its fragment and
+ * decrypted clipboard text in its DOM. Browsers INTERSECT multiple policies
+ * rather than letting the looser win, so the app gets the strict one no matter
+ * how wide the header is — which is exactly what makes the split work.
+ *
+ * So this asserts the shape, not equality:
+ *   1. the header matches what the crawlable pages declare (index.html stands
+ *      for all of them — they are written by one script), with
+ *      `frame-ancestors` the one sanctioned header-only directive;
+ *   2. app.html stays strictly tighter, naming no ad origin;
+ *   3. `trusted-types` names its policies wherever the tags do not run, and is
+ *      loose only where they do — and only while they are actually switched on.
  */
-const metaCsp = read("app.html").match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)?.[1];
+const appCsp = read("app.html").match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)?.[1];
+const siteCsp = read("index.html").match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)?.[1];
 const headerCsp = read("_headers").match(/^\s+Content-Security-Policy:\s*(.+)$/m)?.[1];
 
-if (!metaCsp) fail("could not read the CSP out of app.html");
+/** Whether a build actually ships the tags, read from the one place that decides. */
+const config = readFileSync(join(ROOT, "src/core/config.js"), "utf8");
+const tagsOn = ["GA4_ID", "ADSENSE_CLIENT"]
+  .some(k => new RegExp(`${k}:\\s*"[^"]+"`).test(config));
+
+const directives = p => p.split(";").map(d => d.trim()).filter(Boolean);
+const ttOf = p => directives(p).find(d => d.startsWith("trusted-types"));
+
+/**
+ * Ad origins, which app.html may never name — as distinct from the analytics
+ * ones, which it may.
+ *
+ * The line is not "is it Google" but "can the page control what it reports".
+ * gtag takes `page_location` from us, so `pageLocation()` keeps the share key
+ * out of it; the ad tag reports the URL itself, with no supported override, and
+ * that URL contains the key. googletagmanager and google-analytics are
+ * therefore absent from this pattern on purpose.
+ */
+const adOrigins = p => directives(p)
+  .filter(d => /googlesyndication|doubleclick|adtrafficquality|googleadservices|adservice\.google|fundingchoices/.test(d))
+  .map(d => d.split(" ")[0]);
+
+if (!appCsp) fail("could not read the CSP out of app.html");
+else if (!siteCsp) fail("could not read the CSP out of index.html");
 else if (!headerCsp) fail("_headers declares no Content-Security-Policy");
 else {
-  const norm = p => p.split(";").map(d => d.trim()).filter(d => d && !d.startsWith("frame-ancestors")).sort();
-  const [a, b] = [norm(metaCsp), norm(headerCsp)];
-  const diff = [...a.filter(d => !b.includes(d)).map(d => `meta only: ${d}`),
+  /* 1. header vs the crawlable pages */
+  const norm = p => directives(p).filter(d => !d.startsWith("frame-ancestors")).sort();
+  const [a, b] = [norm(siteCsp), norm(headerCsp)];
+  const diff = [...a.filter(d => !b.includes(d)).map(d => `page only: ${d}`),
                 ...b.filter(d => !a.includes(d)).map(d => `header only: ${d}`)];
   if (diff.length) {
-    fail("the _headers CSP and the meta CSP disagree — they intersect, so this "
-       + "produces a policy no file describes:");
+    fail("the _headers CSP and the crawlable pages' CSP disagree — they "
+       + "intersect, so this produces a policy no file describes:");
     diff.forEach(d => console.error(`          ${d}`));
   } else {
     headerCsp.includes("frame-ancestors")
-      ? pass("CSP: header and meta agree, and the header adds frame-ancestors")
+      ? pass("CSP: header and the crawlable pages agree, and the header adds frame-ancestors")
       : fail("_headers CSP has no frame-ancestors — the only directive it exists to add");
   }
 
-  /**
-   * Trusted Types must name its policies.
-   *
-   * `require-trusted-types-for 'script'` is what turns "everything goes through
-   * esc()" from a convention into a rule, but only while the policy NAME is
-   * constrained. `trusted-types *` lets injected script declare its own policy;
-   * `'allow-duplicates'` lets it re-declare ours with a pass-through createHTML.
-   * Either one hands back the innerHTML sink the directive exists to close, and
-   * both were briefly present — added for ad tags, and outliving the decision.
-   */
-  for (const [label, csp] of [["app.html", metaCsp], ["_headers", headerCsp]]) {
-    const tt = csp.split(";").map(d => d.trim()).find(d => d.startsWith("trusted-types"));
-    if (!tt) { fail(`${label} has no trusted-types directive`); continue; }
+  /* 2. app.html names no ad origin, whatever the header allows */
+  const leaked = adOrigins(appCsp);
+  leaked.length
+    ? fail(`app.html CSP names ad origins in ${[...new Set(leaked)].join(", ")} — that `
+         + "document holds the share key and decrypted clipboard text, and the "
+         + "strict meta tag is what keeps the tags out of it. See ui/features/ads.js.")
+    : pass("CSP: app.html admits no ad origin, so the tags cannot run there");
 
-    const loose = ["*", "'allow-duplicates'"].filter(t => tt.split(/\s+/).includes(t));
-    loose.length
-      ? fail(`${label} CSP: \`${tt}\` — ${loose.join(" and ")} defeats the policy `
-           + "allowlist. Enabling Google tags needs this; nothing else does.")
-      : pass(`${label} CSP: trusted-types names its policies`);
+  /* 3. trusted-types, per surface */
+  const appTt = ttOf(appCsp);
+  const appLoose = ["*", "'allow-duplicates'"].filter(t => appTt?.split(/\s+/).includes(t));
+  if (!appTt) fail("app.html has no trusted-types directive");
+  else if (appLoose.length) {
+    fail(`app.html CSP: \`${appTt}\` — ${appLoose.join(" and ")} defeats the policy `
+       + "allowlist. With `*` injected script declares its own policy; with "
+       + "'allow-duplicates' it re-declares ours with a pass-through createHTML. "
+       + "Nothing in this document needs either.");
+  } else pass("CSP: app.html trusted-types names its one policy");
+
+  /**
+   * The header's `trusted-types` is allowed to be loose — the ad tag mints
+   * `goog#html` per injected frame and will not run otherwise — but ONLY while
+   * the tags are switched on. The failure this guards against is the tokens
+   * outliving the decision: IDs emptied, policy left wide, nobody notices.
+   */
+  const headerTt = ttOf(headerCsp);
+  const headerLoose = ["*", "'allow-duplicates'"].filter(t => headerTt?.split(/\s+/).includes(t));
+  if (!headerTt) fail("_headers has no trusted-types directive");
+  else if (headerLoose.length && !tagsOn) {
+    fail(`_headers CSP: \`${headerTt}\` — ${headerLoose.join(" and ")} is only `
+       + "justified by the Google tags, and GA4_ID and ADSENSE_CLIENT in "
+       + "src/core/config.js are both empty. Restore `trusted-types "
+       + "realtimeclipboard` here and in the crawlable pages.");
+  } else if (!headerLoose.length && tagsOn) {
+    fail(`_headers CSP: \`${headerTt}\` — the Google tags are switched on in `
+       + "src/core/config.js and adsbygoogle.js cannot create `goog#html` under "
+       + "this. It fails as ads that silently never render, not as a build "
+       + "error. Either widen this or empty the IDs.");
+  } else {
+    pass(tagsOn
+      ? "CSP: _headers trusted-types is wide, and the tags that need it are on"
+      : "CSP: _headers trusted-types names its policies");
   }
 }
 
