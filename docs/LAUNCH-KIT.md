@@ -259,18 +259,92 @@ Say the cap plainly in the caveat block rather than waiting to be asked. **Revis
 file-led submission once streaming-to-disk lands** — §6 already establishes that resubmission is
 the strategy and that LocalSend's same URL scored 1, 4 and 3 before it scored 563.
 
-## 7. Fire everything on one day
+## 7. Launch day — the runbook
 
 GitHub Trending ranks star *velocity* against a repo's own baseline, so a zero-star repo needs a
 concentrated spike rather than a large one. Spreading launches across three weeks guarantees you
-never trend.
+never trend. That is the whole argument for doing this in one day.
 
-Order, from `SEO.md` §10 item 17: AlternativeTo → **r/coolgithubprojects as a dry run** →
-r/InternetIsBeautiful (clipboard-led, live-site link, *not* GitHub) → r/SideProject → r/opensource
-→ HN as a plain link. Harden the relay for the hug of death first: r/InternetIsBeautiful's Rule 8
-removes posts whose site buckles.
+### 7.1 Pre-flight — verified 2026-08-08
 
-Calibration, so a quiet day is not read as a verdict: PairDrop's first two r/InternetIsBeautiful
-attempts scored **1 upvote each** before the third hit 1,645. The realistic target here is
-**150–300 upvotes**, not 1,600 — and LocalSend, the project that actually won this category, never
-had a big Reddit post at all.
+Everything below was measured, not assumed. Re-run before the day; the commands are in §4 and §5.
+
+| Check | State |
+|---|---|
+| All 17 sitemap URLs | 200 |
+| `og:image` | 200, 1200×630, badge reads **BETA** |
+| `www` → apex | 301, path **and** query preserved |
+| `http` → `https` | 301 |
+| `OAI-SearchBot` · `ClaudeBot` · `PerplexityBot` · `Googlebot` · `bingbot` | all 200 — Cloudflare is not filtering |
+| IndexNow key | validated (submission returns **200**, no longer 202) |
+| Search Console · Bing | verified, sitemap submitted |
+| `/download/` for an anonymous visitor | v0.5.0, 8 assets, every platform |
+| Repo | MIT · 20 topics · correct description · homepage set |
+| Soft-404 | a bogus path returns **404**, not the homepage at 200 |
+
+### 7.2 Four things to settle first
+
+1. **Record the demo** (§5). It is the asset every post embeds. Do not launch without it.
+2. **Check two-way typing by hand**, in two real browser windows. Under Playwright, the device that
+   *joined via the link* had its later local edits reverted a few seconds after receiving a clip.
+   That is plausibly a headless-focus artefact — no OS focus, and the clipboard path gates on focus
+   — but it is the exact flow a first visitor tries, and it is a minute to rule out.
+3. **Decide the v0.6.0 draft release.** It is unpublished, so the Releases page and `/download/`
+   both serve v0.5.0 today. Publish it or leave it, but know which version the traffic lands on.
+4. **Upload the GitHub social preview** if it is still not done — until then the repo shares as a
+   grey box, which is the one asset every channel below renders.
+
+### 7.3 The order, and what changed from `SEO.md` §10 item 17
+
+Three revisions, each with its reason recorded elsewhere in this file:
+
+- **AlternativeTo moves off the day entirely** — submit it days ahead (§3). It is a moderated
+  directory, not a velocity-ranked feed; a listing that is still pending on the day helps nobody.
+- **`pluja/awesome-privacy` is out**, and r/PrivacyGuides and r/degoogle are no longer good
+  first-day channels. AdSense and GA4 are live (§3).
+- **Lead with the clipboard on Hacker News too**, not P2P file transfer. §6 has the argument: the
+  file framing has the higher ceiling and the 5 MB cap makes it the top comment.
+
+| # | When | Channel | Notes |
+|---|---|---|---|
+| 0 | days before | **AlternativeTo** | already submittable — the account is mature |
+| 1 | morning | **r/coolgithubprojects** | the dry run. Low ceiling (top hot post: 49), no promo rule, and it surfaces the first objections while the stakes are nil |
+| 2 | +1h | **r/InternetIsBeautiful** | 🥇 the only 1,000+ shot. Clipboard-led. Link the **live site**, not GitHub. Rule 6 bans sites needing an email — written for this. Rule 8 removes posts whose site buckles |
+| 3 | +2h | **r/SideProject** | no configured rules, best reach-to-risk |
+| 4 | +3h | **r/opensource** | needs correct flair and hours in the comments; Rule 6 removes drive-by posts |
+| 5 | +4h | **Hacker News** | plain link, **not** a Show HN. Every large post in this category was a plain link |
+| — | next day | **Brodie Robertson / Lon.TV** | only *after* traction. They mine HN and Reddit anyway |
+| — | ~Nov 5 | r/selfhosted | 3-month rule. Megathread or a Wednesday tools post |
+| — | ~Dec 7 | awesome-selfhosted | 4 months from first release. PR `awesome-selfhosted-data` |
+
+Spacing them by an hour is deliberate: it is how many comment threads one person can actually hold
+at once, and an unanswered thread in the first hour is what kills a post that was otherwise fine.
+
+### 7.4 The first three hours are the work
+
+The post is 10% of it. From the two threads in §6 that went wrong, what decides the outcome:
+
+- **Answer the crypto question before it is asked.** Link `/docs/THREAT-MODEL.md` in your own first
+  comment. Someone *will* open DevTools. You have the rare advantage of having published the
+  weakness and then fixed it — say so plainly, including that share links from before v0.5.0 broke.
+- **Never argue with the 5 MB cap.** Agree, say why (relay fallback and browser memory), say what
+  would change it (streaming to disk). §6.
+- **"Why not KDE Connect / Syncthing / just email yourself"** — answer on the site already. Lead
+  with "use it if it fits", then the four cases it rules out.
+- **Do not ask for stars.** r/PrivacyGuides bans it outright and every other audience reads it the
+  same way.
+- **Disclose that you are the author** everywhere. It costs nothing and its absence is fatal.
+
+### 7.5 If it flops
+
+**A dud is not a verdict.** PairDrop's first two r/InternetIsBeautiful attempts scored **1 upvote
+each** before the third hit 1,645, and LocalSend's *same URL* scored 1, 4 and 3 on HN before it
+scored 563, then 447, then 923. Nothing material changed between the 3 and the 563.
+
+So: **resubmission is the strategy, not the fallback.** Wait three months, change nothing but the
+timing, post again. The realistic target here is **150–300 upvotes**, not 1,600 — ClipCascade, the
+true analogue, got 158 in r/selfhosted and is at 1.9k stars today.
+
+And the calibration that matters most: **LocalSend, the project that actually won this category at
+86.8k stars, never had a big Reddit post at all.** Budget this day as a credibility beachhead, not
+as the growth engine.
