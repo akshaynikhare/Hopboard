@@ -484,8 +484,25 @@ gh api repos/actions/checkout/commits/v5 --jq .sha     # then paste it in, keepi
 job downloads every asset, hashes it and uploads the file, then flips the draft.
 There is no window in which an installer is downloadable and unverifiable.
 
-**npm publishes with `--provenance`**, which mints a signed attestation through
-OIDC tying the tarball to this repository and this workflow run.
+**Every artifact carries build provenance.** npm publishes with `--provenance`;
+the desktop job runs `actions/attest-build-provenance` over `artifactPaths`. Both
+mint a Sigstore-signed attestation through an OIDC token the run cannot
+fabricate, binding the artifact to the commit and workflow that produced it.
+Anyone can check one without trusting this repository or its release page:
+
+```bash
+gh attestation verify RealtimeClipboard_0.5.0_x64-setup.exe \
+   --repo akshaynikhare/RealtimeClipboard
+```
+
+This is strictly stronger than the checksum file, and for a reason worth being
+precise about: `SHA256SUMS` is served from the same release as the assets, so
+whoever could replace a binary could replace the hash beside it. An attestation
+lives in a public transparency log somebody else operates.
+
+It does **not** remove the SmartScreen or Gatekeeper warning. Provenance answers
+"did this come from that source", not "may this run" — only a signature does the
+second, which is the gap below.
 
 ### The gap: the desktop installers are unsigned
 
@@ -503,10 +520,24 @@ file:
   by anyone who wrote the number down. That is weaker than a signature and worth
   having anyway.
 
-Closing this needs a purchased certificate (an EV certificate for Windows, an
-Apple Developer ID plus notarisation for macOS) and the secrets already wired up
-in `release.yml` — `APPLE_CERTIFICATE` and friends are read, and are simply
-absent. It is a spending decision, not an engineering one.
+The secrets are already wired up in `release.yml` — `APPLE_CERTIFICATE` and
+friends are read, and are simply absent — so closing this is a matter of
+obtaining certificates, not of writing code.
+
+| Platform | Option | Cost |
+|---|---|---|
+| Windows | **[SignPath Foundation](https://signpath.org/)** — free code signing for OSS. Key generated and held in their HSM, signing happens server-side from CI, so no certificate ever touches this repository or a laptop. This project meets the [conditions](https://signpath.org/terms.html): MIT, no proprietary components, actively maintained, released, described on `/download/` | **free** |
+| Windows | Azure Artifact Signing (formerly Trusted Signing) — ~$10/month, and **not available here**: individuals must be in the US or Canada, organisations need three years of verifiable history | n/a |
+| macOS | Apple Developer Program. There is no free path and no open-source exemption — without membership you cannot sign at all, let alone notarise | **$99/yr** |
+| Linux | Not affected. `deb`/`rpm`/AppImage carry no equivalent gate | — |
+
+SignPath issues an **OV** certificate rather than EV, so SmartScreen reputation
+accrues with download volume instead of being granted immediately. Warnings fade
+over weeks rather than vanishing on the first release — still unlike unsigned,
+which never improves.
+
+Until the macOS side is paid for, the honest advice to a Mac user is right-click
+→ Open, or a Homebrew cask, which lets `brew` handle the quarantine attribute.
 
 ---
 

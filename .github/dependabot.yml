@@ -25,7 +25,7 @@
 #      before the next tag — it is workflow_dispatch only, so nothing else
 #      will ever exercise the change.
 #
-# Grouped and monthly on purpose. Nine actions on a weekly schedule is a stream
+# Grouped and monthly on purpose. Ten actions on a weekly schedule is a stream
 # of individually trivial PRs, and the failure mode of that is the one thing
 # this file must not cause: bumps that get rubber-stamped because reading them
 # stopped feeling worth it.
