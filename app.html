@@ -217,6 +217,12 @@
         </div>
       </div>
 
+      <!-- The standing route to the apps. The header offer is one-shot by
+           design — answered or dismissed, it never returns — so this quiet
+           line is the way back to the download page afterwards. Built by
+           ui/features/install.js, which owns the offer it backs up. -->
+      <div id="mount-getapp"></div>
+
       <!-- The single ad slot. Below the editor, never beside the file or
            session controls — see src/ui/features/ads.js for why. -->
       <div id="mount-ad"></div>
