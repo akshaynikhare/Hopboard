@@ -1076,7 +1076,14 @@ The fix is to derive the open room hash from the PBKDF2 output, exactly as `deri
 does. It is free at runtime (that PBKDF2 is already computed) and takes the same sweeps to **40
 GPU-hours** and **~3,700 GPU-years**. It is a **wire-format break** — every existing share link,
 plus the golden vectors in `tests/unit/lock.mjs` — so it needs its own release and an explicit note
-in the commit body. **This is now the highest-priority item in this list.**
+in the commit body.
+
+✅ **Shipped in v0.5.0 on 2026-08-08**, and it took *two* changes rather than one. Stretching the
+room hash alone still left a 6-character sweep at ~40 GPU-hours — and because `CRYPTO.SALT` is one
+global constant, that table is built once and then opens every unlocked 6-character session, for
+every user, permanently. So generated keys went 6 -> 10 as well (and "longer keys" 10 -> 16). A
+full sweep is now ~19 years on 100 GPUs. `tests/unit/lock.mjs` was rebaselined and now also asserts
+the room hash is *not* the bare SHA-256, so the cheap path cannot return quietly.
 
 Also done in this pass: the landing FAQ, `llms.txt` and two keyword pages said the server "has no
 way to open" the ciphertext. That was false as written. Corrected — the QuickClip thread is
