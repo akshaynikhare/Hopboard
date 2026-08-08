@@ -24,6 +24,7 @@ import * as state from "../../core/state.js";
 import * as registry from "../../files/registry.js";
 import * as transfer from "../../files/transfer.js";
 import { iconFor, formatSize } from "../../files/thumbs.js";
+import { canPreview, openPreview } from "../features/preview.js";
 import { $, esc, on as bind, setHTML, clear } from "../primitives/dom.js";
 
 const S = registry.STATE;
@@ -69,8 +70,9 @@ export function init() {
     if (!file) return;
     if (BUSY.has(file.state)) return;                 // already under way
 
-    // Local (or already-received) files save; remote ones are fetched on demand.
-    if (file.blob) registry.save(file.id);
+    // Files we hold preview if the browser can show them, save otherwise;
+    // remote ones are fetched on demand.
+    if (file.blob) { if (!openPreview(file.id)) registry.save(file.id); }
     else transfer.request(file.id);
   });
 
@@ -343,11 +345,14 @@ function subtitle(f) {
 
 function tooltip(f) {
   const bits = [f.name, formatSize(f.size)];
-  if (f.state === S.ERROR) bits.push(`failed: ${f.error}`);
-  else if (f.path === "relay") bits.push("came via the relay, not directly");
-  else if (f.path === "p2p") bits.push("direct peer-to-peer transfer");
-  else if (f.origin === "remote") bits.push("click to request the file");
-  else bits.push("click to save");
+  if (f.state === S.ERROR) {
+    bits.push(`failed: ${f.error}`);
+  } else {
+    if (f.path === "relay") bits.push("came via the relay, not directly");
+    else if (f.path === "p2p") bits.push("direct peer-to-peer transfer");
+    if (!f.blob) bits.push("click to request the file");
+    else bits.push(canPreview(f) ? "click to preview" : "click to save");
+  }
   return bits.join(" · ");
 }
 
